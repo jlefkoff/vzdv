@@ -3,6 +3,7 @@
 ![lang](https://img.shields.io/badge/lang-rust-orange)
 ![licensing](https://img.shields.io/badge/license-MIT_or_Apache_2.0-blue)
 ![status](https://img.shields.io/badge/project_status-in_dev-red)
+![CI](https://github.com/Celeo/vzdv/actions/workflows/ci.yml/badge.svg)
 
 New vZDV website. Completely in-dev and unfinished.
 
@@ -34,7 +35,9 @@ You'll need to create a configuration file. A sample file is supplied [here](./s
 
 Additional CLI parameters can be found by running the app with the `--help` flag.
 
-When running in production, you should have this app behind some sort of reverse proxy that provides HTTPS, like [Caddy](https://caddyserver.com/), as this app doesn't (and won't) provide HTTPS support.
+## Deploying
+
+This app makes few assertions about how it should be ran. You can run it directly, put it into a systemd unit file, run in a Docker container, etc. You _will_ need to have this app behind some sort of reverse proxy that provides HTTPS, like [Caddy](https://caddyserver.com/).
 
 ## License
 
