@@ -80,6 +80,13 @@ async fn load_db(config: &Config) -> Result<SqlitePool> {
     Ok(pool)
 }
 
+/// Create all the endpoints and connect with the state.
+fn load_router(app_state: Arc<AppState>) -> Router {
+    Router::new()
+        .route("/", get(endpoints::handler_home))
+        .with_state(app_state)
+}
+
 /// Entrypoint.
 #[tokio::main]
 async fn main() {
@@ -121,9 +128,7 @@ async fn main() {
         db,
         templates,
     });
-    let app = Router::new()
-        .route("/", get(endpoints::handler_home))
-        .with_state(app_state);
+    let app = load_router(app_state);
     debug!("Set up");
 
     let host_and_port = format!("{}:{}", cli.host, cli.port);
