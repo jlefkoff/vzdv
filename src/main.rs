@@ -26,7 +26,7 @@ mod sql;
 struct Cli {
     /// Load the config from a specific file.
     ///
-    /// Defaults to "./site_config.toml".
+    /// [default: site_config.toml]
     #[arg(long)]
     config: Option<PathBuf>,
 
