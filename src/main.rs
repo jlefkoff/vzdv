@@ -1,6 +1,5 @@
 //! New vZVD website.
 
-// don't permit any lint-able bad practices
 #![deny(clippy::all)]
 
 use crate::shared::{AppState, Config};
@@ -18,7 +17,6 @@ use std::{
 
 mod endpoints;
 mod shared;
-mod sql;
 
 /// New vZDV website.
 #[derive(Parser)]
@@ -72,7 +70,7 @@ async fn load_db(config: &Config) -> Result<SqlitePool> {
     let pool = if !Path::new(&config.database.file).exists() {
         let options = options.create_if_missing(true);
         let pool = SqlitePool::connect_with(options).await?;
-        pool.execute(sql::CREATE_TABLES).await?;
+        pool.execute(shared::sql::CREATE_TABLES).await?;
         pool
     } else {
         SqlitePool::connect_with(options).await?
