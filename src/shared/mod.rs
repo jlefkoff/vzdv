@@ -1,6 +1,6 @@
 //! Structs and data to be shared across multiple parts of the site.
 
-#![allow(unused)]
+#![allow(unused, clippy::upper_case_acronyms)]
 
 use minijinja::Environment;
 use sqlx::SqlitePool;
