@@ -4,7 +4,7 @@
 
 use crate::shared::{AppState, Config};
 use anyhow::Result;
-use axum::{routing::get, Router};
+use axum::{middleware as axum_middleware, routing::get, Router};
 use clap::Parser;
 use log::{debug, error, info};
 use minijinja::Environment;
@@ -14,8 +14,10 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use tower::ServiceBuilder;
 
 mod endpoints;
+mod middleware;
 mod shared;
 
 /// New vZDV website.
@@ -78,10 +80,11 @@ async fn load_db(config: &Config) -> Result<SqlitePool> {
     Ok(pool)
 }
 
-/// Create all the endpoints and connect with the state.
+/// Create all the endpoints, include middleware, and connect with the state.
 fn load_router(app_state: Arc<AppState>) -> Router {
     Router::new()
         .route("/", get(endpoints::handler_home))
+        .layer(ServiceBuilder::new().layer(axum_middleware::from_fn(middleware::logging)))
         .with_state(app_state)
 }
 
