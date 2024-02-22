@@ -47,4 +47,6 @@ pub enum StaffPosition {
     AFE,
     AEC,
     AWM,
+    INS,
+    MTR,
 }
