@@ -43,17 +43,16 @@ struct Cli {
     port: u16,
 }
 
-/// Read the TOML file at the given path and load
-/// into the app's configuration file.
+/// Read the TOML file at the given path and load into the app's
+/// configuration file.
 fn load_config(path: &Path) -> Result<Config> {
     let text = std::fs::read_to_string(path)?;
     let config: Config = toml::from_str(&text)?;
     Ok(config)
 }
 
-/// Load all template files into the binary via
-/// the stdlib `include_str!` macro and supply
-/// to the minijinja environment.
+/// Load all template files into the binary via the stdlib `include_str!`
+/// macro and supply to the minijinja environment.
 fn load_templates() -> Environment<'static> {
     let mut env = Environment::new();
     env.add_template("layout", include_str!("../templates/layout.jinja"))
@@ -63,10 +62,8 @@ fn load_templates() -> Environment<'static> {
     env
 }
 
-/// Connect to the SQLite file at the destination,
-/// if it exists. If it does not, a new file is
-/// created and statements to create tables are
-/// executed.
+/// Connect to the SQLite file at the destination, if it exists. If it does
+/// not, a new file is created and statements to create tables are executed.
 async fn load_db(config: &Config) -> Result<SqlitePool> {
     let options = SqliteConnectOptions::new().filename(&config.database.file);
     let pool = if !Path::new(&config.database.file).exists() {

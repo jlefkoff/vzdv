@@ -30,9 +30,8 @@ pub struct Certification {
     pub set_by: Uuid,
 }
 
-/// Statements to create tables. Only ran when the DB file
-/// does not exist, so no migration or "IF NOT EXISTS"
-/// conditions need to be added.
+/// Statements to create tables. Only ran when the DB file does not exist,
+/// so no migration or "IF NOT EXISTS" conditions need to be added.
 pub const CREATE_TABLES: &str = "
 CREATE TABLE controller (
     id TEXT PRIMARY KEY NOT NULL,
