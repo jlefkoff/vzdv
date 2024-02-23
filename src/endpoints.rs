@@ -1,3 +1,5 @@
+//! HTTP endpoints.
+
 use crate::shared::AppState;
 use anyhow::Result;
 use axum::{extract::State, http::StatusCode, response::Html};

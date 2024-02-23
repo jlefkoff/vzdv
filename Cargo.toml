@@ -3,7 +3,7 @@ name = "vzdv"
 version = "0.1.0"
 authors = ["Celeo <mattboulanger@fastmail.com>"]
 edition = "2021"
-description = "vZDV VATSIM website"
+description = "VATSIM ZDV website"
 readme = "README.md"
 homepage = "https://github.com/Celeo/vzdv"
 repository = "https://github.com/Celeo/vzdv"
@@ -26,3 +26,4 @@ sqlx = { version = "0.7.3", features = ["runtime-tokio", "sqlite", "chrono", "uu
 tokio = { version = "1.36.0", features = ["full"] }
 toml = "0.8.10"
 tower = "0.4.13"
+tower-sessions-sqlx-store = "0.10.0"

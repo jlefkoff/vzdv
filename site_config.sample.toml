@@ -5,6 +5,9 @@ facility_name = ""
 [database]
 file = "./vzdv_data.sqlite"
 
+[training]
+certifications = []
+
 [airports]
 all = []
 weather_for = []
