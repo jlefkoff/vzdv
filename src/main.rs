@@ -80,7 +80,8 @@ async fn load_db(config: &Config) -> Result<SqlitePool> {
     Ok(pool)
 }
 
-/// Create all the endpoints, include middleware, and connect with the state.
+/// Create all the endpoints, include middleware, and connect with the
+/// state and session management layer.
 fn load_router(
     app_state: Arc<AppState>,
     sessions_layer: SessionManagerLayer<SqliteStore>,
