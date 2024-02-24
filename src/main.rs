@@ -125,9 +125,9 @@ async fn shutdown_signal() {
 async fn main() {
     let cli = Cli::parse();
     if cli.debug {
-        env::set_var("RUST_LOG", "info,vzdv=debug");
+        env::set_var("RUST_LOG", "info,tracing::span=warn,vzdv=debug");
     } else if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", "info");
+        env::set_var("RUST_LOG", "tracing::span=warn,info");
     }
     pretty_env_logger::init();
     debug!("Logging configured");

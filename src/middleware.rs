@@ -2,6 +2,10 @@
 
 use axum::{extract::Request, middleware::Next, response::Response};
 use log::{debug, warn};
+use once_cell::sync::Lazy;
+use std::collections::HashSet;
+
+static IGNORE_PATHS: Lazy<HashSet<&str>> = Lazy::new(|| HashSet::from(["/favicon.ico"]));
 
 /// Simple logging middleware.
 ///
@@ -9,16 +13,19 @@ use log::{debug, warn};
 /// if processing returned a successful code, and to
 /// warn otherwise.
 pub async fn logging(request: Request, next: Next) -> Response {
-    let method = request.method().clone();
     let uri = request.uri().clone();
-
-    let response = next.run(request).await;
-
-    let s = format!("{} {} {}", method, uri.path(), response.status().as_u16());
-    if response.status().is_success() {
-        debug!("{s}");
+    let path = uri.path();
+    if !IGNORE_PATHS.contains(path) {
+        let method = request.method().clone();
+        let response = next.run(request).await;
+        let s = format!("{} {} {}", method, path, response.status().as_u16());
+        if response.status().is_success() {
+            debug!("{s}");
+        } else {
+            warn!("{s}");
+        }
+        response
     } else {
-        warn!("{s}");
+        next.run(request).await
     }
-    response
 }

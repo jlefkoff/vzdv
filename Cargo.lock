@@ -2649,6 +2649,7 @@ dependencies = [
  "clap",
  "log",
  "minijinja",
+ "once_cell",
  "pretty_env_logger",
  "reqwest",
  "rusty-hook",
