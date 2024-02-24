@@ -1,6 +1,6 @@
 //! Structs and data to be shared across multiple parts of the site.
 
-#![allow(unused, clippy::upper_case_acronyms)]
+#![allow(unused)]
 
 use minijinja::Environment;
 use sqlx::SqlitePool;
@@ -16,6 +16,7 @@ pub struct AppState {
     pub templates: Environment<'static>,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 pub enum ControllerRating {
     OBS,
     S1,
@@ -36,6 +37,7 @@ pub enum ControllerStatus {
     LeaveOfAbsence,
 }
 
+#[allow(clippy::upper_case_acronyms)]
 pub enum StaffPosition {
     None,
     ATM,

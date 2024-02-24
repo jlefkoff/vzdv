@@ -16,12 +16,14 @@ use std::{
 };
 use tokio::signal;
 use tower::ServiceBuilder;
+use tower_sessions::SessionManagerLayer;
+use tower_sessions_sqlx_store::SqliteStore;
 
 mod endpoints;
 mod middleware;
 mod shared;
 
-/// New vZDV website.
+/// vZDV website.
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
@@ -79,10 +81,17 @@ async fn load_db(config: &Config) -> Result<SqlitePool> {
 }
 
 /// Create all the endpoints, include middleware, and connect with the state.
-fn load_router(app_state: Arc<AppState>) -> Router {
+fn load_router(
+    app_state: Arc<AppState>,
+    sessions_layer: SessionManagerLayer<SqliteStore>,
+) -> Router {
     Router::new()
         .route("/", get(endpoints::handler_home))
-        .layer(ServiceBuilder::new().layer(axum_middleware::from_fn(middleware::logging)))
+        .layer(
+            ServiceBuilder::new()
+                .layer(axum_middleware::from_fn(middleware::logging))
+                .layer(sessions_layer),
+        )
         .with_state(app_state)
 }
 
@@ -143,6 +152,12 @@ async fn main() {
             std::process::exit(1);
         }
     };
+    let sessions = SqliteStore::new(db.clone());
+    if let Err(e) = sessions.migrate().await {
+        error!("Could not create table for sessions: {e}");
+        return;
+    }
+    let session_layer = SessionManagerLayer::new(sessions);
     let templates = load_templates();
     debug!("Loaded");
 
@@ -152,7 +167,7 @@ async fn main() {
         db,
         templates,
     });
-    let app = load_router(app_state);
+    let app = load_router(app_state, session_layer);
     debug!("Set up");
 
     let host_and_port = format!("{}:{}", cli.host, cli.port);

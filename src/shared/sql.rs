@@ -30,14 +30,6 @@ pub struct Certification {
     pub set_by: Uuid,
 }
 
-#[derive(Debug, FromRow)]
-pub struct Session {
-    pub id: Uuid,
-    pub controller_id: Uuid,
-    pub vatsim_token: String,
-    pub started: DateTime<Utc>,
-}
-
 /// Statements to create tables. Only ran when the DB file does not exist,
 /// so no migration or "IF NOT EXISTS" conditions need to be added.
 pub const CREATE_TABLES: &str = "
@@ -61,15 +53,6 @@ CREATE TABLE certification (
     value TEXT NOT NULL,
     changed_on TEXT NOT NULL,
     set_by TEXT NOT NULL,
-
-    FOREIGN KEY (controller_id) REFERENCES controller(id)
-);
-
-CREATE TABLE session (
-    id TEXT PRIMARY KEY NOT NULL,
-    controller_id TEXT NOT NULL UNIQUE,
-    vatsim_token TEXT NOT NULL UNIQUE,
-    started TEXT NOT NULL,
 
     FOREIGN KEY (controller_id) REFERENCES controller(id)
 );
