@@ -6,15 +6,8 @@ pub const DEFAULT_CONFIG_FILE_NAME: &str = "site_config.toml";
 /// App configuration.
 #[derive(Debug, Deserialize)]
 pub struct Config {
-    pub general: ConfigGeneral,
     pub database: ConfigDatabase,
     pub airports: ConfigAirports,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ConfigGeneral {
-    pub facility_short: String,
-    pub facility_name: String,
 }
 
 #[derive(Debug, Deserialize)]

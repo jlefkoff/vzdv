@@ -1,7 +1,3 @@
-[general]
-facility_short = ""
-facility_name = ""
-
 [database]
 file = "./vzdv_data.sqlite"
 
