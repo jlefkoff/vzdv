@@ -4,7 +4,7 @@
 
 use crate::shared::{AppState, Config};
 use anyhow::Result;
-use axum::{middleware as axum_middleware, routing::get, Router};
+use axum::{middleware as axum_middleware, response::Redirect, routing::get, Router};
 use clap::Parser;
 use log::{debug, error, info};
 use minijinja::Environment;
@@ -13,9 +13,11 @@ use std::{
     env,
     path::{Path, PathBuf},
     sync::Arc,
+    time::Duration,
 };
 use tokio::signal;
 use tower::ServiceBuilder;
+use tower_http::timeout::TimeoutLayer;
 use tower_sessions::SessionManagerLayer;
 use tower_sessions_sqlx_store::SqliteStore;
 
@@ -62,6 +64,8 @@ fn load_templates() -> Environment<'static> {
         .unwrap();
     env.add_template("home", include_str!("../templates/home.jinja"))
         .unwrap();
+    env.add_template("404", include_str!("../templates/404.jinja"))
+        .unwrap();
     env
 }
 
@@ -87,12 +91,15 @@ fn load_router(
     sessions_layer: SessionManagerLayer<SqliteStore>,
 ) -> Router {
     Router::new()
+        .route("/404", get(endpoints::handler_404))
         .route("/", get(endpoints::handler_home))
         .layer(
             ServiceBuilder::new()
+                .layer(TimeoutLayer::new(Duration::from_secs(30)))
                 .layer(axum_middleware::from_fn(middleware::logging))
                 .layer(sessions_layer),
         )
+        .fallback(|| async { Redirect::to("/404") })
         .with_state(app_state)
 }
 
