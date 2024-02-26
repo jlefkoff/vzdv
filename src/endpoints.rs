@@ -7,24 +7,23 @@ use minijinja::context;
 use std::sync::Arc;
 use tower_sessions::Session;
 
-pub async fn handler_404(
-    State(state): State<Arc<AppState>>,
-    session: Session,
-) -> Result<Html<String>, StatusCode> {
-    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
-    let template = state.templates.get_template("404").unwrap();
-    let rendered = template.render(context! { user_info }).unwrap();
+macro_rules! simple {
+    (
+        $fn_name:ident,
+        $template_name:literal
+    ) => {
+        pub async fn $fn_name(
+            State(state): State<Arc<AppState>>,
+            session: Session,
+        ) -> Result<Html<String>, StatusCode> {
+            let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
+            let template = state.templates.get_template($template_name).unwrap();
+            let rendered = template.render(context! { user_info }).unwrap();
 
-    Ok(Html(rendered))
+            Ok(Html(rendered))
+        }
+    };
 }
 
-pub async fn handler_home(
-    State(state): State<Arc<AppState>>,
-    session: Session,
-) -> Result<Html<String>, StatusCode> {
-    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
-    let template = state.templates.get_template("home").unwrap();
-    let rendered = template.render(context! { user_info }).unwrap();
-
-    Ok(Html(rendered))
-}
+simple!(handler_404, "404");
+simple!(handler_home, "home");
