@@ -7,12 +7,20 @@ pub const DEFAULT_CONFIG_FILE_NAME: &str = "site_config.toml";
 #[derive(Debug, Deserialize)]
 pub struct Config {
     pub database: ConfigDatabase,
+    pub vatsim: ConfigVatsim,
     pub airports: ConfigAirports,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ConfigDatabase {
     pub file: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConfigVatsim {
+    pub oauth_client_id: String,
+    pub oauth_client_secret: String,
+    pub oauth_client_calback_url: String,
 }
 
 #[derive(Debug, Deserialize)]

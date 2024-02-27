@@ -24,6 +24,7 @@ use tower_sessions_sqlx_store::SqliteStore;
 mod endpoints;
 mod middleware;
 mod shared;
+mod utils;
 
 /// vZDV website.
 #[derive(Parser)]
@@ -93,6 +94,8 @@ fn load_router(
     Router::new()
         .route("/404", get(endpoints::handler_404))
         .route("/", get(endpoints::handler_home))
+        .route("/auth/log_in", get(endpoints::handler_auth_login))
+        .route("/auth/callback", get(endpoints::handler_auth_callback))
         .layer(
             ServiceBuilder::new()
                 .layer(TimeoutLayer::new(Duration::from_secs(30)))

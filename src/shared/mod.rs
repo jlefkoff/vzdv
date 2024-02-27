@@ -2,6 +2,10 @@
 
 #![allow(unused)]
 
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
 use minijinja::Environment;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
@@ -9,6 +13,28 @@ use sqlx::SqlitePool;
 mod config;
 pub use config::{Config, DEFAULT_CONFIG_FILE_NAME};
 pub mod sql;
+
+/// Wrapper of anyhow's `Error` type.
+pub struct AppError(anyhow::Error);
+
+impl IntoResponse for AppError {
+    fn into_response(self) -> Response {
+        (
+            StatusCode::INTERNAL_SERVER_ERROR,
+            format!("Something went wrong: {}", self.0),
+        )
+            .into_response()
+    }
+}
+
+impl<E> From<E> for AppError
+where
+    E: Into<anyhow::Error>,
+{
+    fn from(err: E) -> Self {
+        Self(err.into())
+    }
+}
 
 /// Site's shared config. Made available in all handlers.
 pub struct AppState {
@@ -23,10 +49,9 @@ pub const SESSION_USER_INFO_KEY: &str = "USER_INFO";
 /// Data stored in the user's session.
 #[derive(Debug, Deserialize, Serialize)]
 pub struct UserInfo {
-    session_id: String,
-    cid: u32,
-    first_name: String,
-    last_name: String,
+    pub cid: u32,
+    pub first_name: String,
+    pub last_name: String,
 }
 
 #[allow(clippy::upper_case_acronyms)]

@@ -19,7 +19,7 @@ pub async fn logging(request: Request, next: Next) -> Response {
         let method = request.method().clone();
         let response = next.run(request).await;
         let s = format!("{} {} {}", method, path, response.status().as_u16());
-        if response.status().is_success() {
+        if response.status().is_success() || response.status().is_redirection() {
             debug!("{s}");
         } else {
             warn!("{s}");
