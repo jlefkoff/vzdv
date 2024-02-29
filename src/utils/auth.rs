@@ -54,7 +54,7 @@ pub async fn code_to_user_info(code: &str, state: Arc<AppState>) -> Result<Token
         }))
         .send()
         .await?;
-    if resp.status().is_success() {
+    if !resp.status().is_success() {
         return Err(anyhow!(
             "Got status code {} from VATSIM OAuth exchange",
             resp.status().as_u16()
@@ -72,7 +72,7 @@ pub async fn get_user_info(access_token: &str) -> Result<UserInfoResponse> {
         .header("Authorization", &format!("Bearer {}", access_token))
         .send()
         .await?;
-    if resp.status().is_success() {
+    if !resp.status().is_success() {
         return Err(anyhow!(
             "Got status code {} from VATSIM OAuth user info",
             resp.status().as_u16()

@@ -8,14 +8,14 @@ use anyhow::Result;
 use axum::{
     extract::{Query, State},
     http::StatusCode,
-    response::{Html, IntoResponse, Redirect, Response},
+    response::{Html, Redirect},
 };
 use log::debug;
 use minijinja::context;
 use std::sync::Arc;
 use tower_sessions::Session;
 
-/// Define a simple endpoint, returning a rendered template
+/// Define a simple endpoint that returns a rendered template
 /// with the standard context data.
 macro_rules! simple {
     (
@@ -29,7 +29,6 @@ macro_rules! simple {
             let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
             let template = state.templates.get_template($template_name).unwrap();
             let rendered = template.render(context! { user_info }).unwrap();
-
             Ok(Html(rendered))
         }
     };
@@ -62,7 +61,7 @@ pub async fn handler_auth_callback(
     query: Query<AuthCallback>,
     State(state): State<Arc<AppState>>,
     session: Session,
-) -> Result<Response, AppError> {
+) -> Result<Redirect, AppError> {
     debug!("Auth callback");
     let token_data = code_to_user_info(&query.code, state).await?;
     debug!("Got token data");
@@ -77,6 +76,10 @@ pub async fn handler_auth_callback(
     session.insert(SESSION_USER_INFO_KEY, to_session).await?;
     // TODO update DB with user info
     debug!("Completed log in for {}", user_info.data.cid);
+    Ok(Redirect::to("/"))
+}
 
-    Ok(Redirect::to("/").into_response())
+pub async fn handler_auth_logout(session: Session) -> Result<Redirect, AppError> {
+    session.delete().await?;
+    Ok(Redirect::to("/"))
 }

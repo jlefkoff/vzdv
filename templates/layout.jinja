@@ -83,7 +83,7 @@
                 </li>
               </ul>
             </li>
-            {% if user_info %}
+            {% if user_info and user_info.cid %}
             <li class="nav-item dropdown">
               <a
                 class="nav-link dropdown-toggle"
@@ -98,10 +98,10 @@
                 <li><a class="dropdown-item" href="#">Discord</a></li>
                 <li><a class="dropdown-item" href="#">My Training Notes</a></li>
                 <li><a class="dropdown-item" href="#">Schedule Training</a></li>
-                <li><a class="dropdown-item" href="#">Log out</a></li>
                 <li>
                   <a class="dropdown-item" href="#">Visitor Application</a>
                 </li>
+                <li><a class="dropdown-item" href="/auth/logout">Log out</a></li>
               </ul>
             </li>
             {% else %}

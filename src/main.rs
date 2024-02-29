@@ -96,6 +96,7 @@ fn load_router(
         .route("/", get(endpoints::handler_home))
         .route("/auth/log_in", get(endpoints::handler_auth_login))
         .route("/auth/callback", get(endpoints::handler_auth_callback))
+        .route("/auth/logout", get(endpoints::handler_auth_logout))
         .layer(
             ServiceBuilder::new()
                 .layer(TimeoutLayer::new(Duration::from_secs(30)))
