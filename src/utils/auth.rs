@@ -41,7 +41,7 @@ pub struct UserInfoResponseDataPersonal {
 }
 
 /// Exchange the code from VATSIM OAuth for an access token.
-pub async fn code_to_user_info(code: &str, state: Arc<AppState>) -> Result<TokenResponse> {
+pub async fn code_to_user_info(code: &str, state: &Arc<AppState>) -> Result<TokenResponse> {
     let client = reqwest::ClientBuilder::new().build()?;
     let resp = client
         .post(format!("{VATSIM_OAUTH_URL_BASE}oauth/token"))

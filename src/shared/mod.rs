@@ -47,7 +47,7 @@ pub struct AppState {
 pub const SESSION_USER_INFO_KEY: &str = "USER_INFO";
 
 /// Data stored in the user's session.
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct UserInfo {
     pub cid: u32,
     pub first_name: String,

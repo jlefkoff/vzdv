@@ -65,6 +65,11 @@ fn load_templates() -> Environment<'static> {
         .unwrap();
     env.add_template("home", include_str!("../templates/home.jinja"))
         .unwrap();
+    env.add_template(
+        "login_complete",
+        include_str!("../templates/login_complete.jinja"),
+    )
+    .unwrap();
     env.add_template("404", include_str!("../templates/404.jinja"))
         .unwrap();
     env
@@ -95,8 +100,8 @@ fn load_router(
         .route("/404", get(endpoints::handler_404))
         .route("/", get(endpoints::handler_home))
         .route("/auth/log_in", get(endpoints::handler_auth_login))
-        .route("/auth/callback", get(endpoints::handler_auth_callback))
         .route("/auth/logout", get(endpoints::handler_auth_logout))
+        .route("/auth/callback", get(endpoints::handler_auth_callback))
         .layer(
             ServiceBuilder::new()
                 .layer(TimeoutLayer::new(Duration::from_secs(30)))

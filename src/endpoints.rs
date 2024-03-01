@@ -61,9 +61,9 @@ pub async fn handler_auth_callback(
     query: Query<AuthCallback>,
     State(state): State<Arc<AppState>>,
     session: Session,
-) -> Result<Redirect, AppError> {
+) -> Result<Html<String>, AppError> {
     debug!("Auth callback");
-    let token_data = code_to_user_info(&query.code, state).await?;
+    let token_data = code_to_user_info(&query.code, &state).await?;
     debug!("Got token data");
     let user_info = get_user_info(&token_data.access_token).await?;
     debug!("Got user info");
@@ -73,10 +73,14 @@ pub async fn handler_auth_callback(
         first_name: user_info.data.personal.name_first,
         last_name: user_info.data.personal.name_last,
     };
-    session.insert(SESSION_USER_INFO_KEY, to_session).await?;
+    session
+        .insert(SESSION_USER_INFO_KEY, to_session.clone())
+        .await?;
     // TODO update DB with user info
     debug!("Completed log in for {}", user_info.data.cid);
-    Ok(Redirect::to("/"))
+    let template = state.templates.get_template("login_complete")?;
+    let rendered = template.render(context! { user_info => to_session })?;
+    Ok(Html(rendered))
 }
 
 pub async fn handler_auth_logout(session: Session) -> Result<Redirect, AppError> {
