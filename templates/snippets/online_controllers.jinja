@@ -1,5 +1,8 @@
 <ul>
   {% for controller in online %}
-  <li>{{ controller.name }} ({{ controller.cid }})</li>
+  <li>
+    {{ controller.name }} ({{ controller.cid }}) for
+    {{ controller.online_for }}
+  </li>
   {% endfor %}
 </ul>

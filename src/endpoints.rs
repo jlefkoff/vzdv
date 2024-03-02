@@ -2,7 +2,10 @@
 
 use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
-    utils::auth::{code_to_user_info, get_user_info, AuthCallback},
+    utils::{
+        auth::{code_to_user_info, get_user_info, AuthCallback},
+        parse_vatsim_timestamp,
+    },
 };
 use anyhow::Result;
 use axum::{
@@ -91,11 +94,11 @@ pub async fn page_auth_logout(session: Session) -> Result<Redirect, AppError> {
 struct OnlineController {
     cid: u64,
     name: String,
+    online_for: String,
 }
 
 pub async fn snippet_online_controllers(
     State(state): State<Arc<AppState>>,
-    session: Session,
 ) -> Result<Html<String>, AppError> {
     let cache_key = "ONLINE_CONTROLLERS";
     // cache data for 60 seconds
@@ -108,38 +111,42 @@ pub async fn snippet_online_controllers(
         state.cache.invalidate(&cache_key);
     }
 
+    let now = chrono::Utc::now();
     let vatsim = Vatsim::new().await?;
     let data = vatsim.get_v3_data().await?;
-    let mut online: Vec<OnlineController> = Vec::new();
+    let online: Vec<_> = data
+        .controllers
+        .iter()
+        .filter(|controller| {
+            let prefix_match = state
+                .config
+                .stats
+                .position_prefixes
+                .iter()
+                .any(|prefix| controller.callsign.starts_with(prefix));
+            if !prefix_match {
+                return false;
+            }
+            state
+                .config
+                .stats
+                .position_suffixes
+                .iter()
+                .any(|suffix| controller.callsign.ends_with(suffix))
+        })
+        .map(|controller| {
+            let logon = parse_vatsim_timestamp(&controller.logon_time).unwrap();
+            let seconds = (now - logon).num_seconds() as u32;
+            OnlineController {
+                cid: controller.cid,
+                name: controller.name.clone(),
+                online_for: format!("{}h{}m", seconds / 3600, (seconds / 60) % 60),
+            }
+        })
+        .collect();
 
-    for controller in data.controllers {
-        let prefix_match = state
-            .config
-            .stats
-            .position_prefixes
-            .iter()
-            .any(|prefix| controller.callsign.starts_with(prefix));
-        if !prefix_match {
-            continue;
-        }
-        let suffix_match = state
-            .config
-            .stats
-            .position_suffixes
-            .iter()
-            .any(|suffix| controller.callsign.ends_with(suffix));
-        if !suffix_match {
-            continue;
-        }
-        online.push(OnlineController {
-            cid: controller.cid,
-            name: controller.name,
-        });
-    }
-
-    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
     let template = state.templates.get_template("snippet_online_controllers")?;
-    let rendered = template.render(context! { user_info , online })?;
+    let rendered = template.render(context! { online })?;
     state
         .cache
         .insert(cache_key, CacheEntry::new(rendered.clone()));
