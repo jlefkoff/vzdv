@@ -90,16 +90,16 @@ pub async fn page_auth_logout(session: Session) -> Result<Redirect, AppError> {
     Ok(Redirect::to("/"))
 }
 
-#[derive(Serialize)]
-struct OnlineController {
-    cid: u64,
-    name: String,
-    online_for: String,
-}
-
 pub async fn snippet_online_controllers(
     State(state): State<Arc<AppState>>,
 ) -> Result<Html<String>, AppError> {
+    #[derive(Serialize)]
+    struct OnlineController {
+        cid: u64,
+        name: String,
+        online_for: String,
+    }
+
     let cache_key = "ONLINE_CONTROLLERS";
     // cache data for 60 seconds
     if let Some(cached) = state.cache.get(&cache_key) {
@@ -112,8 +112,7 @@ pub async fn snippet_online_controllers(
     }
 
     let now = chrono::Utc::now();
-    let vatsim = Vatsim::new().await?;
-    let data = vatsim.get_v3_data().await?;
+    let data = Vatsim::new().await?.get_v3_data().await?;
     let online: Vec<_> = data
         .controllers
         .iter()
