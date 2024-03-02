@@ -2,10 +2,14 @@
 
 #![allow(unused)]
 
+use std::time::Instant;
+
 use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use log::error;
+use mini_moka::sync::Cache;
 use minijinja::Environment;
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
@@ -19,11 +23,8 @@ pub struct AppError(anyhow::Error);
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        (
-            StatusCode::INTERNAL_SERVER_ERROR,
-            format!("Something went wrong: {}", self.0),
-        )
-            .into_response()
+        error!("Unhandled error: {}", self.0);
+        (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong").into_response()
     }
 }
 
@@ -36,11 +37,27 @@ where
     }
 }
 
+#[derive(Clone)]
+pub struct CacheEntry {
+    pub inserted: Instant,
+    pub data: String,
+}
+
+impl CacheEntry {
+    pub fn new(data: String) -> Self {
+        Self {
+            inserted: Instant::now(),
+            data,
+        }
+    }
+}
+
 /// Site's shared config. Made available in all handlers.
 pub struct AppState {
     pub config: config::Config,
     pub db: SqlitePool,
     pub templates: Environment<'static>,
+    pub cache: Cache<&'static str, CacheEntry>,
 }
 
 /// Key for user info CRUD in session.

@@ -9,6 +9,7 @@ pub struct Config {
     pub database: ConfigDatabase,
     pub vatsim: ConfigVatsim,
     pub airports: ConfigAirports,
+    pub stats: ConfigStats,
 }
 
 #[derive(Debug, Deserialize)]
@@ -35,4 +36,10 @@ pub struct Airport {
     pub name: String,
     pub location: String,
     pub towered: bool,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConfigStats {
+    pub position_prefixes: Vec<String>,
+    pub position_suffixes: Vec<String>,
 }

@@ -7,6 +7,7 @@ use anyhow::Result;
 use axum::{middleware as axum_middleware, response::Redirect, routing::get, Router};
 use clap::Parser;
 use log::{debug, error, info};
+use mini_moka::sync::Cache;
 use minijinja::Environment;
 use sqlx::{sqlite::SqliteConnectOptions, Executor, SqlitePool};
 use std::{
@@ -72,6 +73,11 @@ fn load_templates() -> Environment<'static> {
     .unwrap();
     env.add_template("404", include_str!("../templates/404.jinja"))
         .unwrap();
+    env.add_template(
+        "snippet_online_controllers",
+        include_str!("../templates/snippets/online_controllers.jinja"),
+    )
+    .unwrap();
     env
 }
 
@@ -99,9 +105,13 @@ fn load_router(
     Router::new()
         .route("/404", get(endpoints::handler_404))
         .route("/", get(endpoints::handler_home))
-        .route("/auth/log_in", get(endpoints::handler_auth_login))
-        .route("/auth/logout", get(endpoints::handler_auth_logout))
-        .route("/auth/callback", get(endpoints::handler_auth_callback))
+        .route("/auth/log_in", get(endpoints::page_auth_login))
+        .route("/auth/logout", get(endpoints::page_auth_logout))
+        .route("/auth/callback", get(endpoints::page_auth_callback))
+        .route(
+            "/snippets/online_controllers",
+            get(endpoints::snippet_online_controllers),
+        )
         .layer(
             ServiceBuilder::new()
                 .layer(TimeoutLayer::new(Duration::from_secs(30)))
@@ -154,7 +164,10 @@ async fn main() {
         Some(path) => path,
         None => Path::new(shared::DEFAULT_CONFIG_FILE_NAME).to_owned(),
     };
-    debug!("Loading from config file at: {}", config_location.display());
+    debug!(
+        "> Loading from config file at: {}",
+        config_location.display()
+    );
     let config = match load_config(&config_location) {
         Ok(c) => c,
         Err(e) => {
@@ -176,6 +189,7 @@ async fn main() {
     }
     let session_layer = SessionManagerLayer::new(sessions);
     let templates = load_templates();
+    let cache = Cache::new(10);
     debug!("Loaded");
 
     debug!("Setting up app");
@@ -183,6 +197,7 @@ async fn main() {
         config,
         db,
         templates,
+        cache,
     });
     let app = load_router(app_state, session_layer);
     debug!("Set up");
