@@ -3,11 +3,11 @@
 use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
     utils::{
-        auth::{code_to_user_info, get_user_info, AuthCallback},
+        auth::{code_to_user_info, get_user_info, oauth_redirect_start, AuthCallback},
         parse_vatsim_timestamp,
     },
 };
-use anyhow::Result;
+use anyhow::{anyhow, Result};
 use axum::{
     extract::{Query, State},
     http::StatusCode,
@@ -20,6 +20,7 @@ use std::{sync::Arc, time::Instant};
 use tower_sessions::Session;
 use vatsim_utils::live_api::Vatsim;
 
+/// Homepage.
 pub async fn handler_home(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -30,6 +31,9 @@ pub async fn handler_home(
     Ok(Html(rendered))
 }
 
+/// 404 not found page.
+///
+/// Redirected to whenever the router cannot find a valid handler for the requested path.
 pub async fn handler_404(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -40,6 +44,11 @@ pub async fn handler_404(
     Ok(Html(rendered))
 }
 
+/// Login page.
+///
+/// Doesn't actually have a template to render; the user is immediately redirected to
+/// either the homepage if they're already logged in, or the VATSIM OAuth page to start
+/// their login flow.
 pub async fn page_auth_login(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -50,16 +59,14 @@ pub async fn page_auth_login(
         debug!("Already logged-in user hit login page");
         return Ok(Redirect::to("/"));
     }
-    // build url and redirect to VATSIM OAuth URL
-    let redirect_url = format!(
-        "https://auth-dev.vatsim.net/oauth/authorize?response_type=code&client_id={}&redirect_uri={}&scope={}",
-        state.config.vatsim.oauth_client_id,
-        state.config.vatsim.oauth_client_calback_url,
-        "full_name email vatsim_details"
-    );
+    let redirect_url = oauth_redirect_start(&state.config);
     Ok(Redirect::to(&redirect_url))
 }
 
+/// Auth callback.
+///
+/// The user is redirected here from VATSIM OAuth providing, in
+/// the URL, a code to use in getting an access token for them.
 pub async fn page_auth_callback(
     query: Query<AuthCallback>,
     State(state): State<Arc<AppState>>,
@@ -77,17 +84,21 @@ pub async fn page_auth_callback(
         .insert(SESSION_USER_INFO_KEY, to_session.clone())
         .await?;
     // TODO update DB with user info
+
     debug!("Completed log in for {}", user_info.data.cid);
     let template = state.templates.get_template("login_complete")?;
     let rendered = template.render(context! { user_info => to_session })?;
     Ok(Html(rendered))
 }
 
+/// Clear session and redirect to homepage.
 pub async fn page_auth_logout(session: Session) -> Result<Redirect, AppError> {
+    // don't need to check if there's something here
     session.delete().await?;
     Ok(Redirect::to("/"))
 }
 
+/// Render a list of online controllers.
 pub async fn snippet_online_controllers(
     State(state): State<Arc<AppState>>,
 ) -> Result<Html<String>, AppError> {
@@ -98,14 +109,13 @@ pub async fn snippet_online_controllers(
         online_for: String,
     }
 
+    // cache this endpoint's returned data for 60 seconds
     let cache_key = "ONLINE_CONTROLLERS";
-    // cache data for 60 seconds
     if let Some(cached) = state.cache.get(&cache_key) {
         let elapsed = Instant::now() - cached.inserted;
         if elapsed.as_secs() < 60 {
             return Ok(Html(cached.data));
         }
-        debug!("Cache timeout on online controllers");
         state.cache.invalidate(&cache_key);
     }
 
@@ -144,6 +154,75 @@ pub async fn snippet_online_controllers(
 
     let template = state.templates.get_template("snippet_online_controllers")?;
     let rendered = template.render(context! { online })?;
+    state
+        .cache
+        .insert(cache_key, CacheEntry::new(rendered.clone()));
+    Ok(Html(rendered))
+}
+
+pub async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+    #[derive(Serialize)]
+    struct AirportWeather<'a> {
+        name: &'a str,
+        weather: &'static str,
+        raw: &'a str,
+    }
+    // cache this endpoint's returned data for 5 minutes
+    let cache_key = "WEATHER_BRIEF";
+    if let Some(cached) = state.cache.get(&cache_key) {
+        let elapsed = Instant::now() - cached.inserted;
+        if elapsed.as_secs() < 300 {
+            return Ok(Html(cached.data));
+        }
+        state.cache.invalidate(&cache_key);
+    }
+
+    let client = reqwest::ClientBuilder::new()
+        .user_agent("github.com/celeo/vzdv")
+        .build()?;
+    let resp = client
+        .get(format!(
+            "https://metar.vatsim.net/{}",
+            state.config.airports.weather_for.join(",")
+        ))
+        .send()
+        .await?;
+    if !resp.status().is_success() {
+        return Err(anyhow!("Got status {} from METAR API", resp.status().as_u16()).into());
+    }
+    let text = resp.text().await?;
+    let weather: Vec<_> = text
+        .split_terminator('\n')
+        .map(|line| {
+            let visibility: u8 = 0;
+            let parts: Vec<_> = line.split(' ').collect();
+            let airport = parts.first().unwrap();
+            let mut cloud_layer = 1_001;
+            for part in &parts {
+                if part.starts_with("BKN") || part.starts_with("OVC") {
+                    cloud_layer = part
+                        .chars()
+                        .skip_while(|c| c.is_alphabetic())
+                        .collect::<String>()
+                        .parse::<u16>()
+                        .expect("Could not parse cloud layer")
+                        * 100;
+                    break;
+                }
+            }
+            AirportWeather {
+                name: airport,
+                weather: if visibility >= 3 && cloud_layer > 1_000 {
+                    "IMC"
+                } else {
+                    "VMC"
+                },
+                raw: line,
+            }
+        })
+        .collect();
+    let template = state.templates.get_template("snippet_weather_readout")?;
+    let rendered = template.render(context! { weather })?;
     state
         .cache
         .insert(cache_key, CacheEntry::new(rendered.clone()));

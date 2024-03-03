@@ -1,4 +1,4 @@
-use crate::shared::AppState;
+use crate::shared::{AppState, Config};
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
 use serde_json::json;
@@ -38,6 +38,17 @@ pub struct UserInfoResponseDataPersonal {
     pub name_last: String,
     pub name_full: String,
     pub email: String,
+}
+
+/// Build the URL to redirect users to in order to start
+/// their VATSIM OAuth login flow.
+pub fn oauth_redirect_start(config: &Config) -> String {
+    format!(
+        "{VATSIM_OAUTH_URL_BASE}oauth/authorize?response_type=code&client_id={}&redirect_uri={}&scope={}",
+        config.vatsim.oauth_client_id,
+        config.vatsim.oauth_client_calback_url,
+        "full_name email vatsim_details"
+    )
 }
 
 /// Exchange the code from VATSIM OAuth for an access token.

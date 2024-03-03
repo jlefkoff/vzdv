@@ -18,7 +18,6 @@ mod config;
 pub use config::{Config, DEFAULT_CONFIG_FILE_NAME};
 pub mod sql;
 
-/// Wrapper of anyhow's `Error` type.
 pub struct AppError(anyhow::Error);
 
 impl IntoResponse for AppError {
@@ -52,7 +51,9 @@ impl CacheEntry {
     }
 }
 
-/// Site's shared config. Made available in all handlers.
+/// Site's shared config.
+///
+/// Made available in all handlers.
 pub struct AppState {
     pub config: config::Config,
     pub db: SqlitePool,

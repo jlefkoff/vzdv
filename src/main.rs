@@ -78,6 +78,11 @@ fn load_templates() -> Environment<'static> {
         include_str!("../templates/snippets/online_controllers.jinja"),
     )
     .unwrap();
+    env.add_template(
+        "snippet_weather_readout",
+        include_str!("../templates/snippets/weather_readout.jinja"),
+    )
+    .unwrap();
     env
 }
 
@@ -112,6 +117,7 @@ fn load_router(
             "/snippets/online_controllers",
             get(endpoints::snippet_online_controllers),
         )
+        .route("/snippets/weather", get(endpoints::snippet_weather))
         .layer(
             ServiceBuilder::new()
                 .layer(TimeoutLayer::new(Duration::from_secs(30)))

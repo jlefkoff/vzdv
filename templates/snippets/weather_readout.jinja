@@ -1,0 +1,5 @@
+<ul>
+  {% for item in weather %}
+  <li title="{{ item.raw }}">{{ item.name }} {{ item.weather }}</li>
+  {% endfor %}
+</ul>
