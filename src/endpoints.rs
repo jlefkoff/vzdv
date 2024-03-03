@@ -4,7 +4,7 @@ use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
     utils::{
         auth::{code_to_user_info, get_user_info, oauth_redirect_start, AuthCallback},
-        parse_vatsim_timestamp,
+        parse_metar, parse_vatsim_timestamp,
     },
 };
 use anyhow::{anyhow, Result};
@@ -13,7 +13,7 @@ use axum::{
     http::StatusCode,
     response::{Html, Redirect},
 };
-use log::debug;
+use log::{debug, warn};
 use minijinja::context;
 use serde::Serialize;
 use std::{sync::Arc, time::Instant};
@@ -193,32 +193,11 @@ pub async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<
     let text = resp.text().await?;
     let weather: Vec<_> = text
         .split_terminator('\n')
-        .map(|line| {
-            let visibility: u8 = 0;
-            let parts: Vec<_> = line.split(' ').collect();
-            let airport = parts.first().unwrap();
-            let mut cloud_layer = 1_001;
-            for part in &parts {
-                if part.starts_with("BKN") || part.starts_with("OVC") {
-                    cloud_layer = part
-                        .chars()
-                        .skip_while(|c| c.is_alphabetic())
-                        .collect::<String>()
-                        .parse::<u16>()
-                        .expect("Could not parse cloud layer")
-                        * 100;
-                    break;
-                }
-            }
-            AirportWeather {
-                name: airport,
-                weather: if visibility >= 3 && cloud_layer > 1_000 {
-                    "IMC"
-                } else {
-                    "VMC"
-                },
-                raw: line,
-            }
+        .flat_map(|line| {
+            parse_metar(line).map_err(|e| {
+                warn!("Metar parsing failure: {e}");
+                e
+            })
         })
         .collect();
     let template = state.templates.get_template("snippet_weather_readout")?;
