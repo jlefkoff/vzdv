@@ -161,12 +161,6 @@ pub async fn snippet_online_controllers(
 }
 
 pub async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
-    #[derive(Serialize)]
-    struct AirportWeather<'a> {
-        name: &'a str,
-        weather: &'static str,
-        raw: &'a str,
-    }
     // cache this endpoint's returned data for 5 minutes
     let cache_key = "WEATHER_BRIEF";
     if let Some(cached) = state.cache.get(&cache_key) {
