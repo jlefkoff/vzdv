@@ -79,8 +79,13 @@ fn load_templates() -> Environment<'static> {
     )
     .unwrap();
     env.add_template(
-        "snippet_weather_readout",
-        include_str!("../templates/snippets/weather_readout.jinja"),
+        "snippet_weather",
+        include_str!("../templates/snippets/weather.jinja"),
+    )
+    .unwrap();
+    env.add_template(
+        "snippet_flights",
+        include_str!("../templates/snippets/flights.jinja"),
     )
     .unwrap();
     env
@@ -114,9 +119,10 @@ fn load_router(
         .route("/auth/logout", get(endpoints::page_auth_logout))
         .route("/auth/callback", get(endpoints::page_auth_callback))
         .route(
-            "/snippets/online_controllers",
+            "/snippets/online/controllers",
             get(endpoints::snippet_online_controllers),
         )
+        .route("/snippets/online/flights", get(endpoints::snippet_flights))
         .route("/snippets/weather", get(endpoints::snippet_weather))
         .layer(
             ServiceBuilder::new()

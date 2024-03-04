@@ -1,0 +1,11 @@
+<ul>
+  {% for item in weather %}
+  <li title="{{ item.raw }}">
+    {{ item.name }}
+    <span
+      class="badge rounded-pill {% if item.weather == 'VMC' %}text-bg-success{% else %}text-bg-warning{% endif %}"
+      >{{ item.weather }}</span
+    >
+  </li>
+  {% endfor %}
+</ul>

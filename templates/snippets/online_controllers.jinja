@@ -1,3 +1,4 @@
+{% if online|length > 0 %}
 <ul>
   {% for controller in online %}
   <li>
@@ -6,3 +7,4 @@
   </li>
   {% endfor %}
 </ul>
+{% else %} No controllers online. {% endif %}

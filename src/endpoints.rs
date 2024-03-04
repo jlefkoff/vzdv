@@ -194,8 +194,60 @@ pub async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<
             })
         })
         .collect();
-    let template = state.templates.get_template("snippet_weather_readout")?;
+
+    let template = state.templates.get_template("snippet_weather")?;
     let rendered = template.render(context! { weather })?;
+    state
+        .cache
+        .insert(cache_key, CacheEntry::new(rendered.clone()));
+    Ok(Html(rendered))
+}
+
+pub async fn snippet_flights(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+    #[derive(Serialize, Default)]
+    struct OnlineFlights {
+        within: u16,
+        from: u16,
+        to: u16,
+    }
+
+    // cache this endpoint's returned data for 60 seconds
+    let cache_key = "ONLINE_FLIGHTS";
+    if let Some(cached) = state.cache.get(&cache_key) {
+        let elapsed = Instant::now() - cached.inserted;
+        if elapsed.as_secs() < 60 {
+            return Ok(Html(cached.data));
+        }
+        state.cache.invalidate(&cache_key);
+    }
+
+    let artcc_fields: Vec<_> = state
+        .config
+        .airports
+        .all
+        .iter()
+        .map(|airport| &airport.code)
+        .collect();
+    let data = Vatsim::new().await?.get_v3_data().await?;
+    let flights: OnlineFlights =
+        data.pilots
+            .iter()
+            .fold(OnlineFlights::default(), |mut flights, flight| {
+                if let Some(plan) = &flight.flight_plan {
+                    let from = artcc_fields.contains(&&plan.departure);
+                    let to = artcc_fields.contains(&&plan.arrival);
+                    match (from, to) {
+                        (true, true) => flights.within += 1,
+                        (false, true) => flights.to += 1,
+                        (true, false) => flights.from += 1,
+                        _ => {}
+                    }
+                };
+                flights
+            });
+
+    let template = state.templates.get_template("snippet_flights")?;
+    let rendered = template.render(context! { flights })?;
     state
         .cache
         .insert(cache_key, CacheEntry::new(rendered.clone()));
