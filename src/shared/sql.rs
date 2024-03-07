@@ -34,16 +34,17 @@ pub struct Certification {
 /// so no migration or "IF NOT EXISTS" conditions need to be added.
 pub const CREATE_TABLES: &str = "
 CREATE TABLE controller (
-    id TEXT PRIMARY KEY NOT NULL,
+    id INTEGER PRIMARY KEY NOT NULL,
     cid INTEGER NOT NULL UNIQUE,
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
+    email TEXT NOT NULL,
     operating_initials TEXT UNIQUE,
-    rating TEXT NOT NULL,
-    status TEXT NOT NULL,
+    rating TEXT,
+    status TEXT,
     discord_id INTEGER UNIQUE,
-    join_date TEXT,
-    staff_positions TEXT
+    staff_positions TEXT,
+    created_date TEXT
 );
 
 CREATE TABLE certification (
@@ -56,4 +57,15 @@ CREATE TABLE certification (
 
     FOREIGN KEY (controller_id) REFERENCES controller(id)
 );
+";
+
+pub const UPSERT_USER: &str = "INSERT INTO controller
+    (id, cid, first_name, last_name, email)
+VALUES
+    (NULL, ?, ?, ?, ?)
+ON CONFLICT(cid) DO UPDATE SET
+    first_name=excluded.first_name,
+    last_name=excluded.last_name,
+    email=excluded.email
+WHERE cid=excluded.cid;
 ";

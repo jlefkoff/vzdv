@@ -1,7 +1,7 @@
 //! HTTP endpoints.
 
 use crate::{
-    shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
+    shared::{sql, AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
     utils::{
         auth::{code_to_user_info, get_user_info, oauth_redirect_start, AuthCallback},
         parse_metar, parse_vatsim_timestamp,
@@ -83,7 +83,13 @@ pub async fn page_auth_callback(
     session
         .insert(SESSION_USER_INFO_KEY, to_session.clone())
         .await?;
-    // TODO update DB with user info
+    sqlx::query(sql::UPSERT_USER)
+        .bind(to_session.cid)
+        .bind(&to_session.first_name)
+        .bind(&to_session.last_name)
+        .bind(&user_info.data.personal.email)
+        .execute(&state.db)
+        .await?;
 
     debug!("Completed log in for {}", user_info.data.cid);
     let template = state.templates.get_template("login_complete")?;

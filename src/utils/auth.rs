@@ -30,6 +30,7 @@ pub struct UserInfoResponse {
 pub struct UserInfoResponseData {
     pub cid: String,
     pub personal: UserInfoResponseDataPersonal,
+    pub vatsim: UserInfoResponseDataVatsim,
 }
 
 #[derive(Debug, Deserialize)]
@@ -38,6 +39,29 @@ pub struct UserInfoResponseDataPersonal {
     pub name_last: String,
     pub name_full: String,
     pub email: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UserInfoResponseDataVatsim {
+    pub rating: IdLongShort,
+    #[serde(rename(deserialize = "pilotrating"))]
+    pub pilot_rating: IdLongShort,
+    pub division: IdName,
+    pub region: IdName,
+    pub subdivision: IdName,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct IdLongShort {
+    pub id: u32,
+    pub long: String,
+    pub short: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct IdName {
+    pub id: String,
+    pub name: String,
 }
 
 /// Build the URL to redirect users to in order to start
@@ -74,6 +98,32 @@ pub async fn code_to_user_info(code: &str, state: &Arc<AppState>) -> Result<Toke
     let data = resp.json().await?;
     Ok(data)
 }
+
+/*
+
+Example response from `/user` endpoint
+
+{
+  "data": {
+    "cid": "10000005",
+    "personal": {
+      "name_first": "Web",
+      "name_last": "Five",
+      "name_full": "Web Five",
+      "email": "auth.dev5@vatsim.net"
+    },
+    "vatsim": {
+      "rating": { "id": 5, "long": "Enroute Controller", "short": "C1" },
+      "pilotrating": { "id": 3, "long": "Instrument Rating", "short": "IR" },
+      "division": { "id": "WA", "name": "West Asia" },
+      "region": { "id": "APAC", "name": "Asia Pacific" },
+      "subdivision": { "id": "AFG", "name": "Afghanistan" }
+    },
+    "oauth": { "token_valid": "true" }
+  }
+}
+
+*/
 
 /// Using the user's access token, get their VATSIM info.
 pub async fn get_user_info(access_token: &str) -> Result<UserInfoResponse> {
