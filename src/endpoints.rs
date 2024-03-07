@@ -195,7 +195,8 @@ pub async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<
         .split_terminator('\n')
         .flat_map(|line| {
             parse_metar(line).map_err(|e| {
-                warn!("Metar parsing failure: {e}");
+                let airport = line.split(' ').next().unwrap_or("Unknown");
+                warn!("Metar parsing failure for {airport}: {e}");
                 e
             })
         })

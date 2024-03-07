@@ -25,7 +25,6 @@ pub struct AirportWeather<'a> {
 
 /// Parse a METAR to determine if conditions are VMC or IMC.
 pub fn parse_metar(line: &str) -> Result<AirportWeather> {
-    let visibility: u8 = 0;
     let parts: Vec<_> = line.split(' ').collect();
     let airport = parts.first().ok_or_else(|| anyhow!("Blank metar?"))?;
     let mut cloud_layer = 1_001;
@@ -34,18 +33,31 @@ pub fn parse_metar(line: &str) -> Result<AirportWeather> {
             cloud_layer = part
                 .chars()
                 .skip_while(|c| c.is_alphabetic())
+                .take_while(|c| c.is_numeric())
                 .collect::<String>()
                 .parse::<u16>()?
                 * 100;
             break;
         }
     }
+    let visibility: u8 = parts
+        .iter()
+        .find(|part| part.ends_with("SM"))
+        .map(|part| {
+            let vis = part.replace("SM", "");
+            if vis.contains('/') {
+                0
+            } else {
+                vis.parse().unwrap()
+            }
+        })
+        .unwrap_or(0);
     Ok(AirportWeather {
         name: airport,
         weather: if visibility >= 3 && cloud_layer > 1_000 {
-            "IMC"
-        } else {
             "VMC"
+        } else {
+            "IMC"
         },
         raw: line,
     })
