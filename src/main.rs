@@ -4,7 +4,7 @@
 
 use crate::shared::{AppState, Config};
 use anyhow::Result;
-use axum::{middleware as axum_middleware, response::Redirect, routing::get, Router};
+use axum::{middleware as axum_middleware, response::Redirect, Router};
 use clap::Parser;
 use log::{debug, error, info};
 use mini_moka::sync::Cache;
@@ -64,30 +64,6 @@ fn load_templates() -> Environment<'static> {
     let mut env = Environment::new();
     env.add_template("layout", include_str!("../templates/layout.jinja"))
         .unwrap();
-    env.add_template("home", include_str!("../templates/home.jinja"))
-        .unwrap();
-    env.add_template(
-        "login_complete",
-        include_str!("../templates/login_complete.jinja"),
-    )
-    .unwrap();
-    env.add_template("404", include_str!("../templates/404.jinja"))
-        .unwrap();
-    env.add_template(
-        "snippet_online_controllers",
-        include_str!("../templates/snippets/online_controllers.jinja"),
-    )
-    .unwrap();
-    env.add_template(
-        "snippet_weather",
-        include_str!("../templates/snippets/weather.jinja"),
-    )
-    .unwrap();
-    env.add_template(
-        "snippet_flights",
-        include_str!("../templates/snippets/flights.jinja"),
-    )
-    .unwrap();
     env
 }
 
@@ -106,24 +82,14 @@ async fn load_db(config: &Config) -> Result<SqlitePool> {
     Ok(pool)
 }
 
-/// Create all the endpoints, include middleware, and connect with the
-/// state and session management layer.
+/// Create all the endpoints and insert middleware.
 fn load_router(
-    app_state: Arc<AppState>,
     sessions_layer: SessionManagerLayer<SqliteStore>,
-) -> Router {
+    env: &mut Environment,
+) -> Router<Arc<AppState>> {
     Router::new()
-        .route("/404", get(endpoints::handler_404))
-        .route("/", get(endpoints::handler_home))
-        .route("/auth/log_in", get(endpoints::page_auth_login))
-        .route("/auth/logout", get(endpoints::page_auth_logout))
-        .route("/auth/callback", get(endpoints::page_auth_callback))
-        .route(
-            "/snippets/online/controllers",
-            get(endpoints::snippet_online_controllers),
-        )
-        .route("/snippets/online/flights", get(endpoints::snippet_flights))
-        .route("/snippets/weather", get(endpoints::snippet_weather))
+        .merge(endpoints::router(env))
+        .merge(endpoints::auth::router(env))
         .layer(
             ServiceBuilder::new()
                 .layer(TimeoutLayer::new(Duration::from_secs(30)))
@@ -131,7 +97,6 @@ fn load_router(
                 .layer(sessions_layer),
         )
         .fallback(|| async { Redirect::to("/404") })
-        .with_state(app_state)
 }
 
 // https://github.com/tokio-rs/axum/blob/main/examples/graceful-shutdown/src/main.rs
@@ -200,18 +165,19 @@ async fn main() {
         return;
     }
     let session_layer = SessionManagerLayer::new(sessions);
-    let templates = load_templates();
+    let mut templates = load_templates();
     let cache = Cache::new(10);
     debug!("Loaded");
 
     debug!("Setting up app");
+    let router = load_router(session_layer, &mut templates);
     let app_state = Arc::new(AppState {
         config,
         db,
         templates,
         cache,
     });
-    let app = load_router(app_state, session_layer);
+    let app = router.with_state(app_state);
     debug!("Set up");
 
     let host_and_port = format!("{}:{}", cli.host, cli.port);

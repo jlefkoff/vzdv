@@ -1,27 +1,22 @@
 //! HTTP endpoints.
 
 use crate::{
-    shared::{sql, AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
-    utils::{
-        auth::{code_to_user_info, get_user_info, oauth_redirect_start, AuthCallback},
-        parse_metar, parse_vatsim_timestamp,
-    },
+    shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
+    utils::{parse_metar, parse_vatsim_timestamp},
 };
 use anyhow::{anyhow, Result};
-use axum::{
-    extract::{Query, State},
-    http::StatusCode,
-    response::{Html, Redirect},
-};
-use log::{debug, warn};
-use minijinja::context;
+use axum::{extract::State, http::StatusCode, response::Html, routing::get, Router};
+use log::warn;
+use minijinja::{context, Environment};
 use serde::Serialize;
 use std::{sync::Arc, time::Instant};
 use tower_sessions::Session;
 use vatsim_utils::live_api::Vatsim;
 
+pub mod auth;
+
 /// Homepage.
-pub async fn handler_home(
+async fn handler_home(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, StatusCode> {
@@ -34,7 +29,7 @@ pub async fn handler_home(
 /// 404 not found page.
 ///
 /// Redirected to whenever the router cannot find a valid handler for the requested path.
-pub async fn handler_404(
+async fn handler_404(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, StatusCode> {
@@ -44,68 +39,8 @@ pub async fn handler_404(
     Ok(Html(rendered))
 }
 
-/// Login page.
-///
-/// Doesn't actually have a template to render; the user is immediately redirected to
-/// either the homepage if they're already logged in, or the VATSIM OAuth page to start
-/// their login flow.
-pub async fn page_auth_login(
-    State(state): State<Arc<AppState>>,
-    session: Session,
-) -> Result<Redirect, StatusCode> {
-    // if already logged in, just redirect to homepage
-    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
-    if user_info.is_some() {
-        debug!("Already logged-in user hit login page");
-        return Ok(Redirect::to("/"));
-    }
-    let redirect_url = oauth_redirect_start(&state.config);
-    Ok(Redirect::to(&redirect_url))
-}
-
-/// Auth callback.
-///
-/// The user is redirected here from VATSIM OAuth providing, in
-/// the URL, a code to use in getting an access token for them.
-pub async fn page_auth_callback(
-    query: Query<AuthCallback>,
-    State(state): State<Arc<AppState>>,
-    session: Session,
-) -> Result<Html<String>, AppError> {
-    let token_data = code_to_user_info(&query.code, &state).await?;
-    let user_info = get_user_info(&token_data.access_token).await?;
-
-    let to_session = UserInfo {
-        cid: user_info.data.cid.parse()?,
-        first_name: user_info.data.personal.name_first,
-        last_name: user_info.data.personal.name_last,
-    };
-    session
-        .insert(SESSION_USER_INFO_KEY, to_session.clone())
-        .await?;
-    sqlx::query(sql::UPSERT_USER)
-        .bind(to_session.cid)
-        .bind(&to_session.first_name)
-        .bind(&to_session.last_name)
-        .bind(&user_info.data.personal.email)
-        .execute(&state.db)
-        .await?;
-
-    debug!("Completed log in for {}", user_info.data.cid);
-    let template = state.templates.get_template("login_complete")?;
-    let rendered = template.render(context! { user_info => to_session })?;
-    Ok(Html(rendered))
-}
-
-/// Clear session and redirect to homepage.
-pub async fn page_auth_logout(session: Session) -> Result<Redirect, AppError> {
-    // don't need to check if there's something here
-    session.delete().await?;
-    Ok(Redirect::to("/"))
-}
-
 /// Render a list of online controllers.
-pub async fn snippet_online_controllers(
+async fn snippet_online_controllers(
     State(state): State<Arc<AppState>>,
 ) -> Result<Html<String>, AppError> {
     #[derive(Serialize)]
@@ -168,7 +103,7 @@ pub async fn snippet_online_controllers(
     Ok(Html(rendered))
 }
 
-pub async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
     // cache this endpoint's returned data for 5 minutes
     let cache_key = "WEATHER_BRIEF";
     if let Some(cached) = state.cache.get(&cache_key) {
@@ -212,7 +147,7 @@ pub async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<
     Ok(Html(rendered))
 }
 
-pub async fn snippet_flights(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+async fn snippet_flights(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
     #[derive(Serialize, Default)]
     struct OnlineFlights {
         within: u16,
@@ -261,4 +196,42 @@ pub async fn snippet_flights(State(state): State<Arc<AppState>>) -> Result<Html<
         .cache
         .insert(cache_key, CacheEntry::new(rendered.clone()));
     Ok(Html(rendered))
+}
+
+/// This file's routes and templates.
+pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
+    templates
+        .add_template("home", include_str!("../../templates/home.jinja"))
+        .unwrap();
+    templates
+        .add_template("404", include_str!("../../templates/404.jinja"))
+        .unwrap();
+    templates
+        .add_template(
+            "snippet_online_controllers",
+            include_str!("../../templates/snippets/online_controllers.jinja"),
+        )
+        .unwrap();
+    templates
+        .add_template(
+            "snippet_weather",
+            include_str!("../../templates/snippets/weather.jinja"),
+        )
+        .unwrap();
+    templates
+        .add_template(
+            "snippet_flights",
+            include_str!("../../templates/snippets/flights.jinja"),
+        )
+        .unwrap();
+
+    Router::new()
+        .route("/404", get(handler_404))
+        .route("/", get(handler_home))
+        .route(
+            "/snippets/online/controllers",
+            get(snippet_online_controllers),
+        )
+        .route("/snippets/online/flights", get(snippet_flights))
+        .route("/snippets/weather", get(snippet_weather))
 }
