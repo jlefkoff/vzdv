@@ -89,6 +89,7 @@ fn load_router(
 ) -> Router<Arc<AppState>> {
     Router::new()
         .merge(endpoints::router(env))
+        .merge(endpoints::homepage::router(env))
         .merge(endpoints::auth::router(env))
         .layer(
             ServiceBuilder::new()
