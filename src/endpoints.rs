@@ -111,6 +111,7 @@ pub async fn snippet_online_controllers(
     #[derive(Serialize)]
     struct OnlineController {
         cid: u64,
+        callsign: String,
         name: String,
         online_for: String,
     }
@@ -152,6 +153,7 @@ pub async fn snippet_online_controllers(
             let seconds = (now - logon).num_seconds() as u32;
             OnlineController {
                 cid: controller.cid,
+                callsign: controller.callsign.clone(),
                 name: controller.name.clone(),
                 online_for: format!("{}h{}m", seconds / 3600, (seconds / 60) % 60),
             }

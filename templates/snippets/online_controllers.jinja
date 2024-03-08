@@ -1,10 +1,13 @@
 {% if online|length > 0 %}
+<h4>Online controllers</h4>
 <ul>
   {% for controller in online %}
   <li>
-    {{ controller.name }} ({{ controller.cid }}) for
+    {{ controller.name }} on {{ controller.callsign }} for
     {{ controller.online_for }}
   </li>
   {% endfor %}
 </ul>
-{% else %} No controllers online. {% endif %}
+{% else %}
+<h4>No controllers online</h4>
+{% endif %}

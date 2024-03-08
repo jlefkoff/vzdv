@@ -8,14 +8,40 @@
 
 <h1>Welcome to the Denver ARTCC</h1>
 
-<p>
-  The Denver ARTCC covers approximately 285,000 square miles of airspace over
-  all or part of the states of Colorado, Arizona, New Mexico, Utah, Kansas,
-  Nebraska, South Dakota, Wyoming, and Montana.
-</p>
-
-<div id="weather" hx-get="/snippets/weather" hx-trigger="load"></div>
-<div id="online" hx-get="/snippets/online/controllers" hx-trigger="load"></div>
-<div id="flights" hx-get="/snippets/online/flights" hx-trigger="load"></div>
+<div class="row">
+  <div class="col-9">
+    <p>
+      The Denver ARTCC covers approximately 285,000 square miles of airspace
+      over all or part of the states of Colorado, Arizona, New Mexico, Utah,
+      Kansas, Nebraska, South Dakota, Wyoming, and Montana.
+    </p>
+    <h2>Events</h2>
+  </div>
+  <div class="col">
+    <div class="card shadow">
+      <div class="card-body">
+        <div id="weather" hx-get="/snippets/weather" hx-trigger="load"></div>
+      </div>
+    </div>
+    <div class="card shadow mt-2">
+      <div class="card-body">
+        <div
+          id="online"
+          hx-get="/snippets/online/controllers"
+          hx-trigger="load"
+        ></div>
+      </div>
+    </div>
+    <div class="card shadow mt-2">
+      <div class="card-body">
+        <div
+          id="flights"
+          hx-get="/snippets/online/flights"
+          hx-trigger="load"
+        ></div>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}

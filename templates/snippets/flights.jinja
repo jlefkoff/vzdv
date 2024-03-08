@@ -1,7 +1,12 @@
-Flights
-
+<h4>Flights</h4>
 <ul>
-  <li>Within: {{ flights.within }}</li>
-  <li>From: {{ flights.from }}</li>
-  <li>To: {{ flights.to }}</li>
+  <li title="Starting and ending at local fields">
+    <strong>Within</strong>: {{ flights.within }}
+  </li>
+  <li title="From local fields to outside the airspace">
+    <strong>From</strong>: {{ flights.from }}
+  </li>
+  <li title="From outside airspace to local fields">
+    <strong>To</strong>: {{ flights.to }}
+  </li>
 </ul>

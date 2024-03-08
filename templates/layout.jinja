@@ -19,6 +19,7 @@
       }
     </style>
     <title>{% block title %}vZDV{% endblock %}</title>
+    {% block head_extra %}{% endblock %}
   </head>
   <body>
     <nav class="navbar navbar-expand-lg bg-body-tertiary shadow-sm mb-3">
@@ -56,9 +57,29 @@
               <ul class="dropdown-menu">
                 <li><a class="dropdown-item" href="#">Airports</a></li>
                 <li>
-                  <a class="dropdown-item" href="#">Facility Map & Weather</a>
+                  <a
+                    href="https://www.simbrief.com"
+                    class="dropdown-item"
+                    target="_blank"
+                    >SimBrief</a
+                  >
                 </li>
-                <li><a class="dropdown-item" href="#">SkyVector</a></li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="https://skyvector.com/"
+                    target="_blank"
+                    >SkyVector</a
+                  >
+                </li>
+                <li>
+                  <a
+                    class="dropdown-item"
+                    href="https://www.flightaware.com/statistics/ifr-route/"
+                    target="_blank"
+                    >IFR Routing</a
+                  >
+                </li>
                 <li><a class="dropdown-item" href="#">Staffing Request</a></li>
               </ul>
             </li>
