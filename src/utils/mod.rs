@@ -3,6 +3,7 @@ use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use serde::Serialize;
 
 pub mod auth;
+pub mod flashed_messages;
 
 /// Parse a VATSIM timestamp into a `chrono::DateTime`.
 pub fn parse_vatsim_timestamp(stamp: &str) -> Result<DateTime<Utc>> {

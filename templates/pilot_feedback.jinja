@@ -1,0 +1,42 @@
+{% extends "layout" %}
+
+{% block title %}Home | {{ super() }}{% endblock %}
+
+{% block body %}
+
+<h2>Submit controller feedback</h2>
+
+{% if not user_info or not user_info.cid %}
+<h5>You must be <a href="/auth/log_in">logged in</a> to submit feedback</h5>
+{% else %}
+<form action="/pilots/feedback" method="POST">
+  <div class="row mb-2">
+    <div class="col">
+      <div class="mb-3">
+        <label for="controller">Controller</label>
+        <input type="text" class="form-control" id="controller" name="controller" required>
+      </div>
+      <div class="mb-3">
+        <label for="position">Position</label>
+        <input type="text" class="form-control" id="position" name="position" required>
+      </div>
+      <div class="mb-3">
+        <label for="rating">Rating</label>
+        <select name="rating" id="rating" class="form-control" required>
+          <option value="excellent">Excellent</option>
+          <option value="good">Good</option>
+          <option value="fair">Fair</option>
+          <option value="poor">Poor</option>
+        </select>
+      </div>
+    </div>
+    <div class="col-8">
+      <label for="comments">Comments</label>
+      <textarea name="comments" id="comments" class="form-control" style="height: 60%"></textarea>
+    </div>
+  </div>
+  <button type="submit" class="btn btn-primary">Submit</button>
+</form>
+{% endif %}
+
+{% endblock %}

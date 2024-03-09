@@ -32,7 +32,7 @@ pub struct Certification {
 
 /// Statements to create tables. Only ran when the DB file does not exist,
 /// so no migration or "IF NOT EXISTS" conditions need to be added.
-pub const CREATE_TABLES: &str = "
+pub const CREATE_TABLES: &str = r#"
 CREATE TABLE controller (
     id INTEGER PRIMARY KEY NOT NULL,
     cid INTEGER NOT NULL UNIQUE,
@@ -57,9 +57,22 @@ CREATE TABLE certification (
 
     FOREIGN KEY (controller_id) REFERENCES controller(id)
 );
-";
 
-pub const UPSERT_USER: &str = "INSERT INTO controller
+CREATE TABLE feedback (
+    id INTEGER PRIMARY KEY NOT NULL,
+    controller TEXT NOT NULL,
+    position TEXT NOT NULL,
+    rating TEXT NOT NULL,
+    comments TEXT,
+    created_date TEXT NOT NULL,
+    submitter_cid INTEGER NOT NULL,
+    reviewed_by_cid INTEGER,
+    posted_to_discord BOOLEAN NOT NULL DEFAULT "FALSE"
+);
+"#;
+
+pub const UPSERT_USER: &str = "
+INSERT INTO controller
     (id, cid, first_name, last_name, email)
 VALUES
     (NULL, ?, ?, ?, ?)
@@ -69,3 +82,9 @@ ON CONFLICT(cid) DO UPDATE SET
     email=excluded.email
 WHERE cid=excluded.cid;
 ";
+
+pub const INSERT_FEEDBACK: &str = "
+INSERT INTO feedback
+    (id, controller, position, rating, comments, created_date, submitter_cid)
+VALUES
+    (NULL, ?, ?, ?, ?, ?, ?);";

@@ -91,6 +91,7 @@ fn load_router(
         .merge(endpoints::router(env))
         .merge(endpoints::homepage::router(env))
         .merge(endpoints::auth::router(env))
+        .merge(endpoints::pilots::router(env))
         .layer(
             ServiceBuilder::new()
                 .layer(TimeoutLayer::new(Duration::from_secs(30)))
@@ -188,6 +189,4 @@ async fn main() {
         .with_graceful_shutdown(shutdown_signal())
         .await
         .unwrap();
-
-    info!("Done");
 }

@@ -9,6 +9,7 @@ use tower_sessions::Session;
 
 pub mod auth;
 pub mod homepage;
+pub mod pilots;
 
 /// 404 not found page.
 ///

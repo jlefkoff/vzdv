@@ -42,7 +42,7 @@
               <a class="nav-link" href="#">Events</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="#">Feedback</a>
+              <a class="nav-link" href="/pilots/feedback">Feedback</a>
             </li>
             <li class="nav-item dropdown">
               <a
@@ -142,6 +142,16 @@
       crossorigin="anonymous"
     ></script>
 
+    {% if flashed_messages %}
+      <div class="container" id="flashed-messages">
+        {% for message in flashed_messages %}
+          <div class="{{ message.class }} alert-dismissible fade show" role="alert">
+            {{ message.message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
     <div class="container">{% block body %}{% endblock %}</div>
 
     <script

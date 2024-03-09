@@ -51,18 +51,22 @@ impl CacheEntry {
     }
 }
 
-/// Site's shared config.
-///
-/// Made available in all handlers.
+/// App's state, available in all handlers via an extractor.
 pub struct AppState {
+    /// App config
     pub config: config::Config,
+    /// Access to the DB
     pub db: SqlitePool,
+    /// Loaded templates
     pub templates: Environment<'static>,
+    /// Server-side cache
     pub cache: Cache<&'static str, CacheEntry>,
 }
 
 /// Key for user info CRUD in session.
 pub const SESSION_USER_INFO_KEY: &str = "USER_INFO";
+/// Key for flashed messages CRUD in session.
+pub const SESSION_FLASHED_MESSAGES_KEY: &str = "FLASHED_MESSAGES";
 
 /// Data stored in the user's session.
 #[derive(Debug, Clone, Deserialize, Serialize)]

@@ -10,6 +10,7 @@ pub struct Config {
     pub vatsim: ConfigVatsim,
     pub airports: ConfigAirports,
     pub stats: ConfigStats,
+    pub webhooks: ConfigWebhooks,
 }
 
 #[derive(Debug, Deserialize)]
@@ -42,4 +43,10 @@ pub struct Airport {
 pub struct ConfigStats {
     pub position_prefixes: Vec<String>,
     pub position_suffixes: Vec<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConfigWebhooks {
+    pub staffing_request: String,
+    pub feedback: String,
 }

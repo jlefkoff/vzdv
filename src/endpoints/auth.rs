@@ -1,4 +1,4 @@
-//! Auth HTTP endpoints.
+//! HTTP endpoints for logging in and out.
 
 use crate::{
     shared::{sql, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},

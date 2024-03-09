@@ -1,4 +1,4 @@
-//! HTTP endpoints.
+//! HTTP endpoints for the homepage.
 
 use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},

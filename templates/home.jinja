@@ -1,9 +1,7 @@
-<!-- prettier-ignore -->
 {% extends "layout" %}
 
 {% block title %}Home | {{ super() }}{% endblock %}
 
-<!-- prettier-ignore -->
 {% block body %}
 
 <h1>Welcome to the Denver ARTCC</h1>
@@ -16,6 +14,9 @@
       Kansas, Nebraska, South Dakota, Wyoming, and Montana.
     </p>
     <h2>Events</h2>
+    <div class="card-body">
+      <!-- <div id="events" hx-get="/snippets/events" hx-trigger="load"></div> -->
+    </div>
   </div>
   <div class="col">
     <div class="card shadow">

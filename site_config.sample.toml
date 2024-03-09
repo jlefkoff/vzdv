@@ -11,3 +11,7 @@ weather_for = []
 [stats]
 position_prefixes = []
 position_suffixes = []
+
+[webhooks]
+staffing_request = ""
+feedback = ""

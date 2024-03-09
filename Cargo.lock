@@ -227,6 +227,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9d297deb1925b89f2ccc13d7635fa0714f12c87adce1c75356b39ca9b7178567"
 
 [[package]]
+name = "base64"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9475866fec1451be56a3c2400fd081ff546538961565ccb5b7142cbd22bc7a51"
+
+[[package]]
 name = "base64ct"
 version = "1.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1699,7 +1705,7 @@ version = "0.11.24"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c6920094eb85afde5e4a138be3f2de8bbdf28000f0029e72c45025a56b042251"
 dependencies = [
- "base64",
+ "base64 0.21.7",
  "bytes",
  "encoding_rs",
  "futures-core",
@@ -1800,7 +1806,7 @@ version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1c74cae0a4cf6ccbbf5f359f08efdf8ee7e1dc532573bf0db71968cb56b1448c"
 dependencies = [
- "base64",
+ "base64 0.21.7",
 ]
 
 [[package]]
@@ -2165,7 +2171,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e37195395df71fd068f6e2082247891bc11e3289624bbc776a0cdfa1ca7f1ea4"
 dependencies = [
  "atoi",
- "base64",
+ "base64 0.21.7",
  "bitflags 2.4.2",
  "byteorder",
  "bytes",
@@ -2210,7 +2216,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d6ac0ac3b7ccd10cc96c7ab29791a7dd236bd94021f31eec7ba3d46a74aa1c24"
 dependencies = [
  "atoi",
- "base64",
+ "base64 0.21.7",
  "bitflags 2.4.2",
  "byteorder",
  "chrono",
@@ -2608,9 +2614,9 @@ checksum = "b6bc1c9ce2b5135ac7f93c72918fc37feb872bdc6a5533a8b85eb4b86bfdae52"
 
 [[package]]
 name = "tower-sessions"
-version = "0.10.3"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15e1c2cb5dfb773aff5037a27c7ce79862aa97b239e0708cadc1cd4952441523"
+checksum = "989b4d77286a7fb96b094b9e62c4524cebe7bb720769b41588ebaac5d9a787ca"
 dependencies = [
  "async-trait",
  "http 1.0.0",
@@ -2626,13 +2632,13 @@ dependencies = [
 
 [[package]]
 name = "tower-sessions-core"
-version = "0.10.3"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "659dcd2dca6baa47f48ff9ea00c779a50b0740527afd0b2cd1926877696b3288"
+checksum = "c0a9049748900860b01f92d3decf5fec71b9d75008f07732956288b003a2282f"
 dependencies = [
  "async-trait",
  "axum-core",
- "base64",
+ "base64 0.22.0",
  "futures",
  "http 1.0.0",
  "parking_lot",
@@ -2647,9 +2653,9 @@ dependencies = [
 
 [[package]]
 name = "tower-sessions-memory-store"
-version = "0.10.3"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3c3b3dfb57c194e01ef44af48c4c5f5ab1564e0921ea32afacf25ebf892690f6"
+checksum = "36baf499920bb861ec9fa929a1f879cec0759af987c6360bd65226bc484ab846"
 dependencies = [
  "async-trait",
  "time",
@@ -2659,9 +2665,9 @@ dependencies = [
 
 [[package]]
 name = "tower-sessions-sqlx-store"
-version = "0.10.0"
+version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f93bb337be75252391f9cff681fac300fa9df91bdccdc00c88c88b174637b00d"
+checksum = "6d7ac8c2edae9edad541f4087865e811565d124c9048eda7004537832066ede6"
 dependencies = [
  "async-trait",
  "rmp-serde",
