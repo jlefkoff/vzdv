@@ -16,10 +16,19 @@ pub fn parse_vatsim_timestamp(stamp: &str) -> Result<DateTime<Utc>> {
     Ok(utc)
 }
 
+#[allow(clippy::upper_case_acronyms)]
+#[derive(Serialize, Debug, PartialEq)]
+pub enum WeatherConditions {
+    VFR,
+    MVFR,
+    IFR,
+    LIFR,
+}
+
 #[derive(Serialize)]
 pub struct AirportWeather<'a> {
     pub name: &'a str,
-    pub weather: &'static str,
+    pub conditions: WeatherConditions,
     pub raw: &'a str,
 }
 
@@ -27,10 +36,10 @@ pub struct AirportWeather<'a> {
 pub fn parse_metar(line: &str) -> Result<AirportWeather> {
     let parts: Vec<_> = line.split(' ').collect();
     let airport = parts.first().ok_or_else(|| anyhow!("Blank metar?"))?;
-    let mut cloud_layer = 1_001;
+    let mut ceiling = 1_001;
     for part in &parts {
         if part.starts_with("BKN") || part.starts_with("OVC") {
-            cloud_layer = part
+            ceiling = part
                 .chars()
                 .skip_while(|c| c.is_alphabetic())
                 .take_while(|c| c.is_numeric())
@@ -40,6 +49,7 @@ pub fn parse_metar(line: &str) -> Result<AirportWeather> {
             break;
         }
     }
+
     let visibility: u8 = parts
         .iter()
         .find(|part| part.ends_with("SM"))
@@ -52,20 +62,27 @@ pub fn parse_metar(line: &str) -> Result<AirportWeather> {
             }
         })
         .unwrap_or(0);
+
+    let conditions = if visibility > 5 && ceiling > 3_000 {
+        WeatherConditions::VFR
+    } else if visibility >= 3 && ceiling > 1_000 {
+        WeatherConditions::MVFR
+    } else if visibility >= 1 && ceiling > 500 {
+        WeatherConditions::IFR
+    } else {
+        WeatherConditions::LIFR
+    };
+
     Ok(AirportWeather {
         name: airport,
-        weather: if visibility >= 3 && cloud_layer > 1_000 {
-            "VMC"
-        } else {
-            "IMC"
-        },
+        conditions,
         raw: line,
     })
 }
 
 #[cfg(test)]
 pub mod tests {
-    use super::{parse_metar, parse_vatsim_timestamp};
+    use super::{parse_metar, parse_vatsim_timestamp, WeatherConditions};
 
     #[test]
     fn test_parse_vatsim_timestamp() {
@@ -73,9 +90,15 @@ pub mod tests {
     }
 
     #[test]
-    fn test_parse_metar() {
+    fn test_parse_metar_real() {
         let ret = parse_metar("KDEN 030253Z 22013KT 10SM SCT100 BKN160 13/M12 A2943 RMK AO2 PK WND 21036/0211 SLP924 T01331117 58005").unwrap();
         assert_eq!(ret.name, "KDEN");
-        assert_eq!(ret.weather, "VMC");
+        assert_eq!(ret.conditions, WeatherConditions::VFR);
+    }
+
+    #[test]
+    fn test_parse_metar_more() {
+        let ret = parse_metar("KASE 080422Z AUTO 00000KT 1 3/4SM -SN BR SCT005 BKN010 OVC025 M01/M02 A2987 RMK AO2 P0000 T10111022").unwrap();
+        assert_eq!(ret.conditions, WeatherConditions::LIFR);
     }
 }

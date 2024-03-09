@@ -1,12 +1,17 @@
 <h4>Weather</h4>
 <ul>
-  {% for item in weather %}
-  <li title="{{ item.raw }}">
-    {{ item.name }}
-    <span
-      class="badge rounded-pill {% if item.weather == 'VMC' %}text-bg-success{% else %}text-bg-warning{% endif %}"
-      >{{ item.weather }}</span
-    >
+  {% for airport in weather %}
+  <li title="{{ airport.raw }}">
+    {{ airport.name }}
+    {% if airport.conditions == 'VFR' %}
+      <span class="badge rounded-pill text-bg-success">{{ airport.condition }}</span>
+    {% elif airport.conditions == 'MVFR' %}
+      <span class="badge rounded-pill text-bg-info">{{ airport.condition }}</span>
+    {% elif airport.conditions == 'IFR' %}
+      <span class="badge rounded-pill text-bg-error">{{ airport.condition }}</span>
+    {% else %}
+      <span class="badge rounded-pill" style="background-color: purple;">{{ airport.condition }}</span>
+    {% endif %}"
   </li>
   {% endfor %}
 </ul>
