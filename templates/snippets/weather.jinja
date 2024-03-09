@@ -4,14 +4,14 @@
   <li title="{{ airport.raw }}">
     {{ airport.name }}
     {% if airport.conditions == 'VFR' %}
-      <span class="badge rounded-pill text-bg-success">{{ airport.condition }}</span>
+      <span class="badge rounded-pill text-bg-success">{{ airport.conditions }}</span>
     {% elif airport.conditions == 'MVFR' %}
-      <span class="badge rounded-pill text-bg-info">{{ airport.condition }}</span>
+      <span class="badge rounded-pill text-bg-info">{{ airport.conditions }}</span>
     {% elif airport.conditions == 'IFR' %}
-      <span class="badge rounded-pill text-bg-error">{{ airport.condition }}</span>
+      <span class="badge rounded-pill text-bg-error">{{ airport.conditions }}</span>
     {% else %}
-      <span class="badge rounded-pill" style="background-color: purple;">{{ airport.condition }}</span>
-    {% endif %}"
+      <span class="badge rounded-pill" style="background-color: purple;">{{ airport.conditions }}</span>
+    {% endif %}
   </li>
   {% endfor %}
 </ul>

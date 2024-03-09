@@ -36,7 +36,7 @@ pub struct AirportWeather<'a> {
 pub fn parse_metar(line: &str) -> Result<AirportWeather> {
     let parts: Vec<_> = line.split(' ').collect();
     let airport = parts.first().ok_or_else(|| anyhow!("Blank metar?"))?;
-    let mut ceiling = 1_001;
+    let mut ceiling = 3_001;
     for part in &parts {
         if part.starts_with("BKN") || part.starts_with("OVC") {
             ceiling = part
@@ -90,15 +90,18 @@ pub mod tests {
     }
 
     #[test]
-    fn test_parse_metar_real() {
+    fn test_parse_metar() {
         let ret = parse_metar("KDEN 030253Z 22013KT 10SM SCT100 BKN160 13/M12 A2943 RMK AO2 PK WND 21036/0211 SLP924 T01331117 58005").unwrap();
         assert_eq!(ret.name, "KDEN");
         assert_eq!(ret.conditions, WeatherConditions::VFR);
-    }
 
-    #[test]
-    fn test_parse_metar_more() {
-        let ret = parse_metar("KASE 080422Z AUTO 00000KT 1 3/4SM -SN BR SCT005 BKN010 OVC025 M01/M02 A2987 RMK AO2 P0000 T10111022").unwrap();
+        let ret = parse_metar("KDEN 2SM BNK005").unwrap();
+        assert_eq!(ret.conditions, WeatherConditions::IFR);
+
+        let ret = parse_metar("KDEN 4SM OVC020").unwrap();
+        assert_eq!(ret.conditions, WeatherConditions::MVFR);
+
+        let ret = parse_metar("KDEN 1/2SM OVC001").unwrap();
         assert_eq!(ret.conditions, WeatherConditions::LIFR);
     }
 }
