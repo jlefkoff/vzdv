@@ -13,13 +13,14 @@
       <th>Name</th>
       <th>Location</th>
       <th>Towered</th>
-      <th>SkyVector</th>
     </tr>
   </thead>
   <tbody>
     {% for airport in airports %}
       <tr>
-        <td>{{ airport.code }}</td>
+        <td>
+          <a href="https://skyvector.com/api/airportSearch?query={{ airport.code }}" target="_blank">{{ airport.code }}</a>
+        </td>
         <td>{{ airport.name }}</td>
         <td>{{ airport.location }}</td>
         <td>
@@ -28,9 +29,6 @@
           {% else %}
           No
           {% endif %}
-        </td>
-        <td>
-          <a href="https://skyvector.com/api/airportSearch?query={{ airport.code }}" target="_blank">Link</a>
         </td>
       </tr>
     {% endfor %}
