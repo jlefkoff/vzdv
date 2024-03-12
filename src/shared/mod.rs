@@ -18,6 +18,8 @@ mod config;
 pub use config::{Config, DEFAULT_CONFIG_FILE_NAME};
 pub mod sql;
 
+/// Wrapper around `anyhow`'s `Error` type, which is itself a wrapper
+/// around the stdlib's `Error` type.
 pub struct AppError(anyhow::Error);
 
 impl IntoResponse for AppError {
@@ -36,6 +38,7 @@ where
     }
 }
 
+/// Data wrapper for items in the server-side cache.
 #[derive(Clone)]
 pub struct CacheEntry {
     pub inserted: Instant,
@@ -43,6 +46,7 @@ pub struct CacheEntry {
 }
 
 impl CacheEntry {
+    /// Wrap the data with a timestamp.
     pub fn new(data: String) -> Self {
         Self {
             inserted: Instant::now(),

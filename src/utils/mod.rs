@@ -1,6 +1,9 @@
+use std::collections::HashMap;
+
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
-use serde::Serialize;
+use reqwest::ClientBuilder;
+use serde::{Deserialize, Serialize};
 
 pub mod auth;
 pub mod flashed_messages;
@@ -79,6 +82,36 @@ pub fn parse_metar(line: &str) -> Result<AirportWeather> {
         conditions,
         raw: line,
     })
+}
+
+/// Query the SimAware data endpoint for its data on active pilot sessions.
+///
+/// This endpoint should be cached so as to not hit the SimAware server too frequently.
+pub async fn simaware_data() -> Result<HashMap<u64, String>> {
+    #[derive(Deserialize)]
+    struct Pilot {
+        cid: u64,
+    }
+
+    #[derive(Deserialize)]
+    struct TopLevel {
+        pilots: HashMap<String, Pilot>,
+    }
+
+    let mut mapping = HashMap::new();
+    let client = ClientBuilder::new()
+        .user_agent("github.com/celeo/vzdv")
+        .build()?;
+    let data: TopLevel = client
+        .get("https://r2.simaware.ca/api/livedata/data.json")
+        .send()
+        .await?
+        .json()
+        .await?;
+    for (id, pilot) in data.pilots {
+        mapping.insert(pilot.cid, id);
+    }
+    Ok(mapping)
 }
 
 #[cfg(test)]

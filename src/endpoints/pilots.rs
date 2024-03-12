@@ -1,6 +1,8 @@
 use crate::{
-    shared::{sql::INSERT_FEEDBACK, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
-    utils::flashed_messages,
+    shared::{
+        sql::INSERT_FEEDBACK, AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY,
+    },
+    utils::{flashed_messages, simaware_data},
 };
 use axum::{
     extract::State,
@@ -9,9 +11,11 @@ use axum::{
     Form, Router,
 };
 use minijinja::{context, Environment};
-use serde::Deserialize;
-use std::sync::Arc;
+use serde::{Deserialize, Serialize};
+use std::{sync::Arc, time::Instant};
+use thousands::Separable;
 use tower_sessions::Session;
+use vatsim_utils::live_api::Vatsim;
 
 /// View the feedback form.
 ///
@@ -72,6 +76,93 @@ async fn post_feedback_form(
     Ok(Redirect::to("/pilots/feedback"))
 }
 
+/// Table of all the airspace's airports.
+async fn handler_airports(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Html<String>, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
+    let template = state.templates.get_template("airports").unwrap();
+    let airports = &state.config.airports.all;
+    let rendered = template.render(context! { user_info, airports }).unwrap();
+    Ok(Html(rendered))
+}
+
+/// Table of all airspace-relevant flights.
+async fn handler_flights(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Html<String>, AppError> {
+    #[derive(Serialize, Default)]
+    struct OnlineFlight<'a> {
+        pilot_name: &'a str,
+        pilot_cid: u64,
+        callsign: &'a str,
+        departure: &'a str,
+        arrival: &'a str,
+        altitude: String,
+        speed: String,
+        simaware_id: &'a str,
+    }
+
+    // cache this endpoint's returned data for 60 seconds
+    let cache_key = "ONLINE_FLIGHTS_FULL";
+    if let Some(cached) = state.cache.get(&cache_key) {
+        let elapsed = Instant::now() - cached.inserted;
+        if elapsed.as_secs() < 60 {
+            return Ok(Html(cached.data));
+        }
+        state.cache.invalidate(&cache_key);
+    }
+
+    let artcc_fields: Vec<_> = state
+        .config
+        .airports
+        .all
+        .iter()
+        .map(|airport| &airport.code)
+        .collect();
+    let vatsim_data = Vatsim::new().await?.get_v3_data().await?;
+    let simaware_data = simaware_data().await?;
+    let flights: Vec<OnlineFlight> = vatsim_data
+        .pilots
+        .iter()
+        .flat_map(|flight| {
+            if let Some(plan) = &flight.flight_plan {
+                let from = artcc_fields.contains(&&plan.departure);
+                let to = artcc_fields.contains(&&plan.arrival);
+                if from || to {
+                    Some(OnlineFlight {
+                        pilot_name: &flight.name,
+                        pilot_cid: flight.cid,
+                        callsign: &flight.callsign,
+                        departure: &plan.departure,
+                        arrival: &plan.arrival,
+                        altitude: flight.altitude.separate_with_commas(),
+                        speed: flight.groundspeed.separate_with_commas(),
+                        simaware_id: match simaware_data.get(&flight.cid) {
+                            Some(id) => id,
+                            None => "",
+                        },
+                    })
+                } else {
+                    None
+                }
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
+    let template = state.templates.get_template("flights")?;
+    let rendered = template.render(context! { user_info, flights })?;
+    state
+        .cache
+        .insert(cache_key, CacheEntry::new(rendered.clone()));
+    Ok(Html(rendered))
+}
+
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
@@ -80,8 +171,16 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/pilot_feedback.jinja"),
         )
         .unwrap();
+    templates
+        .add_template("airports", include_str!("../../templates/airports.jinja"))
+        .unwrap();
+    templates
+        .add_template("flights", include_str!("../../templates/flights.jinja"))
+        .unwrap();
 
     Router::new()
         .route("/pilots/feedback", get(page_feedback_form))
         .route("/pilots/feedback", post(post_feedback_form))
+        .route("/pilots/airports", get(handler_airports))
+        .route("/pilots/flights", get(handler_flights))
 }

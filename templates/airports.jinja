@@ -1,0 +1,40 @@
+{% extends "layout" %}
+
+{% block title %}Airports | {{ super() }}{% endblock %}
+
+{% block body %}
+
+<h2>Airports</h2>
+
+<table class="table table-striped table-hover">
+  <thead>
+    <tr>
+      <th>Code</th>
+      <th>Name</th>
+      <th>Location</th>
+      <th>Towered</th>
+      <th>SkyVector</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for airport in airports %}
+      <tr>
+        <td>{{ airport.code }}</td>
+        <td>{{ airport.name }}</td>
+        <td>{{ airport.location }}</td>
+        <td>
+          {% if airport.towered %}
+            Yes (Class {{ airport.class }})
+          {% else %}
+          No
+          {% endif %}
+        </td>
+        <td>
+          <a href="https://skyvector.com/api/airportSearch?query={{ airport.code }}" target="_blank">Link</a>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

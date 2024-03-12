@@ -141,7 +141,7 @@ async fn snippet_flights(State(state): State<Arc<AppState>>) -> Result<Html<Stri
     }
 
     // cache this endpoint's returned data for 60 seconds
-    let cache_key = "ONLINE_FLIGHTS";
+    let cache_key = "ONLINE_FLIGHTS_HOMEPAGE";
     if let Some(cached) = state.cache.get(&cache_key) {
         let elapsed = Instant::now() - cached.inserted;
         if elapsed.as_secs() < 60 {

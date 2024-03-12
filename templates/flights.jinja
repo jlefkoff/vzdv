@@ -1,0 +1,36 @@
+{% extends "layout" %}
+
+{% block title %}Flights | {{ super() }}{% endblock %}
+
+{% block body %}
+
+<h2>Flights</h2>
+
+<table class="table table-striped table-hover">
+  <thead>
+    <tr>
+      <th>Pilot</th>
+      <th>Callsign</th>
+      <th>Departure</th>
+      <th>Arrival</th>
+      <th>Altitude</th>
+      <th>Speed</th>
+    </tr>
+  </thead>
+  {% for flight in flights %}
+    <tr>
+      <td>
+        <a href="https://stats.vatsim.net/stats/{{ flight.pilot_cid }}" target="_blank">{{ flight.pilot_name }}</a>
+      </td>
+      <td>
+        <a href="https://simaware.ca/?uid={{ flight.simaware_id }}" target="_blank">{{ flight.callsign }}</a>
+      </td>
+      <td>{{ flight.departure }}</td>
+      <td>{{ flight.arrival }}</td>
+      <td>{{ flight.altitude }}</td>
+      <td>{{ flight.speed }}</td>
+    </tr>
+  {% endfor %}
+</table>
+
+{% endblock %}
