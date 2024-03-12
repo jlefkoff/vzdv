@@ -39,7 +39,7 @@
         <div class="collapse d-flex" id="navbarSupportedContent">
           <ul class="navbar-nav me-auto mb-2 mb-lg-0">
             <li class="nav-item">
-              <a class="nav-link" href="#">Events</a>
+              <a class="nav-link" href="/events">Events</a>
             </li>
             <li class="nav-item">
               <a class="nav-link" href="/pilots/feedback">Feedback</a>
@@ -55,32 +55,38 @@
                 Pilots
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Airports</a></li>
+                <li><a class="dropdown-item" href="/pilots/airports">Airports</a></li>
+                <li><a class="dropdown-item" href="/pilots/flights">Flights</a></li>
                 <li>
                   <a
                     href="https://www.simbrief.com"
                     class="dropdown-item"
                     target="_blank"
-                    >SimBrief</a
                   >
+                    SimBrief
+                  </a>
                 </li>
                 <li>
                   <a
                     class="dropdown-item"
                     href="https://skyvector.com/"
                     target="_blank"
-                    >SkyVector</a
                   >
+                    SkyVector
+                  </a>
                 </li>
                 <li>
                   <a
                     class="dropdown-item"
                     href="https://www.flightaware.com/statistics/ifr-route/"
                     target="_blank"
-                    >IFR Routing</a
                   >
+                    IFR Routing
+                  </a>
                 </li>
-                <li><a class="dropdown-item" href="#">Staffing Request</a></li>
+                <li>
+                  <a class="dropdown-item" href="/pilots/staffing_request">Staffing Request</a>
+                </li>
               </ul>
             </li>
             <li class="nav-item dropdown">
@@ -94,14 +100,10 @@
                 Facility
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Activity</a></li>
-                <li><a class="dropdown-item" href="#">Certifications</a></li>
-                <li><a class="dropdown-item" href="#">Resources</a></li>
-                <li><a class="dropdown-item" href="#">Roster</a></li>
-                <li><a class="dropdown-item" href="#">Staff</a></li>
-                <li>
-                  <a class="dropdown-item" href="#">Visitor Application</a>
-                </li>
+                <li><a class="dropdown-item" href="/facility/staff">Staff</a></li>
+                <li><a class="dropdown-item" href="/facility/roster">Roster</a></li>
+                <li><a class="dropdown-item" href="/facility/activity">Activity</a></li>
+                <li><a class="dropdown-item" href="/facility/resources">Resources</a></li>
               </ul>
             </li>
             {% if user_info and user_info.cid %}
@@ -116,15 +118,11 @@
                 {{ user_info.first_name }} {{ user_info.last_name }}
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#">Discord</a></li>
-                <li><a class="dropdown-item" href="#">My Training Notes</a></li>
+                <li><a class="dropdown-item" href="/user/discrd">Discord</a></li>
+                <li><a class="dropdown-item" href="/user/training_notes">My Training Notes</a></li>
                 <li><a class="dropdown-item" href="#">Schedule Training</a></li>
-                <li>
-                  <a class="dropdown-item" href="#">Visitor Application</a>
-                </li>
-                <li>
-                  <a class="dropdown-item" href="/auth/logout">Log out</a>
-                </li>
+                <li><a class="dropdown-item" href="/user/visitor_application">Visitor Application</a></li>
+                <li><a class="dropdown-item" href="/auth/logout">Log out</a></li>
               </ul>
             </li>
             {% else %}
