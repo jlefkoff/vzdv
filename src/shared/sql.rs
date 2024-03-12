@@ -80,7 +80,8 @@ ON CONFLICT(cid) DO UPDATE SET
     first_name=excluded.first_name,
     last_name=excluded.last_name,
     email=excluded.email
-WHERE cid=excluded.cid;
+WHERE
+    cid=excluded.cid;
 ";
 
 pub const INSERT_FEEDBACK: &str = "
