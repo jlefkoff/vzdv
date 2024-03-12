@@ -62,7 +62,7 @@ fn load_config(path: &Path) -> Result<Config> {
 /// macro and supply to the minijinja environment.
 fn load_templates() -> Environment<'static> {
     let mut env = Environment::new();
-    env.add_template("layout", include_str!("../templates/layout.jinja"))
+    env.add_template("_layout", include_str!("../templates/_layout.jinja"))
         .unwrap();
     env
 }
