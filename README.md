@@ -17,7 +17,6 @@ TBD
 
 - Git
 - A recent version of [Rust](https://www.rust-lang.org/tools/install)
-- You'll likely need some openssl-dev packages on your system
 
 ### Steps
 
