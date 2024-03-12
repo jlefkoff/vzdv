@@ -9,8 +9,8 @@
 <table class="table table-striped table-hover">
   <thead>
     <tr>
-      <th>Pilot</th>
       <th>Callsign</th>
+      <th>Pilot</th>
       <th>Departure</th>
       <th>Arrival</th>
       <th>Altitude</th>
@@ -20,10 +20,10 @@
   {% for flight in flights %}
     <tr>
       <td>
-        <a href="https://stats.vatsim.net/stats/{{ flight.pilot_cid }}" target="_blank">{{ flight.pilot_name }}</a>
+        <a href="https://simaware.ca/?uid={{ flight.simaware_id }}" target="_blank">{{ flight.callsign }}</a>
       </td>
       <td>
-        <a href="https://simaware.ca/?uid={{ flight.simaware_id }}" target="_blank">{{ flight.callsign }}</a>
+        <a href="https://stats.vatsim.net/stats/{{ flight.pilot_cid }}" target="_blank">{{ flight.pilot_name }}</a>
       </td>
       <td>{{ flight.departure }}</td>
       <td>{{ flight.arrival }}</td>
