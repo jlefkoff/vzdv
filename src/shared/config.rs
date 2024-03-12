@@ -1,4 +1,4 @@
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 /// Default place to look for the config file.
 pub const DEFAULT_CONFIG_FILE_NAME: &str = "site_config.toml";
@@ -31,12 +31,13 @@ pub struct ConfigAirports {
     pub weather_for: Vec<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Airport {
     pub code: String,
     pub name: String,
     pub location: String,
     pub towered: bool,
+    pub class: String,
 }
 
 #[derive(Debug, Deserialize)]
