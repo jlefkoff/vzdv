@@ -2,11 +2,22 @@ use std::collections::HashMap;
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use once_cell::sync::Lazy;
 use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 
 pub mod auth;
 pub mod flashed_messages;
+
+/// HTTP client for making external requests.
+///
+/// Include an HTTP Agent of the project's repo for contact.
+pub static GENERAL_HTTP_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
+    ClientBuilder::new()
+        .user_agent("github.com/celeo/vzdv")
+        .build()
+        .expect("Could not construct HTTP client")
+});
 
 /// Parse a VATSIM timestamp into a `chrono::DateTime`.
 pub fn parse_vatsim_timestamp(stamp: &str) -> Result<DateTime<Utc>> {
@@ -99,10 +110,7 @@ pub async fn simaware_data() -> Result<HashMap<u64, String>> {
     }
 
     let mut mapping = HashMap::new();
-    let client = ClientBuilder::new()
-        .user_agent("github.com/celeo/vzdv")
-        .build()?;
-    let data: TopLevel = client
+    let data: TopLevel = GENERAL_HTTP_CLIENT
         .get("https://r2.simaware.ca/api/livedata/data.json")
         .send()
         .await?

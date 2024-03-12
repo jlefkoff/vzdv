@@ -14,7 +14,7 @@ use tower_sessions::Session;
 use vatsim_utils::live_api::Vatsim;
 
 /// Homepage.
-async fn handler_home(
+async fn page_home(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, StatusCode> {
@@ -208,7 +208,7 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .unwrap();
 
     Router::new()
-        .route("/", get(handler_home))
+        .route("/", get(page_home))
         .route(
             "/snippets/online/controllers",
             get(snippet_online_controllers),

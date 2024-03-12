@@ -2,7 +2,7 @@ use crate::{
     shared::{
         sql::INSERT_FEEDBACK, AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY,
     },
-    utils::{flashed_messages, simaware_data},
+    utils::{flashed_messages, simaware_data, GENERAL_HTTP_CLIENT},
 };
 use axum::{
     extract::State,
@@ -12,6 +12,7 @@ use axum::{
 };
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use std::{sync::Arc, time::Instant};
 use thousands::Separable;
 use tower_sessions::Session;
@@ -26,7 +27,7 @@ async fn page_feedback_form(
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
     let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
-    let template = state.templates.get_template("pilot_feedback").unwrap();
+    let template = state.templates.get_template("feedback").unwrap();
     let rendered = template
         .render(context! { user_info, flashed_messages })
         .unwrap();
@@ -42,7 +43,7 @@ struct FeedbackForm {
 }
 
 /// Submit the feedback form.
-async fn post_feedback_form(
+async fn page_feedback_form_post(
     State(state): State<Arc<AppState>>,
     session: Session,
     Form(feedback): Form<FeedbackForm>,
@@ -77,7 +78,7 @@ async fn post_feedback_form(
 }
 
 /// Table of all the airspace's airports.
-async fn handler_airports(
+async fn page_airports(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, AppError> {
@@ -89,7 +90,7 @@ async fn handler_airports(
 }
 
 /// Table of all airspace-relevant flights.
-async fn handler_flights(
+async fn page_flights(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, AppError> {
@@ -163,13 +164,121 @@ async fn handler_flights(
     Ok(Html(rendered))
 }
 
+async fn page_staffing_request(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Html<String>, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
+    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
+    let template = state.templates.get_template("staffing_request").unwrap();
+    let rendered = template
+        .render(context! { user_info, flashed_messages })
+        .unwrap();
+    Ok(Html(rendered))
+}
+
+#[derive(Debug, Deserialize)]
+struct StaffingRequestForm {
+    departure: String,
+    dt_start: String,
+    pilot_count: i16,
+    contact: String,
+    arrival: String,
+    dt_end: String,
+    banner: String,
+    organization: String,
+    comments: String,
+}
+
+async fn page_staffing_request_post(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Form(staffing_request): Form<StaffingRequestForm>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
+    if let Some(user_info) = user_info {
+        let resp = GENERAL_HTTP_CLIENT
+            .post(&state.config.webhooks.staffing_request)
+            .json(&json!({
+                "content": "",
+                "embeds": [{
+                    "title": "New staffing request",
+                    "fields": [
+                        {
+                            "name": "From",
+                            "value": format!("{} {} ({})", user_info.first_name, user_info.last_name, user_info.cid)
+                        },
+                        {
+                            "name": "departure",
+                            "value": staffing_request.departure
+                        },
+                        {
+                            "name": "arrival",
+                            "value": staffing_request.arrival
+                        },
+                        {
+                            "name": "dt_start",
+                            "value": staffing_request.dt_start
+                        },
+                        {
+                            "name": "dt_end",
+                            "value": staffing_request.dt_end
+                        },
+                        {
+                            "name": "pilot_count",
+                            "value": staffing_request.pilot_count
+                        },
+                        {
+                            "name": "contact",
+                            "value": staffing_request.contact
+                        },
+                        {
+                            "name": "banner",
+                            "value": staffing_request.banner
+                        },
+                        {
+                            "name": "organization",
+                            "value": staffing_request.organization
+                        },
+                        {
+                            "name": "comments",
+                            "value": staffing_request.comments
+                        }
+                    ]
+                }]
+            }))
+            .send()
+            .await?;
+        if resp.status().is_success() {
+            flashed_messages::push_flashed_message(
+                session,
+                flashed_messages::FlashedMessageLevel::Success,
+                "Request submitted",
+            )
+            .await?;
+        } else {
+            flashed_messages::push_flashed_message(
+                session,
+                flashed_messages::FlashedMessageLevel::Error,
+                "The message could not be processed. You may want to contact the EC (or WM).",
+            )
+            .await?;
+        }
+    } else {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Error,
+            "You must be logged in to submit a request",
+        )
+        .await?;
+    }
+    Ok(Redirect::to("/pilots/staffing_request"))
+}
+
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
-        .add_template(
-            "pilot_feedback",
-            include_str!("../../templates/pilot_feedback.jinja"),
-        )
+        .add_template("feedback", include_str!("../../templates/feedback.jinja"))
         .unwrap();
     templates
         .add_template("airports", include_str!("../../templates/airports.jinja"))
@@ -177,10 +286,18 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template("flights", include_str!("../../templates/flights.jinja"))
         .unwrap();
+    templates
+        .add_template(
+            "staffing_request",
+            include_str!("../../templates/staffing_request.jinja"),
+        )
+        .unwrap();
 
     Router::new()
         .route("/pilots/feedback", get(page_feedback_form))
-        .route("/pilots/feedback", post(post_feedback_form))
-        .route("/pilots/airports", get(handler_airports))
-        .route("/pilots/flights", get(handler_flights))
+        .route("/pilots/feedback", post(page_feedback_form_post))
+        .route("/pilots/airports", get(page_airports))
+        .route("/pilots/flights", get(page_flights))
+        .route("/pilots/staffing_request", get(page_staffing_request))
+        .route("/pilots/staffing_request", post(page_staffing_request_post))
 }

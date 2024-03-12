@@ -14,7 +14,7 @@ pub mod pilots;
 /// 404 not found page.
 ///
 /// Redirected to whenever the router cannot find a valid handler for the requested path.
-async fn handler_404(
+async fn page_404(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, AppError> {
@@ -30,5 +30,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .add_template("404", include_str!("../../templates/404.jinja"))
         .unwrap();
 
-    Router::new().route("/404", get(handler_404))
+    Router::new().route("/404", get(page_404))
 }

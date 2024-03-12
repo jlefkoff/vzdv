@@ -1,0 +1,61 @@
+{% extends "layout" %}
+
+{% block title %}Flights | {{ super() }}{% endblock %}
+
+{% block body %}
+
+<h2>Staffing Request</h2>
+
+{% if not user_info or not user_info.cid %}
+<h5>You must be <a href="/auth/log_in">logged in</a> to submit feedback</h5>
+{% else %}
+<form action="/pilots/staffing_request" method="POST">
+  <div class="row mb-2">
+    <div class="col">
+      <div class="mb-2">
+        <label for="departure">Departure Airport</label>
+        <input type="text" class="form-control" id="departure" name="departure" tabindex="1" required>
+      </div>
+      <div class="mb-2">
+        <label for="dt_start">Start date & time (Zulu)</label>
+        <input type="text" class="form-control" id="dt_start" name="dt_start" placeholder="01/15/2024 14:00" tabindex="3" required>
+      </div>
+      <div class="mb-2">
+        <label for="pilot_count">Number of Pilots (estimated)</label>
+        <input type="number" class="form-control" id="pilot_count" name="pilot_count" min="1" max="999" tabindex="5" required>
+      </div>
+      <div class="mb-2">
+        <label for="contact">Contact Info (homepage, email, Discord id, etc.)</label>
+        <input type="text" class="form-control" id="contact" name="contact" tabindex="7" required>
+      </div>
+    </div>
+    <div class="col">
+      <div class="mb-2">
+        <label for="arrival">Arrival Airport</label>
+        <input type="text" class="form-control" id="arrival" name="arrival" tabindex="2" required>
+      </div>
+      <div class="mb-2">
+        <label for="dt_end">End date & time (Zulu)</label>
+        <input type="text" class="form-control" id="dt_end" name="dt_end" placeholder="01/15/2024 14:00" tabindex="4" required>
+      </div>
+      <div class="mb-2">
+        <label for="banner">Banner URL (if you have one)</label>
+        <input type="text" class="form-control" id="banner" name="banner" tabindex="6">
+      </div>
+      <div class="mb-2">
+        <label for="organization">Organization (if part of one)</label>
+        <input type="text" class="form-control" id="organization" name="organization" tabindex="8">
+      </div>
+    </div>
+  </div>
+  <div class="row mb-4">
+    <div class="col">
+      <label for="comments">Any additional comments</label>
+      <textarea name="comments" id="comments" class="form-control" style="height: 5rem" tabindex="9"></textarea>
+    </div>
+  </div>
+  <button class="btn btn-primary" type="submit" tabindex="10">Submit</button>
+</form>
+{% endif %}
+
+{% endblock %}
