@@ -16,6 +16,7 @@ anyhow = "1.0.79"
 axum = "0.7.4"
 chrono = "0.4.34"
 clap = { version = "4.5.1", features = ["derive"] }
+itertools = "0.12.1"
 log = "0.4.20"
 mini-moka = { version = "0.10.3", features = ["sync"] }
 minijinja = "1.0.12"

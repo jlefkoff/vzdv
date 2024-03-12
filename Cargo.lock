@@ -2846,6 +2846,7 @@ dependencies = [
  "axum",
  "chrono",
  "clap",
+ "itertools",
  "log",
  "mini-moka",
  "minijinja",

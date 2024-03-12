@@ -44,6 +44,8 @@ pub enum WeatherConditions {
 pub struct AirportWeather<'a> {
     pub name: &'a str,
     pub conditions: WeatherConditions,
+    pub visibility: u8,
+    pub ceiling: u16,
     pub raw: &'a str,
 }
 
@@ -51,7 +53,7 @@ pub struct AirportWeather<'a> {
 pub fn parse_metar(line: &str) -> Result<AirportWeather> {
     let parts: Vec<_> = line.split(' ').collect();
     let airport = parts.first().ok_or_else(|| anyhow!("Blank metar?"))?;
-    let mut ceiling = 3_001;
+    let mut ceiling = 3_456;
     for part in &parts {
         if part.starts_with("BKN") || part.starts_with("OVC") {
             ceiling = part
@@ -91,6 +93,8 @@ pub fn parse_metar(line: &str) -> Result<AirportWeather> {
     Ok(AirportWeather {
         name: airport,
         conditions,
+        visibility,
+        ceiling,
         raw: line,
     })
 }

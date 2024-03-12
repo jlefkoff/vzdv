@@ -2,7 +2,7 @@
 
 use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
-    utils::{parse_metar, parse_vatsim_timestamp},
+    utils::{parse_metar, parse_vatsim_timestamp, GENERAL_HTTP_CLIENT},
 };
 use anyhow::{anyhow, Result};
 use axum::{extract::State, http::StatusCode, response::Html, routing::get, Router};
@@ -99,10 +99,7 @@ async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<Stri
         state.cache.invalidate(&cache_key);
     }
 
-    let client = reqwest::ClientBuilder::new()
-        .user_agent("github.com/celeo/vzdv")
-        .build()?;
-    let resp = client
+    let resp = GENERAL_HTTP_CLIENT
         .get(format!(
             "https://metar.vatsim.net/{}",
             state.config.airports.weather_for.join(",")

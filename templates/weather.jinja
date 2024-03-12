@@ -1,0 +1,48 @@
+{% extends "_layout" %}
+
+{% block title %}Weather | {{ super() }}{% endblock %}
+
+{% block body %}
+
+<h2>Weather</h2>
+
+<table class="table table-striped table-hover">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Visibility</th>
+      <th>Ceiling</th>
+      <th>Conditions</th>
+      <th>Full</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for airport in weather %}
+      <tr>
+        <td>{{ airport.name }}</td>
+        <td>{{ airport.visibility }}</td>
+        <td>
+          {% if airport.ceiling == 3456 %}
+            Clear
+          {% else %}
+            {{ airport.ceiling }}
+          {% endif %}
+        </td>
+        <td>
+          {% if airport.conditions == 'VFR' %}
+            <span class="badge rounded-pill text-bg-success">{{ airport.conditions }}</span>
+          {% elif airport.conditions == 'MVFR' %}
+            <span class="badge rounded-pill text-bg-info">{{ airport.conditions }}</span>
+          {% elif airport.conditions == 'IFR' %}
+            <span class="badge rounded-pill text-bg-error">{{ airport.conditions }}</span>
+          {% else %}
+            <span class="badge rounded-pill" style="background-color: purple;">{{ airport.conditions }}</span>
+          {% endif %}
+        </td>
+        <td>{{ airport.raw }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

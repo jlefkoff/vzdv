@@ -2,14 +2,17 @@ use crate::{
     shared::{
         sql::INSERT_FEEDBACK, AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY,
     },
-    utils::{flashed_messages, simaware_data, GENERAL_HTTP_CLIENT},
+    utils::{flashed_messages, parse_metar, simaware_data, GENERAL_HTTP_CLIENT},
 };
+use anyhow::anyhow;
 use axum::{
     extract::State,
     response::{Html, Redirect},
     routing::{get, post},
     Form, Router,
 };
+use itertools::Itertools;
+use log::warn;
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -164,6 +167,59 @@ async fn page_flights(
     Ok(Html(rendered))
 }
 
+/// Larger view of the weather.
+async fn page_weather(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Html<String>, AppError> {
+    // cache this endpoint's returned data for 5 minutes
+    let cache_key = "WEATHER_FULL";
+    if let Some(cached) = state.cache.get(&cache_key) {
+        let elapsed = Instant::now() - cached.inserted;
+        if elapsed.as_secs() < 300 {
+            return Ok(Html(cached.data));
+        }
+        state.cache.invalidate(&cache_key);
+    }
+
+    let resp = GENERAL_HTTP_CLIENT
+        .get(format!(
+            "https://metar.vatsim.net/{}",
+            state
+                .config
+                .airports
+                .all
+                .iter()
+                .map(|airport| &airport.code)
+                .join(",")
+        ))
+        .send()
+        .await?;
+    if !resp.status().is_success() {
+        return Err(anyhow!("Got status {} from METAR API", resp.status().as_u16()).into());
+    }
+    let text = resp.text().await?;
+    let weather: Vec<_> = text
+        .split_terminator('\n')
+        .flat_map(|line| {
+            parse_metar(line).map_err(|e| {
+                let airport = line.split(' ').next().unwrap_or("Unknown");
+                warn!("Metar parsing failure for {airport}: {e}");
+                e
+            })
+        })
+        .collect();
+
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
+    let template = state.templates.get_template("weather")?;
+    let rendered = template.render(context! { user_info, weather })?;
+    state
+        .cache
+        .insert(cache_key, CacheEntry::new(rendered.clone()));
+    Ok(Html(rendered))
+}
+
+/// Form for groups to submit requests for staff-ups.
 async fn page_staffing_request(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -190,6 +246,7 @@ struct StaffingRequestForm {
     comments: String,
 }
 
+/// Submit the staffing request form.
 async fn page_staffing_request_post(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -292,12 +349,16 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/staffing_request.jinja"),
         )
         .unwrap();
+    templates
+        .add_template("weather", include_str!("../../templates/weather.jinja"))
+        .unwrap();
 
     Router::new()
         .route("/pilots/feedback", get(page_feedback_form))
         .route("/pilots/feedback", post(page_feedback_form_post))
         .route("/pilots/airports", get(page_airports))
         .route("/pilots/flights", get(page_flights))
+        .route("/pilots/weather", get(page_weather))
         .route("/pilots/staffing_request", get(page_staffing_request))
         .route("/pilots/staffing_request", post(page_staffing_request_post))
 }
