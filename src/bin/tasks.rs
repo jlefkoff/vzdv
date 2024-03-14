@@ -3,14 +3,17 @@
 #![deny(clippy::all)]
 
 use anyhow::Result;
+use chrono::Months;
 use clap::Parser;
 use log::{debug, error, info};
-use sqlx::SqlitePool;
+use sqlx::{Row, SqlitePool};
 use std::{
+    collections::HashMap,
     env,
     path::{Path, PathBuf},
 };
 use tokio::time;
+use vatsim_utils::rest_api;
 use vzdv::{
     load_config, load_db,
     shared::{self, sql, Config},
@@ -32,7 +35,8 @@ struct Cli {
     debug: bool,
 }
 
-async fn update_single(db: &SqlitePool, controller: &RosterMember) -> Result<()> {
+/// Update a single controller's stored data.
+async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) -> Result<()> {
     let roles = controller
         .roles
         .iter()
@@ -57,13 +61,71 @@ async fn update_single(db: &SqlitePool, controller: &RosterMember) -> Result<()>
     Ok(())
 }
 
+/// Update the stored roster with fresh data from VATUSA.
 async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
     let roster_data = get_roster(&config.vatsim.vatusa_facility_code, MembershipType::Both).await?;
     for controller in &roster_data.data {
-        if let Err(e) = update_single(db, controller).await {
+        if let Err(e) = update_controller_record(db, controller).await {
             error!("Error updating controller in DB: {e}");
         };
     }
+    // TODO handle removed members
+    Ok(())
+}
+
+/// Update all controllers' stored activity data with data from VATSIM.
+///
+/// To do this, for each controller in the DB, their activity data will
+/// be cleared and then re-stored as part of a transaction.
+async fn update_activity(db: &SqlitePool) -> Result<()> {
+    let controllers = sqlx::query(sql::GET_ALL_CONTROLLER_CIDS)
+        .fetch_all(db)
+        .await?;
+    let five_months_ago = chrono::Utc::now()
+        .checked_sub_months(Months::new(5))
+        .unwrap()
+        .format("%Y-%m-%d")
+        .to_string();
+    for row in controllers {
+        let cid: u32 = row.try_get("cid")?;
+        debug!("Getting activity for {cid}");
+
+        let sessions =
+            rest_api::get_atc_sessions(cid as u64, None, None, Some(&five_months_ago), None)
+                .await?;
+        // start a transaction and clear the controller's stored activity
+        let mut tx = db.begin().await?;
+        sqlx::query(sql::DELETE_FROM_ACTIVITY)
+            .bind(cid)
+            .execute(&mut *tx)
+            .await?;
+
+        // group the controller's activity by month
+        let mut seconds_map: HashMap<String, f32> = HashMap::new();
+        for session in sessions.results {
+            let month = session.start[0..7].to_string();
+            let seconds = session.minutes_on_callsign.parse::<f32>().unwrap() * 60.0;
+            seconds_map
+                .entry(month)
+                .and_modify(|acc| *acc += seconds)
+                .or_insert(seconds);
+        }
+        // for each relevant month, store their total controlled minutes in the DB
+        for (month, seconds) in seconds_map {
+            let minutes = (seconds / 60.0).round() as u32;
+            sqlx::query(sql::INSERT_INTO_ACTIVITY)
+                .bind(cid)
+                .bind(month)
+                .bind(minutes)
+                .execute(&mut *tx)
+                .await?;
+        }
+        // commit the changes to this controller's activity records
+        tx.commit().await?;
+        // wait a second to be nice to the VATSIM API
+        time::sleep(time::Duration::from_secs(1)).await;
+    }
+
     Ok(())
 }
 
@@ -103,21 +165,53 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    // debug!("Waiting 10 seconds before starting loop");
-    // time::sleep(time::Duration::from_secs(10)).await;
-    info!("Starting loop");
+    info!("Starting tasks");
 
-    loop {
-        debug!("Querying");
-        match update_roster(&config, &db).await {
-            Ok(_) => {
-                info!("Roster update successful");
+    let roster_handle = {
+        let config = config.clone();
+        let db = db.clone();
+        tokio::spawn(async move {
+            debug!("Waiting 10 seconds before starting roster sync");
+            time::sleep(time::Duration::from_secs(10)).await;
+            loop {
+                info!("Querying roster");
+                match update_roster(&config, &db).await {
+                    Ok(_) => {
+                        info!("Roster update successful");
+                    }
+                    Err(e) => {
+                        error!("Error updating roster: {e}");
+                    }
+                }
+                info!("Waiting 1 hour for next roster sync");
+                time::sleep(time::Duration::from_secs(60 * 60)).await;
             }
-            Err(e) => {
-                error!("Error updating roster: {e}");
+        })
+    };
+
+    let activity_handle = {
+        let db = db.clone();
+        tokio::spawn(async move {
+            debug!("Waiting 30 seconds before starting activity sync");
+            time::sleep(time::Duration::from_secs(30)).await;
+            loop {
+                info!("Updating activity");
+                match update_activity(&db).await {
+                    Ok(_) => {
+                        info!("Activity update successful");
+                    }
+                    Err(e) => {
+                        error!("Error updating activity: {e}");
+                    }
+                }
+                info!("Waiting 12 hours for next activity sync");
+                time::sleep(time::Duration::from_secs(60 * 60 * 12)).await;
             }
-        }
-        info!("Update complete; waiting 1 hour");
-        time::sleep(time::Duration::from_secs(3_600)).await;
-    }
+        })
+    };
+
+    roster_handle.await.unwrap();
+    activity_handle.await.unwrap();
+
+    Ok(())
 }

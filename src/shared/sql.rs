@@ -52,13 +52,11 @@ CREATE TABLE controller (
 
 CREATE TABLE certification (
     id INTEGER PRIMARY KEY NOT NULL,
-    controller_id TEXT NOT NULL,
+    controller_id INTEGER NOT NULL,
     name TEXT NOT NULL,
     value TEXT NOT NULL,
     changed_on TEXT NOT NULL,
-    set_by INTEGER NOT NULL,
-
-    FOREIGN KEY (controller_id) REFERENCES controller(id)
+    set_by INTEGER NOT NULL
 );
 
 CREATE TABLE feedback (
@@ -72,6 +70,15 @@ CREATE TABLE feedback (
     reviewed_by_cid INTEGER,
     posted_to_discord BOOLEAN NOT NULL DEFAULT "FALSE"
 );
+
+CREATE TABLE activity (
+    id INTEGER PRIMARY KEY NOT NULL,
+    cid INTEGER NOT NULL,
+    month TEXT NOT NULL,
+    minutes INTEGER NOT NULL,
+
+    FOREIGN KEY (cid) REFERENCES controller(cid)
+);
 "#;
 
 pub const UPSERT_USER_LOGIN: &str = "
@@ -84,17 +91,15 @@ ON CONFLICT(cid) DO UPDATE SET
     last_name=excluded.last_name,
     email=excluded.email
 WHERE
-    cid=excluded.cid;
+    cid=excluded.cid
 ";
 
 pub const INSERT_FEEDBACK: &str = "
 INSERT INTO feedback
     (id, controller, position, rating, comments, created_date, submitter_cid)
 VALUES
-    (NULL, $1, $2, $3, $4, $5, $6);
+    (NULL, $1, $2, $3, $4, $5, $6)
 ";
-
-pub const USER_LOOKUP: &str = "SELECT * FROM controller WHERE cid=$1;";
 
 pub const UPSERT_USER_TASK: &str = "
 INSERT INTO controller
@@ -109,5 +114,15 @@ ON CONFLICT(cid) DO UPDATE SET
     home_facility=excluded.home_facility,
     roles=excluded.roles
 WHERE
-    cid=excluded.cid;
+    cid=excluded.cid
+";
+
+pub const GET_ALL_CONTROLLER_CIDS: &str = "SELECT cid FROM controller";
+
+pub const DELETE_FROM_ACTIVITY: &str = "DELETE FROM activity WHERE cid=$1";
+pub const INSERT_INTO_ACTIVITY: &str = "
+INSERT INTO activity
+    (id, cid, month, minutes)
+VALUES
+    (NULL, $1, $2, $3)
 ";
