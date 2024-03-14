@@ -17,20 +17,22 @@
       <th>Speed</th>
     </tr>
   </thead>
-  {% for flight in flights %}
-    <tr>
-      <td>
-        <a href="https://simaware.ca/?uid={{ flight.simaware_id }}" target="_blank">{{ flight.callsign }}</a>
-      </td>
-      <td>
-        <a href="https://stats.vatsim.net/stats/{{ flight.pilot_cid }}" target="_blank">{{ flight.pilot_name }}</a>
-      </td>
-      <td>{{ flight.departure }}</td>
-      <td>{{ flight.arrival }}</td>
-      <td>{{ flight.altitude }}</td>
-      <td>{{ flight.speed }}</td>
-    </tr>
-  {% endfor %}
+  <tbody>
+    {% for flight in flights %}
+      <tr>
+        <td>
+          <a href="https://simaware.ca/?uid={{ flight.simaware_id }}" target="_blank">{{ flight.callsign }}</a>
+        </td>
+        <td>
+          <a href="https://stats.vatsim.net/stats/{{ flight.pilot_cid }}" target="_blank">{{ flight.pilot_name }}</a>
+        </td>
+        <td>{{ flight.departure }}</td>
+        <td>{{ flight.arrival }}</td>
+        <td>{{ flight.altitude }}</td>
+        <td>{{ flight.speed }}</td>
+      </tr>
+    {% endfor %}
+  </tbody>
 </table>
 
 {% endblock %}
