@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 pub mod auth;
 pub mod flashed_messages;
+pub mod vatusa;
 
 /// HTTP client for making external requests.
 ///
