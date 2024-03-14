@@ -36,11 +36,16 @@ struct Cli {
 }
 
 /// Update a single controller's stored data.
-async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) -> Result<()> {
+async fn update_controller_record(
+    config: &Config,
+    db: &SqlitePool,
+    controller: &RosterMember,
+) -> Result<()> {
     let roles = controller
         .roles
         .iter()
-        .map(|role| format!("{}:{}", role.facility, role.role))
+        .filter(|role| role.facility == config.vatsim.vatusa_facility_code)
+        .map(|role| role.role.as_str())
         .collect::<Vec<_>>()
         .join(",");
     sqlx::query(sql::UPSERT_USER_TASK)
@@ -65,7 +70,7 @@ async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) ->
 async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
     let roster_data = get_roster(&config.vatsim.vatusa_facility_code, MembershipType::Both).await?;
     for controller in &roster_data.data {
-        if let Err(e) = update_controller_record(db, controller).await {
+        if let Err(e) = update_controller_record(config, db, controller).await {
             error!("Error updating controller in DB: {e}");
         };
     }

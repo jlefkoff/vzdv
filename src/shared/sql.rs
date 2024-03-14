@@ -1,3 +1,4 @@
+use serde::Serialize;
 use sqlx::{
     prelude::{FromRow, Row},
     sqlite::SqliteRow,
@@ -7,14 +8,14 @@ use sqlx::{
     },
 };
 
-#[derive(Debug, FromRow)]
+#[derive(Debug, FromRow, Serialize, Clone)]
 pub struct Controller {
     pub id: u32,
     pub cid: u32,
     pub first_name: String,
     pub last_name: String,
     pub operating_initials: Option<String>,
-    pub rating: u8,
+    pub rating: i8,
     pub status: String,
     pub discord_id: Option<String>,
     pub home_facility: String,
@@ -22,11 +23,35 @@ pub struct Controller {
     pub created_date: Option<DateTime<Utc>>,
 }
 
-#[derive(Debug, FromRow)]
+impl Controller {
+    /// Friendly name for the controller's numeric rating.
+    pub fn rating_name(rating: i8) -> &'static str {
+        match rating {
+            -1 => "INA",
+            0 => "SUS",
+            1 => "OBS",
+            2 => "S1",
+            3 => "S2",
+            4 => "S3",
+            5 => "C1",
+            6 => "C2",
+            7 => "C3",
+            8 => "I1",
+            9 => "I2",
+            10 => "I3",
+            11 => "SUP",
+            12 => "ADM",
+            _ => "???",
+        }
+    }
+}
+
+#[derive(Debug, FromRow, Serialize, Clone)]
 pub struct Certification {
     pub id: u32,
-    pub controller_id: u32,
+    pub cid: u32,
     pub name: String,
+    /// "In Progress", "Solo", "Certified"
     pub value: String,
     pub changed_on: DateTime<Utc>,
     pub set_by: u32,
@@ -52,7 +77,7 @@ CREATE TABLE controller (
 
 CREATE TABLE certification (
     id INTEGER PRIMARY KEY NOT NULL,
-    controller_id INTEGER NOT NULL,
+    cid INTEGER NOT NULL,
     name TEXT NOT NULL,
     value TEXT NOT NULL,
     changed_on TEXT NOT NULL,
@@ -117,7 +142,10 @@ WHERE
     cid=excluded.cid
 ";
 
+pub const GET_ALL_CONTROLLERS: &str = "SELECT * FROM controller";
 pub const GET_ALL_CONTROLLER_CIDS: &str = "SELECT cid FROM controller";
+
+pub const GET_ALL_CERTIFICATIONS: &str = "SELECT * FROM certification";
 
 pub const DELETE_FROM_ACTIVITY: &str = "DELETE FROM activity WHERE cid=$1";
 pub const INSERT_INTO_ACTIVITY: &str = "

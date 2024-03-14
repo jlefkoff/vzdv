@@ -1,0 +1,31 @@
+{% extends "_layout" %}
+
+{% block title %}Staff | {{ super() }}{% endblock %}
+
+{% block body %}
+
+<h2>Staff</h2>
+
+<div class="d-flex flex-wrap justify-content-between">
+  {% for role in roles %}
+    {% if staff[role] | length > 0 %}
+      <div class="card p-1 m-2" style="width: 30%">
+        <div class="card-body">
+          <h5 class="card-title">
+            {{ role }}
+          </h5>
+          <p class="card-text">
+            {% for controller in staff[role] %}
+              {{ controller.first_name }} {{ controller.last_name }}
+            {% endfor %}
+            <br>
+            DESCRIPTION OF ROLE HERE
+          </p>
+          <a href="mailto:{{ role }}@{{ email_domain }}">Email</a>
+        </div>
+      </div>
+    {% endif %}
+  {% endfor %}
+</div>
+
+{% endblock %}

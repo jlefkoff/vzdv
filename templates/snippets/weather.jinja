@@ -8,7 +8,7 @@
     {% elif airport.conditions == 'MVFR' %}
       <span class="badge rounded-pill text-bg-info">{{ airport.conditions }}</span>
     {% elif airport.conditions == 'IFR' %}
-      <span class="badge rounded-pill text-bg-error">{{ airport.conditions }}</span>
+      <span class="badge rounded-pill text-bg-danger">{{ airport.conditions }}</span>
     {% else %}
       <span class="badge rounded-pill" style="background-color: purple;">{{ airport.conditions }}</span>
     {% endif %}

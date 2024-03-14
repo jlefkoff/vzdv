@@ -8,12 +8,40 @@
 
 <table class="table table-striped table-hover">
   <thead>
-    <tr>
-      <!-- TODO -->
+    <tr class="d-flex">
+      <th class="col-1">OIs</th>
+      <th class="col-3">Name</th>
+      <th class="col-3">Rating</th>
+      <th class="col">Certs</th>
     </tr>
   </thead>
   <tbody>
-    <!-- TODO -->
+    {% for controller in controllers %}
+      <tr class="d-flex">
+        <td class="col-1">{{ controller.operating_initials }}</td>
+        <td class="col-3">{{ controller.first_name }} {{ controller.last_name }}</td>
+        <td class="col-3">
+          {% if not controller.is_home %}
+            Visiting
+          {% endif %}
+          {{ controller.rating }}
+          {% if controller.roles %}
+            <span class="badge text-bg-info">{{ controller.roles }}</span>
+          {% endif %}
+        </td>
+        <td class="col">
+          {% for cert in controller.certs %}
+            {% if cert.value == "Training" %}
+              <span class="badge text-bg-warning" title="Training">{{ cert.name }}</span>
+            {% elif cert.value == "Solo" %}
+              <span class="badge text-bg-info" title="Solo">{{ cert.name }}</span>
+            {% else %}
+              <span class="badge text-bg-success" title="Certified">{{ cert.name }}</span>
+            {% endif %}
+          {% endfor %}
+        </td>
+      </tr>
+    {% endfor %}
   </tbody>
 </table>
 

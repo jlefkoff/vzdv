@@ -1,6 +1,10 @@
 [database]
 file = "./vzdv_data.sqlite"
 
+[staff]
+email_domain = ""
+overrides = []
+
 [vatsim]
 oauth_client_id = ""
 oauth_client_secret = ""
