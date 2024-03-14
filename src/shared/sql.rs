@@ -126,3 +126,5 @@ INSERT INTO activity
 VALUES
     (NULL, $1, $2, $3)
 ";
+
+pub const DELETE_FROM_ROSTER: &str = "DELETE FROM controller WHERE cid=$1";

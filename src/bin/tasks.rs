@@ -5,8 +5,8 @@
 use anyhow::Result;
 use chrono::Months;
 use clap::Parser;
-use log::{debug, error, info};
-use sqlx::{Row, SqlitePool};
+use log::{debug, error, info, warn};
+use sqlx::{sqlite::SqliteRow, Row, SqlitePool};
 use std::{
     collections::HashMap,
     env,
@@ -69,7 +69,26 @@ async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
             error!("Error updating controller in DB: {e}");
         };
     }
-    // TODO handle removed members
+
+    debug!("Checking for removed controllers");
+    let current_controllers: Vec<_> = roster_data
+        .data
+        .iter()
+        .map(|controller| controller.cid)
+        .collect();
+    let db_controllers: Vec<SqliteRow> = sqlx::query(sql::GET_ALL_CONTROLLER_CIDS)
+        .fetch_all(db)
+        .await?;
+    for row in db_controllers {
+        let cid: u32 = row.try_get("cid")?;
+        if !current_controllers.contains(&cid) {
+            warn!("Controller {cid} was removed from the roster");
+            sqlx::query(sql::DELETE_FROM_ROSTER)
+                .bind(cid)
+                .execute(db)
+                .await?;
+        }
+    }
     Ok(())
 }
 
