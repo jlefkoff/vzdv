@@ -2,14 +2,12 @@
 
 #![deny(clippy::all)]
 
-use crate::shared::{AppState, Config};
 use anyhow::Result;
 use axum::{middleware as axum_middleware, response::Redirect, Router};
 use clap::Parser;
 use log::{debug, error, info};
 use mini_moka::sync::Cache;
 use minijinja::Environment;
-use sqlx::{sqlite::SqliteConnectOptions, Executor, SqlitePool};
 use std::{
     env,
     path::{Path, PathBuf},
@@ -21,11 +19,10 @@ use tower::ServiceBuilder;
 use tower_http::timeout::TimeoutLayer;
 use tower_sessions::SessionManagerLayer;
 use tower_sessions_sqlx_store::SqliteStore;
-
-mod endpoints;
-mod middleware;
-mod shared;
-mod utils;
+use vzdv::{
+    load_config, load_db,
+    shared::{self, AppState},
+};
 
 /// vZDV website.
 #[derive(Parser)]
@@ -50,35 +47,12 @@ struct Cli {
     port: u16,
 }
 
-/// Read the TOML file at the given path and load into the app's
-/// configuration file.
-fn load_config(path: &Path) -> Result<Config> {
-    let text = std::fs::read_to_string(path)?;
-    let config: Config = toml::from_str(&text)?;
-    Ok(config)
-}
-
 /// Load all template files into the binary via the stdlib `include_str!`
 /// macro and supply to the minijinja environment.
 fn load_templates() -> Result<Environment<'static>> {
     let mut env = Environment::new();
-    env.add_template("_layout", include_str!("../templates/_layout.jinja"))?;
+    env.add_template("_layout", include_str!("../../templates/_layout.jinja"))?;
     Ok(env)
-}
-
-/// Connect to the SQLite file at the destination, if it exists. If it does
-/// not, a new file is created and statements to create tables are executed.
-async fn load_db(config: &Config) -> Result<SqlitePool> {
-    let options = SqliteConnectOptions::new().filename(&config.database.file);
-    let pool = if !Path::new(&config.database.file).exists() {
-        let options = options.create_if_missing(true);
-        let pool = SqlitePool::connect_with(options).await?;
-        pool.execute(shared::sql::CREATE_TABLES).await?;
-        pool
-    } else {
-        SqlitePool::connect_with(options).await?
-    };
-    Ok(pool)
 }
 
 /// Create all the endpoints and insert middleware.
@@ -87,15 +61,15 @@ fn load_router(
     env: &mut Environment,
 ) -> Router<Arc<AppState>> {
     Router::new()
-        .merge(endpoints::router(env))
-        .merge(endpoints::homepage::router(env))
-        .merge(endpoints::auth::router(env))
-        .merge(endpoints::pilots::router(env))
-        .merge(endpoints::facility::router(env))
+        .merge(vzdv::endpoints::router(env))
+        .merge(vzdv::endpoints::homepage::router(env))
+        .merge(vzdv::endpoints::auth::router(env))
+        .merge(vzdv::endpoints::pilots::router(env))
+        .merge(vzdv::endpoints::facility::router(env))
         .layer(
             ServiceBuilder::new()
                 .layer(TimeoutLayer::new(Duration::from_secs(30)))
-                .layer(axum_middleware::from_fn(middleware::logging))
+                .layer(axum_middleware::from_fn(vzdv::middleware::logging))
                 .layer(sessions_layer),
         )
         .fallback(|| async { Redirect::to("/404") })
@@ -181,7 +155,7 @@ async fn main() {
     let router = load_router(session_layer, &mut templates);
     let app_state = Arc::new(AppState {
         config,
-        db,
+        db: db.clone(),
         templates,
         cache,
     });
@@ -197,4 +171,5 @@ async fn main() {
         .with_graceful_shutdown(shutdown_signal())
         .await
         .expect("Could not serve the app");
+    db.close().await;
 }

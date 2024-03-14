@@ -1,10 +1,11 @@
-use std::collections::HashMap;
+//! Various utility structs and functions.
 
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use once_cell::sync::Lazy;
 use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 pub mod auth;
 pub mod flashed_messages;

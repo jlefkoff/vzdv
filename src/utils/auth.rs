@@ -70,7 +70,7 @@ pub fn oauth_redirect_start(config: &Config) -> String {
     format!(
         "{VATSIM_OAUTH_URL_BASE}oauth/authorize?response_type=code&client_id={}&redirect_uri={}&scope={}",
         config.vatsim.oauth_client_id,
-        config.vatsim.oauth_client_calback_url,
+        config.vatsim.oauth_client_callback_url,
         "full_name email vatsim_details"
     )
 }
@@ -84,7 +84,7 @@ pub async fn code_to_user_info(code: &str, state: &Arc<AppState>) -> Result<Toke
             "grant_type": "authorization_code",
             "client_id": state.config.vatsim.oauth_client_id,
             "client_secret": state.config.vatsim.oauth_client_secret,
-            "redirect_uri": state.config.vatsim.oauth_client_calback_url,
+            "redirect_uri": state.config.vatsim.oauth_client_callback_url,
             "code": code
         }))
         .send()

@@ -55,7 +55,7 @@ async fn page_auth_callback(
     session
         .insert(SESSION_USER_INFO_KEY, to_session.clone())
         .await?;
-    sqlx::query(sql::UPSERT_USER)
+    sqlx::query(sql::UPSERT_USER_LOGIN)
         .bind(to_session.cid)
         .bind(&to_session.first_name)
         .bind(&to_session.last_name)

@@ -10,6 +10,7 @@ repository = "https://github.com/Celeo/vzdv"
 documentation = "https://github.com/Celeo/vzdv"
 license = "MIT OR Apache-2.0"
 publish = false
+default-run = "main"
 
 [dependencies]
 anyhow = "1.0.79"

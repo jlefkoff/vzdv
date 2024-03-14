@@ -3,7 +3,7 @@ use serde::Deserialize;
 
 use crate::utils::GENERAL_HTTP_CLIENT;
 
-const BASE_URL: &str = "https://api.vatusa.net/facility";
+const BASE_URL: &str = "https://api.vatusa.net/";
 
 pub enum MembershipType {
     Home,
@@ -17,11 +17,22 @@ pub struct VatusaRosterData {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct RosterMemberRole {
+    pub id: u32,
+    pub cid: u32,
+    pub facility: String,
+    pub role: String,
+    pub created_at: String,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct RosterMember {
     pub cid: u32,
-    pub fname: String,
-    pub lname: String,
-    pub email: String,
+    #[serde(rename = "fname")]
+    pub first_name: String,
+    #[serde(rename = "lname")]
+    pub last_name: String,
+    pub email: Option<String>,
     pub facility: String,
     pub rating: u8,
     pub created_at: String,
@@ -36,21 +47,21 @@ pub struct RosterMember {
     #[serde(rename = "lastactivity")]
     pub last_activity: String,
     #[serde(rename = "flag_broadcastOptedIn")]
-    pub flag_broadcast_opted_in: bool,
+    pub flag_broadcast_opted_in: Option<bool>,
     #[serde(rename = "flag_preventStaffAssign")]
-    pub flag_prevent_staff_assign: Option<serde_json::Value>, // ?
+    pub flag_prevent_staff_assign: Option<bool>,
     pub last_cert_sync: String,
     #[serde(rename = "flag_nameprivacy")]
     pub flag_name_privacy: bool,
-    pub promotion_eligible: bool,
-    pub transfer_eligible: Option<serde_json::Value>, // ?
-    pub roles: Vec<serde_json::Value>,                // ?
+    pub promotion_eligible: Option<bool>,
+    // pub transfer_eligible: Option<serde_json::Value>,
+    pub roles: Vec<RosterMemberRole>,
     pub rating_short: String,
     #[serde(rename = "isMentor")]
     pub is_mentor: bool,
     #[serde(rename = "isSupIns")]
     pub is_sup_ins: bool,
-    pub last_promotion: String,
+    pub last_promotion: Option<String>,
     pub membership: String,
 }
 
@@ -62,13 +73,14 @@ pub async fn get_roster(facility: &str, membership: MembershipType) -> Result<Va
         MembershipType::Both => "both",
     };
     let resp = GENERAL_HTTP_CLIENT
-        .get(format!("{BASE_URL}/facility/{facility}/roster/{mem_str}"))
+        .get(format!("{BASE_URL}facility/{facility}/roster/{mem_str}"))
         .send()
         .await?;
     if !resp.status().is_success() {
         return Err(anyhow!(
-            "Got status {} from VATUSA roster API",
-            resp.status().as_u16()
+            "Got status {} from VATUSA roster API at {}",
+            resp.status().as_u16(),
+            resp.url()
         ));
     }
     let data = resp.json().await?;
