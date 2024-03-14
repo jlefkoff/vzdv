@@ -1,6 +1,12 @@
 [database]
 file = "./vzdv_data.sqlite"
 
+[vatsim]
+oauth_client_id = ""
+oauth_client_secret = ""
+oauth_client_callback_url = ""
+vatusa_facility_code = ""
+
 [training]
 certifications = []
 
