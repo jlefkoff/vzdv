@@ -60,11 +60,10 @@ fn load_config(path: &Path) -> Result<Config> {
 
 /// Load all template files into the binary via the stdlib `include_str!`
 /// macro and supply to the minijinja environment.
-fn load_templates() -> Environment<'static> {
+fn load_templates() -> Result<Environment<'static>> {
     let mut env = Environment::new();
-    env.add_template("_layout", include_str!("../templates/_layout.jinja"))
-        .unwrap();
-    env
+    env.add_template("_layout", include_str!("../templates/_layout.jinja"))?;
+    Ok(env)
 }
 
 /// Connect to the SQLite file at the destination, if it exists. If it does
@@ -167,7 +166,13 @@ async fn main() {
         return;
     }
     let session_layer = SessionManagerLayer::new(sessions);
-    let mut templates = load_templates();
+    let mut templates = match load_templates() {
+        Ok(t) => t,
+        Err(e) => {
+            error!("Could not load the first templates: {e}");
+            return;
+        }
+    };
     let cache = Cache::new(10);
     debug!("Loaded");
 
@@ -184,9 +189,11 @@ async fn main() {
 
     let host_and_port = format!("{}:{}", cli.host, cli.port);
     info!("Listening on http://{host_and_port}/");
-    let listener = tokio::net::TcpListener::bind(&host_and_port).await.unwrap();
+    let listener = tokio::net::TcpListener::bind(&host_and_port)
+        .await
+        .expect("Could not bind the HTTP listener");
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await
-        .unwrap();
+        .expect("Could not serve the app");
 }

@@ -7,7 +7,6 @@ use crate::{
 use anyhow::Result;
 use axum::{
     extract::{Query, State},
-    http::StatusCode,
     response::{Html, Redirect},
     routing::get,
     Router,
@@ -25,9 +24,9 @@ use tower_sessions::Session;
 async fn page_auth_login(
     State(state): State<Arc<AppState>>,
     session: Session,
-) -> Result<Redirect, StatusCode> {
+) -> Result<Redirect, AppError> {
     // if already logged in, just redirect to homepage
-    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     if user_info.is_some() {
         debug!("Already logged-in user hit login page");
         return Ok(Redirect::to("/"));

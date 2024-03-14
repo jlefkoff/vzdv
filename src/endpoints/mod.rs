@@ -18,9 +18,9 @@ async fn page_404(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, AppError> {
-    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
-    let template = state.templates.get_template("404").unwrap();
-    let rendered = template.render(context! { user_info }).unwrap();
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let template = state.templates.get_template("404")?;
+    let rendered = template.render(context! { user_info })?;
     Ok(Html(rendered))
 }
 

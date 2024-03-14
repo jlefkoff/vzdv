@@ -5,7 +5,7 @@ use crate::{
     utils::{parse_metar, parse_vatsim_timestamp, GENERAL_HTTP_CLIENT},
 };
 use anyhow::{anyhow, Result};
-use axum::{extract::State, http::StatusCode, response::Html, routing::get, Router};
+use axum::{extract::State, response::Html, routing::get, Router};
 use log::warn;
 use minijinja::{context, Environment};
 use serde::Serialize;
@@ -17,10 +17,10 @@ use vatsim_utils::live_api::Vatsim;
 async fn page_home(
     State(state): State<Arc<AppState>>,
     session: Session,
-) -> Result<Html<String>, StatusCode> {
-    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
-    let template = state.templates.get_template("home").unwrap();
-    let rendered = template.render(context! { user_info }).unwrap();
+) -> Result<Html<String>, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let template = state.templates.get_template("home")?;
+    let rendered = template.render(context! { user_info })?;
     Ok(Html(rendered))
 }
 
@@ -69,7 +69,8 @@ async fn snippet_online_controllers(
                 .any(|suffix| controller.callsign.ends_with(suffix))
         })
         .map(|controller| {
-            let logon = parse_vatsim_timestamp(&controller.logon_time).unwrap();
+            let logon = parse_vatsim_timestamp(&controller.logon_time)
+                .expect("Could not parse VATSIM timestamp");
             let seconds = (now - logon).num_seconds() as u32;
             OnlineController {
                 cid: controller.cid,
