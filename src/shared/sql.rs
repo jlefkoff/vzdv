@@ -57,6 +57,14 @@ pub struct Certification {
     pub set_by: u32,
 }
 
+#[derive(Debug, FromRow, Serialize)]
+pub struct Activity {
+    pub id: u32,
+    pub cid: u32,
+    pub month: String,
+    pub minutes: u32,
+}
+
 /// Statements to create tables. Only ran when the DB file does not exist,
 /// so no migration or "IF NOT EXISTS" conditions need to be added.
 pub const CREATE_TABLES: &str = r#"
@@ -156,3 +164,5 @@ VALUES
 ";
 
 pub const DELETE_FROM_ROSTER: &str = "DELETE FROM controller WHERE cid=$1";
+
+pub const GET_ALL_ACTIVITY: &str = "SELECT * FROM activity";

@@ -1,8 +1,9 @@
 use crate::shared::{
-    sql::{self, Certification, Controller},
+    sql::{self, Activity, Certification, Controller},
     AppError, AppState, Config, UserInfo, SESSION_USER_INFO_KEY,
 };
 use axum::{extract::State, response::Html, routing::get, Router};
+use chrono::{Months, Utc};
 use itertools::Itertools;
 use log::warn;
 use minijinja::{context, Environment};
@@ -233,6 +234,97 @@ async fn page_staff(
     Ok(Html(rendered))
 }
 
+/// View all controller's recent (summarized) controlling activity.
+async fn page_activity(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Html<String>, AppError> {
+    #[derive(Debug, Serialize)]
+    struct ControllerActivity {
+        name: String,
+        ois: String,
+        month_0: u32,
+        month_1: u32,
+        month_2: u32,
+        month_3: u32,
+        month_4: u32,
+    }
+
+    let controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS)
+        .fetch_all(&state.db)
+        .await?;
+    let activity: Vec<Activity> = sqlx::query_as(sql::GET_ALL_ACTIVITY)
+        .fetch_all(&state.db)
+        .await?;
+
+    let now = Utc::now();
+    let months: [String; 5] = [
+        now.format("%Y-%m").to_string(),
+        now.checked_sub_months(Months::new(1))
+            .unwrap()
+            .format("%Y-%m")
+            .to_string(),
+        now.checked_sub_months(Months::new(2))
+            .unwrap()
+            .format("%Y-%m")
+            .to_string(),
+        now.checked_sub_months(Months::new(3))
+            .unwrap()
+            .format("%Y-%m")
+            .to_string(),
+        now.checked_sub_months(Months::new(4))
+            .unwrap()
+            .format("%Y-%m")
+            .to_string(),
+    ];
+    let activity_data: Vec<ControllerActivity> = controllers
+        .iter()
+        .map(|controller| {
+            let this_controller: Vec<_> = activity
+                .iter()
+                .filter(|a| a.cid == controller.cid)
+                .collect();
+            ControllerActivity {
+                name: format!("{} {}", controller.first_name, controller.last_name),
+                ois: match &controller.operating_initials {
+                    Some(ois) => ois.to_owned(),
+                    None => String::new(),
+                },
+                month_0: this_controller
+                    .iter()
+                    .filter(|a| a.month == months[0])
+                    .map(|a| a.minutes)
+                    .sum(),
+                month_1: this_controller
+                    .iter()
+                    .filter(|a| a.month == months[1])
+                    .map(|a| a.minutes)
+                    .sum(),
+                month_2: this_controller
+                    .iter()
+                    .filter(|a| a.month == months[2])
+                    .map(|a| a.minutes)
+                    .sum(),
+                month_3: this_controller
+                    .iter()
+                    .filter(|a| a.month == months[3])
+                    .map(|a| a.minutes)
+                    .sum(),
+                month_4: this_controller
+                    .iter()
+                    .filter(|a| a.month == months[4])
+                    .map(|a| a.minutes)
+                    .sum(),
+            }
+        })
+        .collect();
+
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let template = state.templates.get_template("activity")?;
+    let rendered = template.render(context! { user_info, activity_data })?;
+    Ok(Html(rendered))
+}
+
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template("roster", include_str!("../../templates/roster.jinja"))
@@ -240,8 +332,17 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template("staff", include_str!("../../templates/staff.jinja"))
         .unwrap();
+    templates
+        .add_template("activity", include_str!("../../templates/activity.jinja"))
+        .unwrap();
+    templates.add_filter("minutes_to_hm", |total_minutes: u32| {
+        let hours = total_minutes / 60;
+        let minutes = total_minutes % 60;
+        format!("{hours}h{minutes}m")
+    });
 
     Router::new()
         .route("/facility/roster", get(page_roster))
         .route("/facility/staff", get(page_staff))
+        .route("/facility/activity", get(page_activity))
 }

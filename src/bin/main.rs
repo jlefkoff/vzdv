@@ -78,6 +78,7 @@ fn load_router(
 // https://github.com/tokio-rs/axum/blob/main/examples/graceful-shutdown/src/main.rs
 async fn shutdown_signal() {
     let ctrl_c = async {
+        debug!("Got terminate signal");
         signal::ctrl_c()
             .await
             .expect("failed to install Ctrl+C handler");
@@ -85,6 +86,7 @@ async fn shutdown_signal() {
 
     #[cfg(unix)]
     let terminate = async {
+        debug!("Got terminate signal");
         signal::unix::signal(signal::unix::SignalKind::terminate())
             .expect("failed to install signal handler")
             .recv()
