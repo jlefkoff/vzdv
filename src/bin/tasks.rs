@@ -154,7 +154,7 @@ async fn update_activity(db: &SqlitePool) -> Result<()> {
 }
 
 #[tokio::main]
-async fn main() -> anyhow::Result<()> {
+async fn main() {
     let cli = Cli::parse();
     if cli.debug {
         env::set_var("RUST_LOG", "info,tasks=debug");
@@ -236,6 +236,4 @@ async fn main() -> anyhow::Result<()> {
 
     roster_handle.await.unwrap();
     activity_handle.await.unwrap();
-
-    Ok(())
 }
