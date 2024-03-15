@@ -44,8 +44,8 @@ async fn page_auth_callback(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, AppError> {
-    let token_data = code_to_user_info(&query.code, &state).await?;
-    let user_info = get_user_info(&token_data.access_token).await?;
+    let token_data = code_to_user_info(&query.code, &state.config).await?;
+    let user_info = get_user_info(&token_data.access_token, &state.config).await?;
 
     let to_session = UserInfo {
         cid: user_info.data.cid.parse()?,

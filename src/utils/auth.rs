@@ -1,11 +1,7 @@
-use crate::shared::{AppState, Config};
+use crate::shared::Config;
 use anyhow::{anyhow, Result};
 use serde::Deserialize;
 use serde_json::json;
-use std::sync::Arc;
-
-// const VATSIM_OAUTH_URL_BASE: &str = "https://auth.vatsim.net/";
-const VATSIM_OAUTH_URL_BASE: &str = "https://auth-dev.vatsim.net/";
 
 #[derive(Debug, Deserialize)]
 pub struct AuthCallback {
@@ -68,7 +64,8 @@ pub struct IdName {
 /// their VATSIM OAuth login flow.
 pub fn oauth_redirect_start(config: &Config) -> String {
     format!(
-        "{VATSIM_OAUTH_URL_BASE}oauth/authorize?response_type=code&client_id={}&redirect_uri={}&scope={}",
+        "{}oauth/authorize?response_type=code&client_id={}&redirect_uri={}&scope={}",
+        config.vatsim.oauth_url_base,
         config.vatsim.oauth_client_id,
         config.vatsim.oauth_client_callback_url,
         "full_name email vatsim_details"
@@ -76,15 +73,15 @@ pub fn oauth_redirect_start(config: &Config) -> String {
 }
 
 /// Exchange the code from VATSIM OAuth for an access token.
-pub async fn code_to_user_info(code: &str, state: &Arc<AppState>) -> Result<TokenResponse> {
+pub async fn code_to_user_info(code: &str, config: &Config) -> Result<TokenResponse> {
     let client = reqwest::ClientBuilder::new().build()?;
     let resp = client
-        .post(format!("{VATSIM_OAUTH_URL_BASE}oauth/token"))
+        .post(format!("{}oauth/token", config.vatsim.oauth_url_base))
         .json(&json!({
             "grant_type": "authorization_code",
-            "client_id": state.config.vatsim.oauth_client_id,
-            "client_secret": state.config.vatsim.oauth_client_secret,
-            "redirect_uri": state.config.vatsim.oauth_client_callback_url,
+            "client_id": config.vatsim.oauth_client_id,
+            "client_secret": config.vatsim.oauth_client_secret,
+            "redirect_uri": config.vatsim.oauth_client_callback_url,
             "code": code
         }))
         .send()
@@ -99,37 +96,11 @@ pub async fn code_to_user_info(code: &str, state: &Arc<AppState>) -> Result<Toke
     Ok(data)
 }
 
-/*
-
-Example response from `/user` endpoint
-
-{
-  "data": {
-    "cid": "10000005",
-    "personal": {
-      "name_first": "Web",
-      "name_last": "Five",
-      "name_full": "Web Five",
-      "email": "auth.dev5@vatsim.net"
-    },
-    "vatsim": {
-      "rating": { "id": 5, "long": "Enroute Controller", "short": "C1" },
-      "pilotrating": { "id": 3, "long": "Instrument Rating", "short": "IR" },
-      "division": { "id": "WA", "name": "West Asia" },
-      "region": { "id": "APAC", "name": "Asia Pacific" },
-      "subdivision": { "id": "AFG", "name": "Afghanistan" }
-    },
-    "oauth": { "token_valid": "true" }
-  }
-}
-
-*/
-
 /// Using the user's access token, get their VATSIM info.
-pub async fn get_user_info(access_token: &str) -> Result<UserInfoResponse> {
+pub async fn get_user_info(access_token: &str, config: &Config) -> Result<UserInfoResponse> {
     let client = reqwest::ClientBuilder::new().build()?;
     let resp = client
-        .get(format!("{VATSIM_OAUTH_URL_BASE}api/user"))
+        .get(format!("{}api/user", config.vatsim.oauth_url_base))
         .header("Authorization", &format!("Bearer {}", access_token))
         .send()
         .await?;

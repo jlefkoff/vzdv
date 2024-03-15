@@ -6,10 +6,11 @@ email_domain = ""
 overrides = []
 
 [vatsim]
+vatusa_facility_code = ""
+oauth_url_base = ""
 oauth_client_id = ""
 oauth_client_secret = ""
 oauth_client_callback_url = ""
-vatusa_facility_code = ""
 
 [training]
 certifications = []
