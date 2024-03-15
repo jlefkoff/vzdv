@@ -1,17 +1,120 @@
 use crate::shared::{
     sql::{self, Certification, Controller},
-    AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
+    AppError, AppState, Config, UserInfo, SESSION_USER_INFO_KEY,
 };
 use axum::{extract::State, response::Html, routing::get, Router};
 use itertools::Itertools;
+use log::warn;
 use minijinja::{context, Environment};
 use serde::Serialize;
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 
-const STAFF_ROLES: [&str; 11] = [
-    "ATM", "DATM", "TA", "FE", "EC", "WM", "INS", "MTR", "AFE", "AEC", "AWM",
-];
+const IGNORE_MISSING_STAFF_POSITIONS_FOR: [&str; 1] = ["FACCBT"];
+
+#[derive(Debug, Serialize)]
+struct StaffPosition {
+    short: &'static str,
+    name: &'static str,
+    order: u8,
+    controllers: Vec<Controller>,
+    email: Option<String>,
+    description: &'static str,
+}
+
+fn generate_staff_outline(config: &Config) -> HashMap<&'static str, StaffPosition> {
+    let email_domain = &config.staff.email_domain;
+    HashMap::from([
+        ("ATM", StaffPosition {
+            short: "ATM",
+            name: "Air Traffic Manager",
+            order: 1,
+            controllers: Vec::new(),
+            email: Some(format!("atm@{email_domain}")),
+            description: "Responsible for the macro-management of the facility. Oversees day-to-day operations and ensures that the facility is running smoothly.",
+        }),
+        ("DATM", StaffPosition {
+            short: "DATM",
+            name: "Deputy Air Traffic Manager",
+            order: 2,
+            controllers: Vec::new(),
+            email: Some(format!("datm@{email_domain}")),
+            description: "Assists the Air Traffic Manager with the management of the facility. Acts as the Air Traffic Manager in their absence.",
+        }),
+        ("TA", StaffPosition {
+            short: "TA",
+            name: "Training Administrator",
+            order: 3,
+            controllers: Vec::new(),
+            email: Some(format!("ta@{email_domain}")),
+            description: "Responsible for overseeing and management of the facility's training program and staff.",
+        }),
+        ("FE", StaffPosition {
+            short: "FE",
+            name: "Facility Engineer",
+            order: 4,
+            controllers: Vec::new(),
+            email: Some(format!("fe@{email_domain}")),
+            description: "Responsible for the creation of sector files, radar client files, and other facility resources.",
+        }),
+        ("EC", StaffPosition {
+            short: "EC",
+            name: "Events Coordinator",
+            order: 5,
+            controllers: Vec::new(),
+            email: Some(format!("ec@{email_domain}")),
+            description: "Responsible for the planning, coordination and advertisement of facility events with neighboring facilities, virtual airlines, VATUSA, and VATSIM.",
+        }),
+        ("WM", StaffPosition {
+            short: "WM",
+            name: "Webmaster",
+            order: 6,
+            controllers: Vec::new(),
+            email: Some(format!("wm@{email_domain}")),
+            description: "Responsible for the management of the facility's website and technical infrastructure.",
+        }),
+        ("INS", StaffPosition {
+            short: "INS",
+            name: "Instructor",
+            order: 7,
+            controllers: Vec::new(),
+            email: None,
+            description: "Under direction of the Training Administrator, leads training and handles OTS Examinations.",
+        }),
+        ("MTR", StaffPosition {
+            short: "MTR",
+            name: "Mentor",
+            order: 8,
+            controllers: Vec::new(),
+            email: None,
+            description: "Under direction of the Training Administrator, helps train students and prepare them for OTS Examinations.",
+        }),
+        ("AFE", StaffPosition {
+            short: "AFE",
+            name: "Assistant Facility Engineer",
+            order: 9,
+            controllers: Vec::new(),
+            email: None,
+            description: "Assists the Facility Engineer.",
+        }),
+        ("AEC", StaffPosition {
+            short: "AEC",
+            name: "Assistant Events Coordinator",
+            order: 10,
+            controllers: Vec::new(),
+            email: None,
+            description: "Assists the Events Coordinator.",
+        }),
+        ("AWM", StaffPosition {
+            short: "AWM",
+            name: "Assistant Webmaster",
+            order: 11,
+            controllers: Vec::new(),
+            email: None,
+            description: "Assists the Webmaster.",
+        }),
+    ])
+}
 
 #[derive(Debug, Serialize)]
 struct ControllerWithCerts<'a> {
@@ -80,74 +183,53 @@ async fn page_staff(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, AppError> {
-    let mut staff: HashMap<&str, Vec<Controller>> = HashMap::from([
-        (STAFF_ROLES[0], Vec::new()),
-        (STAFF_ROLES[1], Vec::new()),
-        (STAFF_ROLES[2], Vec::new()),
-        (STAFF_ROLES[3], Vec::new()),
-        (STAFF_ROLES[4], Vec::new()),
-        (STAFF_ROLES[5], Vec::new()),
-        (STAFF_ROLES[6], Vec::new()),
-        (STAFF_ROLES[7], Vec::new()),
-        (STAFF_ROLES[8], Vec::new()),
-        (STAFF_ROLES[9], Vec::new()),
-        (STAFF_ROLES[10], Vec::new()),
-    ]);
+    let mut staff_map = generate_staff_outline(&state.config);
     let controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS)
         .fetch_all(&state.db)
         .await?;
-    for controller in controllers {
-        let roles = controller.roles.split(',').collect::<Vec<_>>();
+    for controller in &controllers {
+        let roles = controller.roles.split_terminator(',').collect::<Vec<_>>();
         for role in roles {
-            if staff.contains_key(role) {
-                let ovr = state
-                    .config
-                    .staff
-                    .overrides
-                    .iter()
-                    .find(|ovr| ovr.role == role);
-                if let Some(ovr) = ovr {
-                    if ovr.cid == controller.cid {
-                        (*staff.get_mut(role).unwrap()).push(controller.clone());
-                    } else {
-                        let role = format!("A{role}");
-                        (*staff.get_mut(role.as_str()).unwrap()).push(controller.clone());
-                    }
-                } else {
-                    (*staff.get_mut(role).unwrap()).push(controller.clone());
+            let mut is_assistant = false;
+            if let Some(role_override) =
+                state.config.staff.overrides.iter().find(|o| o.role == role)
+            {
+                if role_override.cid != controller.cid {
+                    is_assistant = true
                 }
+            }
+            // VATUSA doesn't differentiate between e.g. the main FE and their assistants,
+            // at least not at the API level. Need something to be able to differentiate.
+            let role = if is_assistant {
+                format!("A{role}")
+            } else {
+                role.to_string()
+            };
+            if let Some(staff_pos) = staff_map.get_mut(role.as_str()) {
+                staff_pos.controllers.push(controller.clone());
+            } else if !IGNORE_MISSING_STAFF_POSITIONS_FOR.contains(&role.as_str()) {
+                warn!("No staff role found for: {role}");
             }
         }
         if controller.home_facility == state.config.vatsim.vatusa_facility_code
             && [8, 9, 10].contains(&controller.rating)
         {
-            (*staff.get_mut("INS").unwrap()).push(controller.clone());
+            staff_map
+                .get_mut("INS")
+                .unwrap()
+                .controllers
+                .push(controller.clone());
         }
     }
 
-    let email_domain = &state.config.staff.email_domain;
-    let has_email = HashMap::from([
-        (STAFF_ROLES[0], true),
-        (STAFF_ROLES[1], true),
-        (STAFF_ROLES[2], true),
-        (STAFF_ROLES[3], true),
-        (STAFF_ROLES[4], true),
-        (STAFF_ROLES[5], true),
-        (STAFF_ROLES[6], false),
-        (STAFF_ROLES[7], false),
-        (STAFF_ROLES[8], false),
-        (STAFF_ROLES[9], false),
-        (STAFF_ROLES[10], false),
-    ]);
+    let staff: Vec<_> = staff_map
+        .values()
+        .sorted_by(|a, b| Ord::cmp(&a.order, &b.order))
+        .collect();
+
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let template = state.templates.get_template("staff")?;
-    let rendered = template.render(context! {
-       user_info,
-       staff,
-       roles => STAFF_ROLES,
-       email_domain,
-       has_email,
-    })?;
+    let rendered = template.render(context! { user_info, staff })?;
     Ok(Html(rendered))
 }
 
