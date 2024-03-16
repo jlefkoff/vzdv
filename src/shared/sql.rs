@@ -19,6 +19,7 @@ pub struct Controller {
     pub status: String,
     pub discord_id: Option<String>,
     pub home_facility: String,
+    pub is_on_roster: bool,
     pub roles: String,
     pub created_date: Option<DateTime<Utc>>,
 }
@@ -79,6 +80,7 @@ CREATE TABLE controller (
     status TEXT,
     discord_id TEXT UNIQUE,
     home_facility TEXT,
+    is_on_roster BOOLEAN,
     roles TEXT,
     created_date TEXT
 );
@@ -116,9 +118,9 @@ CREATE TABLE activity (
 
 pub const UPSERT_USER_LOGIN: &str = "
 INSERT INTO controller
-    (id, cid, first_name, last_name, email)
+    (id, cid, first_name, last_name, email, is_on_roster)
 VALUES
-    (NULL, $1, $2, $3, $4)
+    (NULL, $1, $2, $3, $4, FALSE)
 ON CONFLICT(cid) DO UPDATE SET
     first_name=excluded.first_name,
     last_name=excluded.last_name,
@@ -136,26 +138,30 @@ VALUES
 
 pub const UPSERT_USER_TASK: &str = "
 INSERT INTO controller
-    (id, cid, first_name, last_name, email, rating, home_facility, roles, created_date)
+    (id, cid, first_name, last_name, email, rating, home_facility, is_on_roster, roles, created_date)
 VALUES
-    (NULL, $1, $2, $3, $4, $5, $6, $7, $8)
+    (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9)
 ON CONFLICT(cid) DO UPDATE SET
     first_name=excluded.first_name,
     last_name=excluded.last_name,
     email=excluded.email,
     rating=excluded.rating,
     home_facility=excluded.home_facility,
+    is_on_roster=excluded.is_on_roster,
     roles=excluded.roles
 WHERE
     cid=excluded.cid
 ";
 
 pub const GET_ALL_CONTROLLERS: &str = "SELECT * FROM controller";
+pub const GET_ALL_CONTROLLERS_ON_ROSTER: &str = "SELECT * FROM controller WHERE is_on_roster=TRUE";
 pub const GET_ALL_CONTROLLER_CIDS: &str = "SELECT cid FROM controller";
+pub const GET_ALL_ROSTER_CONTROLLER_CIDS: &str =
+    "SELECT cid FROM controller WHERE is_on_roster=TRUE";
 
 pub const GET_ALL_CERTIFICATIONS: &str = "SELECT * FROM certification";
 
-pub const DELETE_FROM_ACTIVITY: &str = "DELETE FROM activity WHERE cid=$1";
+pub const DELETE_ALL_ACTIVITY: &str = "DELETE FROM activity";
 pub const INSERT_INTO_ACTIVITY: &str = "
 INSERT INTO activity
     (id, cid, month, minutes)
@@ -163,6 +169,6 @@ VALUES
     (NULL, $1, $2, $3)
 ";
 
-pub const DELETE_FROM_ROSTER: &str = "DELETE FROM controller WHERE cid=$1";
+pub const UPDATE_REMOVED_FROM_ROSTER: &str = "UPDATE controller SET is_on_roster=0 WHERE cid=$1";
 
 pub const GET_ALL_ACTIVITY: &str = "SELECT * FROM activity";

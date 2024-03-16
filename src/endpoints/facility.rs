@@ -250,7 +250,8 @@ async fn page_activity(
         month_4: u32,
     }
 
-    let controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS)
+    // this could be a join, but oh well
+    let controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS_ON_ROSTER)
         .fetch_all(&state.db)
         .await?;
     let activity: Vec<Activity> = sqlx::query_as(sql::GET_ALL_ACTIVITY)
@@ -277,6 +278,10 @@ async fn page_activity(
             .format("%Y-%m")
             .to_string(),
     ];
+
+    // FIXME this will show *all* controlling time for controllers - the time
+    // here isn't just in ZDV
+
     let activity_data: Vec<ControllerActivity> = controllers
         .iter()
         .map(|controller| {
@@ -319,6 +324,8 @@ async fn page_activity(
         })
         .collect();
 
+    // TODO top 3 controllers for each month
+
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let template = state.templates.get_template("activity")?;
     let rendered = template.render(context! { user_info, activity_data })?;
@@ -338,7 +345,11 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates.add_filter("minutes_to_hm", |total_minutes: u32| {
         let hours = total_minutes / 60;
         let minutes = total_minutes % 60;
+        if hours > 0 || minutes > 0 {
         format!("{hours}h{minutes}m")
+        } else {
+            String::new()
+        }
     });
 
     Router::new()

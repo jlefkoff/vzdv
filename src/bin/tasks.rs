@@ -5,7 +5,7 @@
 use anyhow::Result;
 use chrono::Months;
 use clap::Parser;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use sqlx::{sqlite::SqliteRow, Row, SqlitePool};
 use std::{
     collections::HashMap,
@@ -55,6 +55,8 @@ async fn update_controller_record(
         .bind(&controller.email)
         .bind(controller.rating)
         .bind(&controller.facility)
+        // controller *will* be on the roster since that's what the VATSIM API is showing
+        .bind(true)
         .bind(roles)
         .bind(chrono::Utc::now())
         .execute(db)
@@ -87,8 +89,8 @@ async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
     for row in db_controllers {
         let cid: u32 = row.try_get("cid")?;
         if !current_controllers.contains(&cid) {
-            warn!("Controller {cid} was removed from the roster");
-            sqlx::query(sql::DELETE_FROM_ROSTER)
+            debug!("Controller {cid} is not on the roster");
+            sqlx::query(sql::UPDATE_REMOVED_FROM_ROSTER)
                 .bind(cid)
                 .execute(db)
                 .await?;
@@ -99,10 +101,21 @@ async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
 
 /// Update all controllers' stored activity data with data from VATSIM.
 ///
-/// To do this, for each controller in the DB, their activity data will
-/// be cleared and then re-stored as part of a transaction.
+/// For each controller in the DB, their activity data will be cleared,
+/// and then (for on-roster controllers) fetched and stored in the DB as
+/// part of a transaction.
 async fn update_activity(db: &SqlitePool) -> Result<()> {
-    let controllers = sqlx::query(sql::GET_ALL_CONTROLLER_CIDS)
+    /*
+     * Run the entire operation in a transaction. If something goes wrong
+     * and the activity records couldn't be updated, I'd rather leave them
+     * as-is than have a half-blank activity page. Here, stagnant > incomplete.
+     */
+    let mut tx = db.begin().await?;
+    // clear the table
+    sqlx::query(sql::DELETE_ALL_ACTIVITY).execute(db).await?;
+
+    // fetch activity for all on-roster controllers
+    let controllers = sqlx::query(sql::GET_ALL_ROSTER_CONTROLLER_CIDS)
         .fetch_all(db)
         .await?;
     let five_months_ago = chrono::Utc::now()
@@ -113,17 +126,16 @@ async fn update_activity(db: &SqlitePool) -> Result<()> {
     for row in controllers {
         let cid: u32 = row.try_get("cid")?;
         debug!("Getting activity for {cid}");
-
+        /*
+         * Get the last 5 months of the controller's activity.
+         *
+         * I'm not (currently) worried about pagination as even the facility's most
+         * active controllers don't have enough sessions in this time range to go over
+         * the endpoint's single-page response limit.
+         */
         let sessions =
             rest_api::get_atc_sessions(cid as u64, None, None, Some(&five_months_ago), None)
                 .await?;
-        // start a transaction and clear the controller's stored activity
-        let mut tx = db.begin().await?;
-        sqlx::query(sql::DELETE_FROM_ACTIVITY)
-            .bind(cid)
-            .execute(&mut *tx)
-            .await?;
-
         // group the controller's activity by month
         let mut seconds_map: HashMap<String, f32> = HashMap::new();
         for session in sessions.results {
@@ -144,11 +156,11 @@ async fn update_activity(db: &SqlitePool) -> Result<()> {
                 .execute(&mut *tx)
                 .await?;
         }
-        // commit the changes to this controller's activity records
-        tx.commit().await?;
         // wait a second to be nice to the VATSIM API
         time::sleep(time::Duration::from_secs(1)).await;
     }
+    debug!("Committing activity transaction");
+    tx.commit().await?;
 
     Ok(())
 }
@@ -207,8 +219,8 @@ async fn main() {
                         error!("Error updating roster: {e}");
                     }
                 }
-                info!("Waiting 1 hour for next roster sync");
-                time::sleep(time::Duration::from_secs(60 * 60)).await;
+                info!("Waiting 4 hours for next roster sync");
+                time::sleep(time::Duration::from_secs(60 * 60 * 4)).await;
             }
         })
     };
