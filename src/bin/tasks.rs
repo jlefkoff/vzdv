@@ -124,6 +124,11 @@ async fn update_activity(db: &SqlitePool) -> Result<()> {
         .format("%Y-%m-%d")
         .to_string();
     for row in controllers {
+        // FIXME this will show *all* controlling time for controllers - the time
+        // here isn't just in ZDV. Need to filter by position. Can probably use
+        // the same filtering to determine if a controller is online in a ZDV
+        // position.
+
         let cid: u32 = row.try_get("cid")?;
         debug!("Getting activity for {cid}");
         /*

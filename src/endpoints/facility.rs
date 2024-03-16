@@ -279,9 +279,6 @@ async fn page_activity(
             .to_string(),
     ];
 
-    // FIXME this will show *all* controlling time for controllers - the time
-    // here isn't just in ZDV
-
     let activity_data: Vec<ControllerActivity> = controllers
         .iter()
         .map(|controller| {
