@@ -2,7 +2,9 @@
 
 use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
-    utils::{parse_metar, parse_vatsim_timestamp, GENERAL_HTTP_CLIENT},
+    utils::{
+        parse_metar, parse_vatsim_timestamp, position_in_facility_airspace, GENERAL_HTTP_CLIENT,
+    },
 };
 use anyhow::{anyhow, Result};
 use axum::{extract::State, response::Html, routing::get, Router};
@@ -51,23 +53,7 @@ async fn snippet_online_controllers(
     let online: Vec<_> = data
         .controllers
         .iter()
-        .filter(|controller| {
-            let prefix_match = state
-                .config
-                .stats
-                .position_prefixes
-                .iter()
-                .any(|prefix| controller.callsign.starts_with(prefix));
-            if !prefix_match {
-                return false;
-            }
-            state
-                .config
-                .stats
-                .position_suffixes
-                .iter()
-                .any(|suffix| controller.callsign.ends_with(suffix))
-        })
+        .filter(|controller| position_in_facility_airspace(&state.config, &controller.callsign))
         .map(|controller| {
             let logon = parse_vatsim_timestamp(&controller.logon_time)
                 .expect("Could not parse VATSIM timestamp");

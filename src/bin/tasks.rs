@@ -17,7 +17,10 @@ use vatsim_utils::rest_api;
 use vzdv::{
     load_config, load_db,
     shared::{self, sql, Config},
-    utils::vatusa::{get_roster, MembershipType, RosterMember},
+    utils::{
+        position_in_facility_airspace,
+        vatusa::{get_roster, MembershipType, RosterMember},
+    },
 };
 
 /// vZDV task runner.
@@ -70,10 +73,14 @@ async fn update_controller_record(
 
 /// Update the stored roster with fresh data from VATUSA.
 async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
+    /*
+     * Don't use a transaction here; instead, attempt to update every controller's
+     * data. Don't error-out unless VATSIM doesn't give any data.
+     */
     let roster_data = get_roster(&config.vatsim.vatusa_facility_code, MembershipType::Both).await?;
     for controller in &roster_data.data {
         if let Err(e) = update_controller_record(config, db, controller).await {
-            error!("Error updating controller in DB: {e}");
+            error!("Error updating controller {} in DB: {e}", controller.cid);
         };
     }
 
@@ -90,10 +97,13 @@ async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
         let cid: u32 = row.try_get("cid")?;
         if !current_controllers.contains(&cid) {
             debug!("Controller {cid} is not on the roster");
-            sqlx::query(sql::UPDATE_REMOVED_FROM_ROSTER)
+            if let Err(e) = sqlx::query(sql::UPDATE_REMOVED_FROM_ROSTER)
                 .bind(cid)
                 .execute(db)
-                .await?;
+                .await
+            {
+                error!("Error updating controller {cid} to show off-roster: {e}")
+            }
         }
     }
     Ok(())
@@ -104,11 +114,11 @@ async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
 /// For each controller in the DB, their activity data will be cleared,
 /// and then (for on-roster controllers) fetched and stored in the DB as
 /// part of a transaction.
-async fn update_activity(db: &SqlitePool) -> Result<()> {
+async fn update_activity(config: &Config, db: &SqlitePool) -> Result<()> {
     /*
      * Run the entire operation in a transaction. If something goes wrong
      * and the activity records couldn't be updated, I'd rather leave them
-     * as-is than have a half-blank activity page. Here, stagnant > incomplete.
+     * as-is than have a half-blank activity page.
      */
     let mut tx = db.begin().await?;
     // clear the table
@@ -124,11 +134,6 @@ async fn update_activity(db: &SqlitePool) -> Result<()> {
         .format("%Y-%m-%d")
         .to_string();
     for row in controllers {
-        // FIXME this will show *all* controlling time for controllers - the time
-        // here isn't just in ZDV. Need to filter by position. Can probably use
-        // the same filtering to determine if a controller is online in a ZDV
-        // position.
-
         let cid: u32 = row.try_get("cid")?;
         debug!("Getting activity for {cid}");
         /*
@@ -144,6 +149,11 @@ async fn update_activity(db: &SqlitePool) -> Result<()> {
         // group the controller's activity by month
         let mut seconds_map: HashMap<String, f32> = HashMap::new();
         for session in sessions.results {
+            // filter to only sessions in the facility
+            if !position_in_facility_airspace(config, &session.callsign) {
+                continue;
+            }
+
             let month = session.start[0..7].to_string();
             let seconds = session.minutes_on_callsign.parse::<f32>().unwrap() * 60.0;
             seconds_map
@@ -231,13 +241,14 @@ async fn main() {
     };
 
     let activity_handle = {
+        let config = config.clone();
         let db = db.clone();
         tokio::spawn(async move {
             debug!("Waiting 30 seconds before starting activity sync");
             time::sleep(time::Duration::from_secs(30)).await;
             loop {
                 info!("Updating activity");
-                match update_activity(&db).await {
+                match update_activity(&config, &db).await {
                     Ok(_) => {
                         info!("Activity update successful");
                     }

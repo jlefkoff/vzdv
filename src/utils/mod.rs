@@ -7,6 +7,8 @@ use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+use crate::shared::Config;
+
 pub mod auth;
 pub mod flashed_messages;
 pub mod vatusa;
@@ -128,9 +130,31 @@ pub async fn simaware_data() -> Result<HashMap<u64, String>> {
     Ok(mapping)
 }
 
+/// Check whether the VATSIM session position is in this facility's airspace.
+///
+/// Relies on the config's "stats.position_prefixes" and suffixes.
+pub fn position_in_facility_airspace(config: &Config, position: &str) -> bool {
+    let prefix_match = config
+        .stats
+        .position_prefixes
+        .iter()
+        .any(|prefix| position.starts_with(prefix));
+    if !prefix_match {
+        return false;
+    }
+    config
+        .stats
+        .position_suffixes
+        .iter()
+        .any(|suffix| position.ends_with(suffix))
+}
+
 #[cfg(test)]
 pub mod tests {
-    use super::{parse_metar, parse_vatsim_timestamp, WeatherConditions};
+    use super::{
+        parse_metar, parse_vatsim_timestamp, position_in_facility_airspace, WeatherConditions,
+    };
+    use crate::shared::Config;
 
     #[test]
     fn test_parse_vatsim_timestamp() {
@@ -151,5 +175,15 @@ pub mod tests {
 
         let ret = parse_metar("KDEN 1/2SM OVC001").unwrap();
         assert_eq!(ret.conditions, WeatherConditions::LIFR);
+    }
+
+    #[test]
+    fn test_position_in_facility_airspace() {
+        let mut config = Config::default();
+        config.stats.position_prefixes.push("DEN".to_string());
+        config.stats.position_suffixes.push("_TWR".to_string());
+
+        assert!(position_in_facility_airspace(&config, "DEN_2_TWR"));
+        assert!(!position_in_facility_airspace(&config, "SAN_GND"));
     }
 }
