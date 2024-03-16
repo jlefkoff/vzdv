@@ -2,6 +2,23 @@
 
 {% block title %}Activity | {{ super() }}{% endblock %}
 
+{% block head_extra %}
+<style>
+  .rank-1 {
+    font-weight: bolder;
+    color: gold;
+  }
+  .rank-2 {
+    font-weight: bolder;
+    color: silver;
+  }
+  .rank-3 {
+    font-weight: bolder;
+    color: #8C7853;
+  }
+</style>
+{% endblock %}
+
 {% block body %}
 
 <h2>Activity</h2>
@@ -23,11 +40,15 @@
         <td>
           {{ row.name }} {% if row.ois %}({{ row.ois }}){% endif %}
         </td>
-        <td>{{ row.month_0|minutes_to_hm }}</td>
-        <td>{{ row.month_1|minutes_to_hm }}</td>
-        <td>{{ row.month_2|minutes_to_hm }}</td>
-        <td>{{ row.month_3|minutes_to_hm }}</td>
-        <td>{{ row.month_4|minutes_to_hm }}</td>
+        {% for month in row.months %}
+          <td>
+            {{ month.value|minutes_to_hm }}
+            {% if month.position is none %}
+            {% else %}
+              <span class="rank-{{ month.position + 1 }}">(#{{ month.position + 1 }})</span>
+            {% endif %}
+          </td>
+        {% endfor %}
       </tr>
     {% endfor %}
   </tbody>

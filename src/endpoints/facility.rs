@@ -240,14 +240,25 @@ async fn page_activity(
     session: Session,
 ) -> Result<Html<String>, AppError> {
     #[derive(Debug, Serialize)]
+    struct ActivityMonth {
+        value: u32,
+        position: Option<u8>,
+    }
+
+    impl From<u32> for ActivityMonth {
+        fn from(value: u32) -> Self {
+            Self {
+                value,
+                position: None,
+            }
+        }
+    }
+
+    #[derive(Debug, Serialize)]
     struct ControllerActivity {
         name: String,
         ois: String,
-        month_0: u32,
-        month_1: u32,
-        month_2: u32,
-        month_3: u32,
-        month_4: u32,
+        months: Vec<ActivityMonth>,
     }
 
     // this could be a join, but oh well
@@ -258,6 +269,7 @@ async fn page_activity(
         .fetch_all(&state.db)
         .await?;
 
+    // time ranges
     let now = Utc::now();
     let months: [String; 5] = [
         now.format("%Y-%m").to_string(),
@@ -279,12 +291,22 @@ async fn page_activity(
             .to_string(),
     ];
 
-    let activity_data: Vec<ControllerActivity> = controllers
+    let mut activity_data: Vec<ControllerActivity> = controllers
         .iter()
         .map(|controller| {
             let this_controller: Vec<_> = activity
                 .iter()
                 .filter(|a| a.cid == controller.cid)
+                .collect();
+            let months = (0..=4)
+                .map(|month| {
+                    this_controller
+                        .iter()
+                        .filter(|a| a.month == months[month])
+                        .map(|a| a.minutes)
+                        .sum::<u32>()
+                        .into()
+                })
                 .collect();
             ControllerActivity {
                 name: format!("{} {}", controller.first_name, controller.last_name),
@@ -292,36 +314,25 @@ async fn page_activity(
                     Some(ois) => ois.to_owned(),
                     None => String::new(),
                 },
-                month_0: this_controller
-                    .iter()
-                    .filter(|a| a.month == months[0])
-                    .map(|a| a.minutes)
-                    .sum(),
-                month_1: this_controller
-                    .iter()
-                    .filter(|a| a.month == months[1])
-                    .map(|a| a.minutes)
-                    .sum(),
-                month_2: this_controller
-                    .iter()
-                    .filter(|a| a.month == months[2])
-                    .map(|a| a.minutes)
-                    .sum(),
-                month_3: this_controller
-                    .iter()
-                    .filter(|a| a.month == months[3])
-                    .map(|a| a.minutes)
-                    .sum(),
-                month_4: this_controller
-                    .iter()
-                    .filter(|a| a.month == months[4])
-                    .map(|a| a.minutes)
-                    .sum(),
+                months,
             }
         })
         .collect();
 
-    // TODO top 3 controllers for each month
+    // top 3 controllers for each month
+    for month in 0..=4 {
+        activity_data
+            .iter()
+            .enumerate()
+            .map(|(index, data)| (index, data.months[month].value))
+            .sorted_by(|a, b| Ord::cmp(&b.1, &a.1))
+            .map(|(index, _data)| index)
+            .take(3)
+            .enumerate()
+            .for_each(|(rank, controller_index)| {
+                activity_data[controller_index].months[month].position = Some(rank as u8);
+            });
+    }
 
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let template = state.templates.get_template("activity")?;
@@ -343,7 +354,7 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         let hours = total_minutes / 60;
         let minutes = total_minutes % 60;
         if hours > 0 || minutes > 0 {
-        format!("{hours}h{minutes}m")
+            format!("{hours}h{minutes}m")
         } else {
             String::new()
         }
