@@ -23,6 +23,9 @@ weather_for = []
 position_prefixes = []
 position_suffixes = []
 
-[webhooks]
+[discord]
+join_link = ""
+
+[discord.webhooks]
 staffing_request = ""
 feedback = ""

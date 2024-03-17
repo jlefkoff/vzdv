@@ -192,7 +192,7 @@ async fn page_staffing_request_post(
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await.unwrap();
     if let Some(user_info) = user_info {
         let resp = GENERAL_HTTP_CLIENT
-            .post(&state.config.webhooks.staffing_request)
+            .post(&state.config.discord.webhooks.staffing_request)
             .json(&json!({
                 "content": "",
                 "embeds": [{

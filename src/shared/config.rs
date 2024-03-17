@@ -11,7 +11,7 @@ pub struct Config {
     pub vatsim: ConfigVatsim,
     pub airports: ConfigAirports,
     pub stats: ConfigStats,
-    pub webhooks: ConfigWebhooks,
+    pub discord: ConfigDiscord,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -63,7 +63,13 @@ pub struct ConfigStats {
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
-pub struct ConfigWebhooks {
+pub struct ConfigDiscord {
+    pub join_link: String,
+    pub webhooks: ConfigDiscordWebhooks,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct ConfigDiscordWebhooks {
     pub staffing_request: String,
     pub feedback: String,
 }
