@@ -286,6 +286,7 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template("weather", include_str!("../../templates/weather.jinja"))
         .unwrap();
+    templates.add_filter("format_number", |value: u16| value.separate_with_commas());
 
     Router::new()
         .route("/airspace/airports", get(page_airports))
