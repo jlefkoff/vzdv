@@ -42,7 +42,7 @@
               <a class="nav-link" href="/events">Events</a>
             </li>
             <li class="nav-item">
-              <a class="nav-link" href="/pilots/feedback">Feedback</a>
+              <a class="nav-link" href="/feedback">Feedback</a>
             </li>
             <li class="nav-item dropdown">
               <a
@@ -52,13 +52,13 @@
                 data-bs-toggle="dropdown"
                 aria-expanded="false"
               >
-                Pilots
+                Airspace
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="/pilots/airports">Airports</a></li>
-                <li><a class="dropdown-item" href="/pilots/flights">Flights</a></li>
-                <li><a class="dropdown-item" href="/pilots/weather">Weather</a></li>
-                <li><a class="dropdown-item" href="/pilots/staffing_request">Staffing Request</a></li>
+                <li><a class="dropdown-item" href="/airspace/airports">Airports</a></li>
+                <li><a class="dropdown-item" href="/airspace/flights">Flights</a></li>
+                <li><a class="dropdown-item" href="/airspace/weather">Weather</a></li>
+                <li><a class="dropdown-item" href="/airspace/staffing_request">Staffing Request</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
                   <a
@@ -104,6 +104,7 @@
                 <li><a class="dropdown-item" href="/facility/roster">Roster</a></li>
                 <li><a class="dropdown-item" href="/facility/activity">Activity</a></li>
                 <li><a class="dropdown-item" href="/facility/resources">Resources</a></li>
+                <li><a class="dropdown-item" href="/facility/visitor_application">Visitor Application</a></li>
               </ul>
             </li>
             {% if user_info and user_info.cid %}
@@ -118,10 +119,9 @@
                 {{ user_info.first_name }} {{ user_info.last_name }}
               </a>
               <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="/user/discrd">Discord</a></li>
+                <li><a class="dropdown-item" href="/user/discord">Discord</a></li>
                 <li><a class="dropdown-item" href="/user/training_notes">My Training Notes</a></li>
-                <li><a class="dropdown-item" href="#">Schedule Training</a></li>
-                <li><a class="dropdown-item" href="/user/visitor_application">Visitor Application</a></li>
+                <li><a class="dropdown-item" href="https://training.zdvartcc.org">Schedule Training</a></li>
                 <li><a class="dropdown-item" href="/auth/logout">Log out</a></li>
               </ul>
             </li>

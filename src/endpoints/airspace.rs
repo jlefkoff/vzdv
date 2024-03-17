@@ -1,7 +1,5 @@
 use crate::{
-    shared::{
-        sql::INSERT_FEEDBACK, AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY,
-    },
+    shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
     utils::{flashed_messages, parse_metar, simaware_data, GENERAL_HTTP_CLIENT},
 };
 use anyhow::anyhow;
@@ -20,63 +18,6 @@ use std::{sync::Arc, time::Instant};
 use thousands::Separable;
 use tower_sessions::Session;
 use vatsim_utils::live_api::Vatsim;
-
-/// View the feedback form.
-///
-/// The template handles requiring the user to be logged in.
-async fn page_feedback_form(
-    State(state): State<Arc<AppState>>,
-    session: Session,
-) -> Result<Html<String>, AppError> {
-    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
-    let template = state.templates.get_template("feedback")?;
-    let rendered = template.render(context! { user_info, flashed_messages })?;
-    Ok(Html(rendered))
-}
-
-#[derive(Debug, Deserialize)]
-struct FeedbackForm {
-    controller: String,
-    position: String,
-    rating: String,
-    comments: String,
-}
-
-/// Submit the feedback form.
-async fn page_feedback_form_post(
-    State(state): State<Arc<AppState>>,
-    session: Session,
-    Form(feedback): Form<FeedbackForm>,
-) -> Result<Redirect, AppError> {
-    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(user_info) = user_info {
-        sqlx::query(INSERT_FEEDBACK)
-            .bind(feedback.controller)
-            .bind(feedback.position)
-            .bind(feedback.rating)
-            .bind(feedback.comments)
-            .bind(sqlx::types::chrono::Utc::now())
-            .bind(user_info.cid)
-            .execute(&state.db)
-            .await?;
-        flashed_messages::push_flashed_message(
-            session,
-            flashed_messages::FlashedMessageLevel::Success,
-            "Feedback submitted, thank you!",
-        )
-        .await?;
-    } else {
-        flashed_messages::push_flashed_message(
-            session,
-            flashed_messages::FlashedMessageLevel::Error,
-            "You must be logged in to submit feedback.",
-        )
-        .await?;
-    }
-
-    Ok(Redirect::to("/pilots/feedback"))
-}
 
 /// Table of all the airspace's airports.
 async fn page_airports(
@@ -325,14 +266,11 @@ async fn page_staffing_request_post(
         )
         .await?;
     }
-    Ok(Redirect::to("/pilots/staffing_request"))
+    Ok(Redirect::to("/airspace/staffing_request"))
 }
 
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
-    templates
-        .add_template("feedback", include_str!("../../templates/feedback.jinja"))
-        .unwrap();
     templates
         .add_template("airports", include_str!("../../templates/airports.jinja"))
         .unwrap();
@@ -350,11 +288,12 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .unwrap();
 
     Router::new()
-        .route("/pilots/feedback", get(page_feedback_form))
-        .route("/pilots/feedback", post(page_feedback_form_post))
-        .route("/pilots/airports", get(page_airports))
-        .route("/pilots/flights", get(page_flights))
-        .route("/pilots/weather", get(page_weather))
-        .route("/pilots/staffing_request", get(page_staffing_request))
-        .route("/pilots/staffing_request", post(page_staffing_request_post))
+        .route("/airspace/airports", get(page_airports))
+        .route("/airspace/flights", get(page_flights))
+        .route("/airspace/weather", get(page_weather))
+        .route("/airspace/staffing_request", get(page_staffing_request))
+        .route(
+            "/airspace/staffing_request",
+            post(page_staffing_request_post),
+        )
 }

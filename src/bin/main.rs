@@ -64,7 +64,7 @@ fn load_router(
         .merge(vzdv::endpoints::router(env))
         .merge(vzdv::endpoints::homepage::router(env))
         .merge(vzdv::endpoints::auth::router(env))
-        .merge(vzdv::endpoints::pilots::router(env))
+        .merge(vzdv::endpoints::airspace::router(env))
         .merge(vzdv::endpoints::facility::router(env))
         .layer(
             ServiceBuilder::new()
