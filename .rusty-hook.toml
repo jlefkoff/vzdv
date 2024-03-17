@@ -1,5 +1,5 @@
 [hooks]
-pre-push = "cargo b && cargo t && cargo +nightly clippy && cargo t"
+pre-push = "cargo b && cargo t && cargo +nightly clippy"
 
 [logging]
 verbose = true
