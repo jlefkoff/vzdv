@@ -1,4 +1,6 @@
-// https://zdvartcc.org/roster
+// To be used with "./src/bin/import_existing.rs".
+//
+// Run in browser devtools on: https://zdvartcc.org/roster
 
 const tables = [...document.querySelectorAll("table")];
 const data = tables.map((table) => {

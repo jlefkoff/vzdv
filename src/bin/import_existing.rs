@@ -1,3 +1,7 @@
+//! Temporary program to be used with "existing_site_scrape.js".
+//!
+//! Will be deleted when this new site is pushed to production.
+
 use anyhow::Result;
 use serde::Deserialize;
 use std::path::Path;
