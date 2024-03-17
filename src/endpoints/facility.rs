@@ -135,7 +135,7 @@ async fn page_roster(
     session: Session,
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    let controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS)
+    let controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS_ON_ROSTER)
         .fetch_all(&state.db)
         .await?;
     let certifications: Vec<Certification> = sqlx::query_as(sql::GET_ALL_CERTIFICATIONS)
