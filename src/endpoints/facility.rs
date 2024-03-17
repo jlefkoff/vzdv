@@ -291,6 +291,7 @@ async fn page_activity(
             .to_string(),
     ];
 
+    // collect activity into months by controller
     let mut activity_data: Vec<ControllerActivity> = controllers
         .iter()
         .map(|controller| {
