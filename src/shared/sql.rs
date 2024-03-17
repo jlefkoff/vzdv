@@ -52,7 +52,7 @@ pub struct Certification {
     pub id: u32,
     pub cid: u32,
     pub name: String,
-    /// "In Progress", "Solo", "Certified"
+    /// "Training", "Solo", "Certified"
     pub value: String,
     pub changed_on: DateTime<Utc>,
     pub set_by: u32,
