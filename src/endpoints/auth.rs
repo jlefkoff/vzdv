@@ -1,8 +1,11 @@
 //! HTTP endpoints for logging in and out.
 
 use crate::{
-    shared::{sql, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
-    utils::auth::{code_to_user_info, get_user_info, oauth_redirect_start, AuthCallback},
+    shared::{
+        sql::{self, Controller},
+        AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
+    },
+    utils::auth::{code_to_tokens, get_user_info, oauth_redirect_start, AuthCallback},
 };
 use anyhow::Result;
 use axum::{
@@ -44,13 +47,22 @@ async fn page_auth_callback(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, AppError> {
-    let token_data = code_to_user_info(&query.code, &state.config).await?;
-    let user_info = get_user_info(&token_data.access_token, &state.config).await?;
+    let token_data = code_to_tokens(&query.code, &state.config).await?;
+    let session_user_info = get_user_info(&token_data.access_token, &state.config).await?;
+    let db_user_info: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+        .bind(&session_user_info.data.cid)
+        .fetch_optional(&state.db)
+        .await?;
+    let is_staff = match db_user_info {
+        Some(controller) => !controller.roles.is_empty(),
+        None => false,
+    };
 
     let to_session = UserInfo {
-        cid: user_info.data.cid.parse()?,
-        first_name: user_info.data.personal.name_first,
-        last_name: user_info.data.personal.name_last,
+        cid: session_user_info.data.cid.parse()?,
+        first_name: session_user_info.data.personal.name_first,
+        last_name: session_user_info.data.personal.name_last,
+        is_staff,
     };
     session
         .insert(SESSION_USER_INFO_KEY, to_session.clone())
@@ -59,12 +71,12 @@ async fn page_auth_callback(
         .bind(to_session.cid)
         .bind(&to_session.first_name)
         .bind(&to_session.last_name)
-        .bind(&user_info.data.personal.email)
+        .bind(&session_user_info.data.personal.email)
         .execute(&state.db)
         .await?;
 
-    debug!("Completed log in for {}", user_info.data.cid);
-    let template = state.templates.get_template("login_complete")?;
+    debug!("Completed log in for {}", session_user_info.data.cid);
+    let template = state.templates.get_template("admin/login_complete")?;
     let rendered = template.render(context! { user_info => to_session })?;
     Ok(Html(rendered))
 }
@@ -80,8 +92,8 @@ async fn page_auth_logout(session: Session) -> Result<Redirect, AppError> {
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template(
-            "login_complete",
-            include_str!("../../templates/login_complete.jinja"),
+            "admin/login_complete",
+            include_str!("../../templates/auth/login_complete.jinja"),
         )
         .unwrap();
 

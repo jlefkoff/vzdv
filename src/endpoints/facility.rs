@@ -171,7 +171,7 @@ async fn page_roster(
         .sorted_by(|a, b| Ord::cmp(&a.cid, &b.cid))
         .collect();
 
-    let template = state.templates.get_template("roster")?;
+    let template = state.templates.get_template("facility/roster")?;
     let rendered = template.render(context! {
        user_info,
        controllers => controllers_with_certs
@@ -229,7 +229,7 @@ async fn page_staff(
         .collect();
 
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    let template = state.templates.get_template("staff")?;
+    let template = state.templates.get_template("facility/staff")?;
     let rendered = template.render(context! { user_info, staff })?;
     Ok(Html(rendered))
 }
@@ -336,20 +336,29 @@ async fn page_activity(
     }
 
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    let template = state.templates.get_template("activity")?;
+    let template = state.templates.get_template("facility/activity")?;
     let rendered = template.render(context! { user_info, activity_data })?;
     Ok(Html(rendered))
 }
 
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
-        .add_template("roster", include_str!("../../templates/roster.jinja"))
+        .add_template(
+            "facility/roster",
+            include_str!("../../templates/facility/roster.jinja"),
+        )
         .unwrap();
     templates
-        .add_template("staff", include_str!("../../templates/staff.jinja"))
+        .add_template(
+            "facility/staff",
+            include_str!("../../templates/facility/staff.jinja"),
+        )
         .unwrap();
     templates
-        .add_template("activity", include_str!("../../templates/activity.jinja"))
+        .add_template(
+            "facility/activity",
+            include_str!("../../templates/facility/activity.jinja"),
+        )
         .unwrap();
     templates.add_filter("minutes_to_hm", |total_minutes: u32| {
         let hours = total_minutes / 60;

@@ -16,6 +16,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tower_sessions::Session;
 
+pub mod admin;
 pub mod airspace;
 pub mod auth;
 pub mod facility;

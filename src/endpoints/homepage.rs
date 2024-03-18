@@ -21,7 +21,7 @@ async fn page_home(
     session: Session,
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    let template = state.templates.get_template("home")?;
+    let template = state.templates.get_template("homepage/home")?;
     let rendered = template.render(context! { user_info })?;
     Ok(Html(rendered))
 }
@@ -67,7 +67,9 @@ async fn snippet_online_controllers(
         })
         .collect();
 
-    let template = state.templates.get_template("snippet_online_controllers")?;
+    let template = state
+        .templates
+        .get_template("homepage/online_controllers")?;
     let rendered = template.render(context! { online })?;
     state
         .cache
@@ -108,7 +110,7 @@ async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<Stri
         })
         .collect();
 
-    let template = state.templates.get_template("snippet_weather")?;
+    let template = state.templates.get_template("homepage/weather")?;
     let rendered = template.render(context! { weather })?;
     state
         .cache
@@ -159,7 +161,7 @@ async fn snippet_flights(State(state): State<Arc<AppState>>) -> Result<Html<Stri
                 flights
             });
 
-    let template = state.templates.get_template("snippet_flights")?;
+    let template = state.templates.get_template("homepage/flights")?;
     let rendered = template.render(context! { flights })?;
     state
         .cache
@@ -170,33 +172,33 @@ async fn snippet_flights(State(state): State<Arc<AppState>>) -> Result<Html<Stri
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
-        .add_template("home", include_str!("../../templates/home.jinja"))
-        .unwrap();
-    templates
         .add_template(
-            "snippet_online_controllers",
-            include_str!("../../templates/snippets/online_controllers.jinja"),
+            "homepage/home",
+            include_str!("../../templates/homepage/home.jinja"),
         )
         .unwrap();
     templates
         .add_template(
-            "snippet_weather",
-            include_str!("../../templates/snippets/weather.jinja"),
+            "homepage/online_controllers",
+            include_str!("../../templates/homepage/online_controllers.jinja"),
         )
         .unwrap();
     templates
         .add_template(
-            "snippet_flights",
-            include_str!("../../templates/snippets/flights.jinja"),
+            "homepage/weather",
+            include_str!("../../templates/homepage/weather.jinja"),
+        )
+        .unwrap();
+    templates
+        .add_template(
+            "homepage/flights",
+            include_str!("../../templates/homepage/flights.jinja"),
         )
         .unwrap();
 
     Router::new()
         .route("/", get(page_home))
-        .route(
-            "/snippets/online/controllers",
-            get(snippet_online_controllers),
-        )
-        .route("/snippets/online/flights", get(snippet_flights))
-        .route("/snippets/weather", get(snippet_weather))
+        .route("/home/online/controllers", get(snippet_online_controllers))
+        .route("/home/online/flights", get(snippet_flights))
+        .route("/home/weather", get(snippet_weather))
 }

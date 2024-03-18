@@ -78,6 +78,7 @@ pub struct UserInfo {
     pub cid: u32,
     pub first_name: String,
     pub last_name: String,
+    pub is_staff: bool,
 }
 
 #[allow(clippy::upper_case_acronyms)]

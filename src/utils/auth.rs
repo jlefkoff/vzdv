@@ -73,7 +73,7 @@ pub fn oauth_redirect_start(config: &Config) -> String {
 }
 
 /// Exchange the code from VATSIM OAuth for an access token.
-pub async fn code_to_user_info(code: &str, config: &Config) -> Result<TokenResponse> {
+pub async fn code_to_tokens(code: &str, config: &Config) -> Result<TokenResponse> {
     let client = reqwest::ClientBuilder::new().build()?;
     let resp = client
         .post(format!("{}oauth/token", config.vatsim.oauth_url_base))

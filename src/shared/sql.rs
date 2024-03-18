@@ -159,6 +159,8 @@ pub const GET_ALL_CONTROLLER_CIDS: &str = "SELECT cid FROM controller";
 pub const GET_ALL_ROSTER_CONTROLLER_CIDS: &str =
     "SELECT cid FROM controller WHERE is_on_roster=TRUE";
 
+pub const GET_CONTROLLER_BY_CID: &str = "SELECT * FROM controller WHERE cid=$1";
+
 pub const GET_ALL_CERTIFICATIONS: &str = "SELECT * FROM certification";
 
 pub const DELETE_ALL_ACTIVITY: &str = "DELETE FROM activity";
