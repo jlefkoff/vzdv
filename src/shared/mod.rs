@@ -6,12 +6,13 @@ use std::time::Instant;
 
 use axum::{
     http::StatusCode,
-    response::{IntoResponse, Response},
+    response::{Html, IntoResponse, Response},
 };
 use log::error;
 use mini_moka::sync::Cache;
-use minijinja::Environment;
+use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use sqlx::SqlitePool;
 
 mod config;
@@ -22,10 +23,29 @@ pub mod sql;
 /// around the stdlib's `Error` type.
 pub struct AppError(anyhow::Error);
 
+/// Try to construct the error page.
+fn try_build_error_page() -> anyhow::Result<String> {
+    let mut env = Environment::new();
+    env.add_template("_layout", include_str!("../../templates/_layout.jinja"))?;
+    env.add_template("_error", include_str!("../../templates/_error.jinja"))?;
+    let template = env.get_template("_error")?;
+    let rendered = template.render(context! {})?;
+    Ok(rendered)
+}
+
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
         error!("Unhandled error: {}", self.0);
-        (StatusCode::INTERNAL_SERVER_ERROR, "Something went wrong").into_response()
+        // attempt to construct the error page, falling back to plain text if anything failed
+        if let Ok(body) = try_build_error_page() {
+            (StatusCode::INTERNAL_SERVER_ERROR, Html(body)).into_response()
+        } else {
+            (
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "Something went very wrong",
+            )
+                .into_response()
+        }
     }
 }
 
