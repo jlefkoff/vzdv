@@ -66,6 +66,19 @@ pub struct Activity {
     pub minutes: u32,
 }
 
+#[derive(Debug, FromRow, Serialize)]
+pub struct Feedback {
+    pub id: u32,
+    pub controller: String,
+    pub position: String,
+    pub rating: String,
+    pub comments: String,
+    pub created_date: DateTime<Utc>,
+    pub submitter_cid: u32,
+    pub reviewed_by_cid: u32,
+    pub posted_to_discord: bool,
+}
+
 /// Statements to create tables. Only ran when the DB file does not exist,
 /// so no migration or "IF NOT EXISTS" conditions need to be added.
 pub const CREATE_TABLES: &str = r#"
@@ -103,7 +116,8 @@ CREATE TABLE feedback (
     created_date TEXT NOT NULL,
     submitter_cid INTEGER NOT NULL,
     reviewed_by_cid INTEGER,
-    posted_to_discord BOOLEAN NOT NULL DEFAULT "FALSE"
+    reviewer_action TEXT,
+    posted_to_discord BOOLEAN NOT NULL DEFAULT FALSE
 );
 
 CREATE TABLE activity (
@@ -174,3 +188,8 @@ VALUES
 pub const UPDATE_REMOVED_FROM_ROSTER: &str = "UPDATE controller SET is_on_roster=0 WHERE cid=$1";
 
 pub const GET_ALL_ACTIVITY: &str = "SELECT * FROM activity";
+
+pub const GET_ALL_PENDING_FEEDBACK: &str = "SELECT * FROM feedback WHERE reviewed_by_cid IS NULL";
+pub const GET_FEEDBACK_BY_ID: &str = "SELECT * FROM feedback WHERE id=$1";
+pub const UPDATE_FEEDBACK_IGNORE: &str =
+    "UPDATE feedback SET reviewed_by_cid=$1, reviewer_action=$2, posted_to_discord=$3";

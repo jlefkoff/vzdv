@@ -1,0 +1,45 @@
+{% extends "_layout" %}
+
+{% block title %}Manage feedback | {{ super() }}{% endblock %}
+
+{% block body %}
+
+<h2 class="pb-3">Manage feedback</h2>
+
+{% if pending_feedback|length == 0 %}
+  <h4>There is no pending feedback</h4>
+{% else %}
+  <div class="d-flex">
+    <span class="col-3 fw-bold">Submitter CID</span>
+    <span class="col-3 fw-bold">Controller</span>
+    <span class="col-2 fw-bold">Position</span>
+    <span class="col-2 fw-bold">Rating</span>
+    <span class="col-2 fw-bold">Date</span>
+  </div>
+  {% for feedback in pending_feedback %}
+    <div class="d-flex flex-wrap">
+      <span class="col-3">
+        <a href="https://stats.vatsim.net/stats/{{ feedback.submitter_cid }}" target="_blank">{{ feedback.submitter_cid }}</a>
+      </span>
+      <span class="col-3">{{ feedback.controller }}</span>
+      <span class="col-2">{{ feedback.position }}</span>
+      <span class="col-2">{{ feedback.rating }}</span>
+      <span class="col-2">{{ feedback.created_date|nice_date }}</span>
+      <span class="col-12 pt-2">
+        <span class="fw-bold me-3">Comments:</span> {{ feedback.comments }}
+      </span>
+    </div>
+    <div class="pt-3">
+      <form action="/admin/feedback" method="POST">
+        <input type="hidden" name="id" value="{{ feedback.id }}">
+        <input type="submit" class="btn btn-sm btn-warning" name="action" value="Ignore"
+          title="Leave the feedback in the DB but don't post to Discord">
+        <input type="submit" class="btn btn-sm btn-success" name="action" value="Post to Discord"
+          title="Send the feedback to Discord for everyone to see">
+      </form>
+    </div>
+    <hr>
+  {% endfor %}
+{% endif %}
+
+{% endblock %}
