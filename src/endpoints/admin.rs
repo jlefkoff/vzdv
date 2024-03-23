@@ -1,6 +1,6 @@
 use crate::{
     shared::{
-        sql::{self, Feedback},
+        sql::{self, Controller, Feedback},
         AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
     },
     utils::{flashed_messages, GENERAL_HTTP_CLIENT},
@@ -11,6 +11,7 @@ use axum::{
     routing::{get, post},
     Form, Router,
 };
+use log::{error, warn};
 use minijinja::{context, Environment};
 use serde::Deserialize;
 use serde_json::json;
@@ -18,17 +19,48 @@ use std::sync::Arc;
 use tower_sessions::Session;
 
 /// Returns a response to redirect to the homepage for non-staff users.
-fn reject_if_not_staff(user_info: &Option<UserInfo>) -> Option<Response> {
-    match user_info {
-        Some(user_info) => {
-            if !user_info.is_staff {
-                Some(Redirect::to("/").into_response())
-            } else {
-                None
-            }
-        }
-        None => Some(Redirect::to("/").into_response()),
+///
+/// Also asserts that `user_info.is_some()`, so later unwrapping it is safe.
+async fn reject_if_not_staff(
+    state: &Arc<AppState>,
+    user_info: &Option<UserInfo>,
+) -> Option<Response> {
+    let resp = Some(Redirect::to("/").into_response());
+    if user_info.is_none() {
+        return resp;
     }
+    let user_info = user_info.as_ref().unwrap();
+            if !user_info.is_staff {
+        return resp;
+    }
+    let controller: Option<Controller> = match sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+        .bind(&user_info.cid)
+        .fetch_optional(&state.db)
+        .await
+    {
+        Ok(c) => c,
+        Err(e) => {
+            error!(
+                "Could not look up staff controller with CID {}: {e}",
+                user_info.cid
+            );
+            return resp;
+        }
+    };
+    let controller = match controller {
+        Some(c) => c,
+        None => {
+            warn!(
+                "No located controller by CID {} for staff check",
+                user_info.cid
+            );
+            return resp;
+        }
+    };
+    if controller.roles.is_empty() {
+        return resp;
+    }
+    None
 }
 
 /// Page for managing controller feedback.
@@ -39,7 +71,7 @@ async fn page_feedback(
     session: Session,
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) = reject_if_not_staff(&user_info) {
+    if let Some(redirect) = reject_if_not_staff(&state, &user_info).await {
         return Ok(redirect);
     }
     let template = state.templates.get_template("admin/feedback")?;
@@ -68,7 +100,7 @@ async fn post_feedback_form_handle(
     Form(feedback_form): Form<FeedbackReviewForm>,
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) = reject_if_not_staff(&user_info) {
+    if let Some(redirect) = reject_if_not_staff(&state, &user_info).await {
         return Ok(redirect);
     }
     let db_feedback: Option<Feedback> = sqlx::query_as(sql::GET_FEEDBACK_BY_ID)
