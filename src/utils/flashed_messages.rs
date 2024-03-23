@@ -17,6 +17,17 @@ pub enum FlashedMessageLevel {
     Error,
 }
 
+impl FlashedMessageLevel {
+    /// String representation, suitable for use in templates.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            FlashedMessageLevel::Info => "info",
+            FlashedMessageLevel::Success => "success",
+            FlashedMessageLevel::Error => "error",
+        }
+    }
+}
+
 /// A single message to show to the user.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FlashedMessage {
@@ -28,12 +39,7 @@ pub struct FlashedMessage {
 impl FlashedMessage {
     /// Create a new message to be shown to the user.
     pub fn new(level: FlashedMessageLevel, message: &str) -> Self {
-        let class_suffix = match level {
-            FlashedMessageLevel::Info => "info",
-            FlashedMessageLevel::Success => "success",
-            FlashedMessageLevel::Error => "error",
-        };
-        let class = format!("alert alert-{class_suffix}");
+        let class = format!("alert alert-{}", level.as_str());
         Self {
             level,
             message: message.to_owned(),
@@ -44,18 +50,9 @@ impl FlashedMessage {
     /// Get the CSS classes for the level for use in templates.
     #[allow(unused)]
     pub fn class(self) -> String {
-        let s = match self.level {
-            FlashedMessageLevel::Info => "info",
-            FlashedMessageLevel::Success => "success",
-            FlashedMessageLevel::Error => "error",
-        };
-        format!("alert alert-{s}")
+        format!("alert alert-{}", self.level.as_str())
     }
 }
-
-// TODO do I care that flashed messages go to the DB, or should
-// I try to have 2 sessions: 1 backed by the DB, and the other
-// just in memory?
 
 /// Push a session message to be flashed to the user.
 pub async fn push_flashed_message(
