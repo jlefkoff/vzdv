@@ -14,26 +14,26 @@
       Kansas, Nebraska, South Dakota, Wyoming, and Montana.
     </p>
     <div class="card shadow">
+      <div class="card-header">Events</div>
       <div class="card-body">
-        <h2 class="card-title">Events</h2>
         <!-- <div id="events" hx-get="/home/events" hx-trigger="load"></div> -->
-        <h4>There are no events planned.</h4>
+        <h4>There are no planned events</h4>
       </div>
     </div>
   </div>
   <div class="col">
     <div class="card shadow">
       <div class="card-body">
-        <div id="weather" hx-get="/home/weather" hx-trigger="load"></div>
-      </div>
-    </div>
-    <div class="card shadow mt-2">
-      <div class="card-body">
         <div
           id="online"
           hx-get="/home/online/controllers"
           hx-trigger="load"
         ></div>
+      </div>
+    </div>
+    <div class="card shadow mt-2">
+      <div class="card-body">
+        <div id="weather" hx-get="/home/weather" hx-trigger="load"></div>
       </div>
     </div>
     <div class="card shadow mt-2">

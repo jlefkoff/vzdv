@@ -1,7 +1,12 @@
-<h4><a href="/airspace/weather">Weather</a></h4>
-<ul>
+<h4>
+  <a href="/airspace/weather" class="icon-link text-decoration-none">
+    Weather
+    <i class="bi bi-arrow-right-short"></i>
+  </a>
+</h4>
+<p class="ms-2">
   {% for airport in weather %}
-  <li title="{{ airport.raw }}">
+  <span title="{{ airport.raw }}">
     {{ airport.name }}
     {% if airport.conditions == 'VFR' %}
       <span class="badge rounded-pill text-bg-success">{{ airport.conditions }}</span>
@@ -12,6 +17,7 @@
     {% else %}
       <span class="badge rounded-pill" style="background-color: purple;">{{ airport.conditions }}</span>
     {% endif %}
-  </li>
+  </span>
+  <br>
   {% endfor %}
-</ul>
+</p>
