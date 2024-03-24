@@ -258,7 +258,9 @@ async fn page_activity(
     struct ControllerActivity {
         name: String,
         ois: String,
+        rating: i8,
         months: Vec<ActivityMonth>,
+        violation: bool,
     }
 
     // this could be a join, but oh well
@@ -299,7 +301,7 @@ async fn page_activity(
                 .iter()
                 .filter(|a| a.cid == controller.cid)
                 .collect();
-            let months = (0..=4)
+            let months: Vec<ActivityMonth> = (0..=4)
                 .map(|month| {
                     this_controller
                         .iter()
@@ -309,13 +311,17 @@ async fn page_activity(
                         .into()
                 })
                 .collect();
+            let violation = months.iter().take(3).map(|month| month.value).sum::<u32>() < 180; // 3 hours in a quarter
+
             ControllerActivity {
                 name: format!("{} {}", controller.first_name, controller.last_name),
                 ois: match &controller.operating_initials {
                     Some(ois) => ois.to_owned(),
                     None => String::new(),
                 },
+                rating: controller.rating,
                 months,
+                violation,
             }
         })
         .collect();

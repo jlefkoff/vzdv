@@ -37,7 +37,11 @@
   <tbody>
     {% for row in activity_data %}
       <tr>
-        <td>
+        {% if user_info and user_info.is_staff and row.rating > 1 and row.violation %}
+          <td class="text-warning"> <span title="Potential activity violation">⚠</span>
+        {% else %}
+          <td>
+        {% endif %}
           {{ row.name }} {% if row.ois %}({{ row.ois }}){% endif %}
         </td>
         {% for month in row.months %}
