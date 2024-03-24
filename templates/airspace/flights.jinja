@@ -13,18 +13,34 @@
       <th>Pilot</th>
       <th>Departure</th>
       <th>Arrival</th>
-      <th>Altitude</th>
-      <th>Speed</th>
+      <th title="MSL">Altitude (ft)</th>
+      <th title="Ground speed">Speed (kts)</th>
     </tr>
   </thead>
   <tbody>
     {% for flight in flights %}
       <tr>
         <td>
-          <a href="https://simaware.ca/?uid={{ flight.simaware_id }}" target="_blank">{{ flight.callsign }}</a>
+          <a
+            href="https://simaware.ca/?uid={{ flight.simaware_id }}"
+            target="_blank"
+            class="icon-link text-decoration-none align-items-baseline icon-link-hover"
+            title="View flight"
+          >
+            {{ flight.callsign }}
+            <i class="bi bi-airplane" style="font-size: .8rem"></i>
+          </a>
         </td>
         <td>
-          <a href="https://stats.vatsim.net/stats/{{ flight.pilot_cid }}" target="_blank">{{ flight.pilot_name }}</a>
+          <a
+            href="https://stats.vatsim.net/stats/{{ flight.pilot_cid }}"
+            target="_blank"
+            class="icon-link text-decoration-none align-items-baseline icon-link-hover"
+            title="View pilot stats"
+          >
+            {{ flight.pilot_name }}
+            <i class="bi bi-search" style="font-size: .8rem"></i>
+          </a>
         </td>
         <td>{{ flight.departure }}</td>
         <td>{{ flight.arrival }}</td>
