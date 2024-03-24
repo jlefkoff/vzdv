@@ -30,11 +30,11 @@ async fn reject_if_not_staff(
         return resp;
     }
     let user_info = user_info.as_ref().unwrap();
-            if !user_info.is_staff {
+    if !user_info.is_staff {
         return resp;
     }
     let controller: Option<Controller> = match sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
-        .bind(&user_info.cid)
+        .bind(user_info.cid)
         .fetch_optional(&state.db)
         .await
     {
@@ -175,12 +175,29 @@ async fn post_feedback_form_handle(
     Ok(Redirect::to("/admin/feedback").into_response())
 }
 
+/// Page for managing the roster.
+async fn page_roster(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Html<String>, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let template = state.templates.get_template("admin/roster")?;
+    let rendered = template.render(context! { user_info })?;
+    Ok(Html(rendered))
+}
+
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template(
             "admin/feedback",
             include_str!("../../templates/admin/feedback.jinja"),
+        )
+        .unwrap();
+    templates
+        .add_template(
+            "admin/roster",
+            include_str!("../../templates/admin/roster.jinja"),
         )
         .unwrap();
     templates.add_filter("nice_date", |date: String| {
@@ -193,4 +210,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     Router::new()
         .route("/admin/feedback", get(page_feedback))
         .route("/admin/feedback", post(post_feedback_form_handle))
+        .route("/admin/roster", get(page_roster))
 }
