@@ -3,7 +3,7 @@ use crate::shared::{
     AppError, AppState, Config, UserInfo, SESSION_USER_INFO_KEY,
 };
 use axum::{extract::State, response::Html, routing::get, Router};
-use chrono::{Months, Utc};
+use chrono::{DateTime, Months, Utc};
 use itertools::Itertools;
 use log::warn;
 use minijinja::{context, Environment};
@@ -127,6 +127,7 @@ struct ControllerWithCerts<'a> {
     is_home: bool,
     roles: String,
     certs: Vec<Certification>,
+    loa_until: Option<DateTime<Utc>>,
 }
 
 /// View the full roster.
@@ -166,6 +167,7 @@ async fn page_roster(
                 is_home: controller.home_facility == state.config.vatsim.vatusa_facility_code,
                 roles,
                 certs,
+                loa_until: controller.loa_until,
             }
         })
         .sorted_by(|a, b| Ord::cmp(&a.cid, &b.cid))
@@ -258,6 +260,8 @@ async fn page_activity(
     struct ControllerActivity {
         name: String,
         ois: String,
+        cid: u32,
+        loa_until: Option<DateTime<Utc>>,
         rating: i8,
         months: Vec<ActivityMonth>,
         violation: bool,
@@ -319,11 +323,14 @@ async fn page_activity(
                     Some(ois) => ois.to_owned(),
                     None => String::new(),
                 },
+                cid: controller.cid,
+                loa_until: controller.loa_until,
                 rating: controller.rating,
                 months,
                 violation,
             }
         })
+        .sorted_by(|a, b| Ord::cmp(&a.cid, &b.cid))
         .collect();
 
     // top 3 controllers for each month

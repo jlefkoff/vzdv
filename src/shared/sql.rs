@@ -21,7 +21,7 @@ pub struct Controller {
     pub home_facility: String,
     pub is_on_roster: bool,
     pub roles: String,
-    pub created_date: Option<DateTime<Utc>>,
+    pub loa_until: Option<DateTime<Utc>>,
 }
 
 impl Controller {
@@ -95,7 +95,7 @@ CREATE TABLE controller (
     home_facility TEXT,
     is_on_roster BOOLEAN,
     roles TEXT,
-    created_date TEXT
+    loa_until TEXT
 );
 
 CREATE TABLE certification (
