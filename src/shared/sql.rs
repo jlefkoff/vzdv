@@ -172,11 +172,13 @@ pub const GET_ALL_CONTROLLERS_ON_ROSTER: &str = "SELECT * FROM controller WHERE 
 pub const GET_ALL_CONTROLLER_CIDS: &str = "SELECT cid FROM controller";
 pub const GET_ALL_ROSTER_CONTROLLER_CIDS: &str =
     "SELECT cid FROM controller WHERE is_on_roster=TRUE";
-
+pub const UPDATE_REMOVED_FROM_ROSTER: &str = "UPDATE controller SET is_on_roster=0 WHERE cid=$1";
 pub const GET_CONTROLLER_BY_CID: &str = "SELECT * FROM controller WHERE cid=$1";
+pub const GET_CONTROLLER_CIDS_AND_NAMES: &str = "SELECT cid, first_name, last_name from controller";
 
 pub const GET_ALL_CERTIFICATIONS: &str = "SELECT * FROM certification";
 
+pub const GET_ALL_ACTIVITY: &str = "SELECT * FROM activity";
 pub const DELETE_ALL_ACTIVITY: &str = "DELETE FROM activity";
 pub const INSERT_INTO_ACTIVITY: &str = "
 INSERT INTO activity
@@ -184,10 +186,6 @@ INSERT INTO activity
 VALUES
     (NULL, $1, $2, $3)
 ";
-
-pub const UPDATE_REMOVED_FROM_ROSTER: &str = "UPDATE controller SET is_on_roster=0 WHERE cid=$1";
-
-pub const GET_ALL_ACTIVITY: &str = "SELECT * FROM activity";
 
 pub const GET_ALL_PENDING_FEEDBACK: &str = "SELECT * FROM feedback WHERE reviewed_by_cid IS NULL";
 pub const GET_FEEDBACK_BY_ID: &str = "SELECT * FROM feedback WHERE id=$1";

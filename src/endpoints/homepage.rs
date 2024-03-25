@@ -3,15 +3,16 @@
 use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
     utils::{
-        parse_metar, parse_vatsim_timestamp, position_in_facility_airspace, GENERAL_HTTP_CLIENT,
+        get_controller_cids_and_names, parse_metar, parse_vatsim_timestamp,
+        position_in_facility_airspace, GENERAL_HTTP_CLIENT,
     },
 };
 use anyhow::{anyhow, Result};
 use axum::{extract::State, response::Html, routing::get, Router};
-use log::warn;
+use log::{error, warn};
 use minijinja::{context, Environment};
 use serde::Serialize;
-use std::{sync::Arc, time::Instant};
+use std::{collections::HashMap, sync::Arc, time::Instant};
 use tower_sessions::Session;
 use vatsim_utils::live_api::Vatsim;
 
@@ -48,6 +49,14 @@ async fn snippet_online_controllers(
         state.cache.invalidate(&cache_key);
     }
 
+    let cid_name_map = match get_controller_cids_and_names(&state.db).await {
+        Ok(map) => map,
+        Err(e) => {
+            error!("Error generating controller CID -> name map: {e}");
+            HashMap::new()
+        }
+    };
+
     let now = chrono::Utc::now();
     let data = Vatsim::new().await?.get_v3_data().await?;
     let online: Vec<_> = data
@@ -61,7 +70,10 @@ async fn snippet_online_controllers(
             OnlineController {
                 cid: controller.cid,
                 callsign: controller.callsign.clone(),
-                name: controller.name.clone(),
+                name: cid_name_map
+                    .get(&controller.cid)
+                    .map(|s| format!("{} {}", s.0, s.1))
+                    .unwrap_or(String::from("?")),
                 online_for: format!("{}h{}m", seconds / 3600, (seconds / 60) % 60),
             }
         })
@@ -104,7 +116,7 @@ async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<Stri
         .flat_map(|line| {
             parse_metar(line).map_err(|e| {
                 let airport = line.split(' ').next().unwrap_or("Unknown");
-                warn!("Metar parsing failure for {airport}: {e}");
+                warn!("METAR parsing failure for {airport}: {e}");
                 e
             })
         })

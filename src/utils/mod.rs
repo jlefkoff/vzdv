@@ -1,13 +1,13 @@
 //! Various utility structs and functions.
 
+use crate::shared::{sql, Config};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use once_cell::sync::Lazy;
 use reqwest::ClientBuilder;
 use serde::{Deserialize, Serialize};
+use sqlx::{sqlite::SqliteRow, Pool, Row, Sqlite};
 use std::collections::HashMap;
-
-use crate::shared::Config;
 
 pub mod auth;
 pub mod flashed_messages;
@@ -147,6 +147,23 @@ pub fn position_in_facility_airspace(config: &Config, position: &str) -> bool {
         .position_suffixes
         .iter()
         .any(|suffix| position.ends_with(suffix))
+}
+
+/// Retrieve a mapping of controller CID to first and last names.
+pub async fn get_controller_cids_and_names(
+    db: &Pool<Sqlite>,
+) -> Result<HashMap<u64, (String, String)>> {
+    let mut cid_name_map: HashMap<u64, (String, String)> = HashMap::new();
+    let rows: Vec<SqliteRow> = sqlx::query(sql::GET_CONTROLLER_CIDS_AND_NAMES)
+        .fetch_all(db)
+        .await?;
+    rows.iter().for_each(|row| {
+        let cid: u32 = row.try_get("cid").unwrap();
+        let first_name: String = row.try_get("first_name").unwrap();
+        let last_name: String = row.try_get("last_name").unwrap();
+        cid_name_map.insert(cid as u64, (first_name, last_name));
+    });
+    Ok(cid_name_map)
 }
 
 #[cfg(test)]
