@@ -152,9 +152,9 @@ VALUES
 
 pub const UPSERT_USER_TASK: &str = "
 INSERT INTO controller
-    (id, cid, first_name, last_name, email, rating, home_facility, is_on_roster, roles, created_date)
+    (id, cid, first_name, last_name, email, rating, home_facility, is_on_roster, roles)
 VALUES
-    (NULL, $1, $2, $3, $4, $5, $6, $7, $8, $9)
+    (NULL, $1, $2, $3, $4, $5, $6, $7, $8)
 ON CONFLICT(cid) DO UPDATE SET
     first_name=excluded.first_name,
     last_name=excluded.last_name,

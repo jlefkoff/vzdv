@@ -61,7 +61,6 @@ async fn update_controller_record(
         // controller *will* be on the roster since that's what the VATSIM API is showing
         .bind(true)
         .bind(roles)
-        .bind(chrono::Utc::now())
         .execute(db)
         .await?;
     debug!(
@@ -78,6 +77,7 @@ async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
      * data. Don't error-out unless VATSIM doesn't give any data.
      */
     let roster_data = get_roster(&config.vatsim.vatusa_facility_code, MembershipType::Both).await?;
+    debug!("Got roster response");
     for controller in &roster_data.data {
         if let Err(e) = update_controller_record(config, db, controller).await {
             error!("Error updating controller {} in DB: {e}", controller.cid);
