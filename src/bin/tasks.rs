@@ -49,6 +49,8 @@ async fn update_controller_record(
         .iter()
         .filter(|role| role.facility == config.vatsim.vatusa_facility_code)
         .map(|role| role.role.as_str())
+        // there's 1 controller in ZDV who actually has an "INS" role in addition to their controller rating
+        .filter(|&role| role != "INS")
         .collect::<Vec<_>>()
         .join(",");
     sqlx::query(sql::UPSERT_USER_TASK)
@@ -244,8 +246,8 @@ async fn main() {
         let config = config.clone();
         let db = db.clone();
         tokio::spawn(async move {
-            debug!("Waiting 30 seconds before starting activity sync");
-            time::sleep(time::Duration::from_secs(30)).await;
+            debug!("Waiting 60 seconds before starting activity sync");
+            time::sleep(time::Duration::from_secs(60)).await;
             loop {
                 info!("Updating activity");
                 match update_activity(&config, &db).await {

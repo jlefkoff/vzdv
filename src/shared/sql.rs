@@ -8,7 +8,7 @@ use sqlx::{
     },
 };
 
-#[derive(Debug, FromRow, Serialize, Clone)]
+#[derive(Debug, FromRow, Serialize, Clone, Default)]
 pub struct Controller {
     pub id: u32,
     pub cid: u32,

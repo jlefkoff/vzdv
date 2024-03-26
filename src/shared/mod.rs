@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::SqlitePool;
 
-mod config;
+pub mod config;
 pub use config::{Config, DEFAULT_CONFIG_FILE_NAME};
 pub mod sql;
 

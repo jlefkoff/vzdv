@@ -1,6 +1,9 @@
 //! Various utility structs and functions.
 
-use crate::shared::{sql, Config};
+use crate::shared::{
+    sql::{self, Controller},
+    Config,
+};
 use anyhow::{anyhow, Result};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use once_cell::sync::Lazy;
@@ -12,6 +15,9 @@ use std::collections::HashMap;
 pub mod auth;
 pub mod flashed_messages;
 pub mod vatusa;
+
+// I don't know what this is, but there's a SUP in ZDV that has this rating.
+const IGNORE_MISSING_STAFF_POSITIONS_FOR: [&str; 1] = ["FACCBT"];
 
 /// HTTP client for making external requests.
 ///
@@ -35,6 +41,7 @@ pub fn parse_vatsim_timestamp(stamp: &str) -> Result<DateTime<Utc>> {
     Ok(utc)
 }
 
+/// Derived weather conditions.
 #[allow(clippy::upper_case_acronyms)]
 #[derive(Serialize, Debug, PartialEq)]
 pub enum WeatherConditions {
@@ -44,6 +51,7 @@ pub enum WeatherConditions {
     LIFR,
 }
 
+/// Parsed weather information for an airport.
 #[derive(Serialize)]
 pub struct AirportWeather<'a> {
     pub name: &'a str,
@@ -53,7 +61,7 @@ pub struct AirportWeather<'a> {
     pub raw: &'a str,
 }
 
-/// Parse a METAR to determine if conditions are VMC or IMC.
+/// Parse a METAR into a struct of data.
 pub fn parse_metar(line: &str) -> Result<AirportWeather> {
     let parts: Vec<_> = line.split(' ').collect();
     let airport = parts.first().ok_or_else(|| anyhow!("Blank metar?"))?;
@@ -166,12 +174,48 @@ pub async fn get_controller_cids_and_names(
     Ok(cid_name_map)
 }
 
+/// Determine the staff position of the controller.
+///
+/// VATUSA does not differentiate between the official staff position (say, FE)
+/// and their assistants (e.g. AFE). At the VATUSA level, they're the same. Here,
+/// we do want to determine that difference.
+///
+/// This function will return all positions in the event the controller holds more
+/// than one, like being an Instructor and also the FE, or a Mentor and an AEC.
+pub fn determine_staff_positions(controller: &Controller, config: &Config) -> Vec<String> {
+    let mut ret_roles = Vec::new();
+    let db_roles: Vec<_> = controller.roles.split_terminator(',').collect();
+    for role in db_roles {
+        if IGNORE_MISSING_STAFF_POSITIONS_FOR.contains(&role) {
+            continue;
+        }
+        let ovr = config.staff.overrides.iter().find(|o| o.role == role);
+        if let Some(ovr) = ovr {
+            if ovr.cid == controller.cid {
+                ret_roles.push(role.to_owned());
+            } else {
+                ret_roles.push(format!("A{role}"));
+            }
+        } else {
+            ret_roles.push(role.to_owned());
+        }
+    }
+    if controller.home_facility == config.vatsim.vatusa_facility_code
+        && [8, 9, 10].contains(&controller.rating)
+    {
+        ret_roles.push("INS".to_owned());
+    }
+    ret_roles
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::{
-        parse_metar, parse_vatsim_timestamp, position_in_facility_airspace, WeatherConditions,
+        determine_staff_positions, parse_metar, parse_vatsim_timestamp,
+        position_in_facility_airspace, WeatherConditions,
     };
-    use crate::shared::Config;
+    use crate::shared::{config::ConfigStaffOverride, sql::Controller, Config};
+    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_parse_vatsim_timestamp() {
@@ -202,5 +246,85 @@ pub mod tests {
 
         assert!(position_in_facility_airspace(&config, "DEN_2_TWR"));
         assert!(!position_in_facility_airspace(&config, "SAN_GND"));
+    }
+
+    #[test]
+    fn test_determine_staff_positions_empty() {
+        let mut controller = Controller::default();
+        controller.cid = 123;
+        let config = Config::default();
+
+        assert!(determine_staff_positions(&controller, &config).is_empty());
+    }
+
+    #[test]
+    fn test_determine_staff_positions_shared() {
+        let mut controller = Controller::default();
+        controller.cid = 123;
+        controller.roles = "MTR".to_owned();
+        let config = Config::default();
+
+        assert_eq!(determine_staff_positions(&controller, &config), vec!["MTR"]);
+    }
+
+    #[test]
+    fn test_determine_staff_positions_single() {
+        let mut controller = Controller::default();
+        controller.cid = 123;
+        controller.roles = "FE".to_owned();
+        let config = Config::default();
+
+        assert_eq!(determine_staff_positions(&controller, &config), vec!["FE"]);
+    }
+
+    #[test]
+    fn test_determine_staff_positions_single_assistant() {
+        let mut controller = Controller::default();
+        controller.cid = 123;
+        controller.roles = "FE".to_owned();
+        let mut config = Config::default();
+        config.staff.overrides.push(ConfigStaffOverride {
+            role: "FE".to_owned(),
+            cid: 456,
+        });
+
+        assert_eq!(determine_staff_positions(&controller, &config), vec!["AFE"]);
+    }
+
+    #[test]
+    fn test_determine_staff_positions_multiple() {
+        let mut controller = Controller::default();
+        controller.cid = 123;
+        controller.roles = "FE,MTR".to_owned();
+        let mut config = Config::default();
+        config.staff.overrides.push(ConfigStaffOverride {
+            role: "FE".to_owned(),
+            cid: 456,
+        });
+
+        assert_eq!(
+            determine_staff_positions(&controller, &config),
+            vec!["AFE", "MTR"]
+        );
+    }
+
+    #[test]
+    fn test_determine_staff_positions_instructor() {
+        let mut controller = Controller::default();
+        controller.cid = 123;
+        controller.rating = 10;
+        let config = Config::default();
+
+        assert_eq!(determine_staff_positions(&controller, &config), vec!["INS"]);
+    }
+
+    #[test]
+    fn test_determine_staff_positions_ingore() {
+        let mut controller = Controller::default();
+        controller.cid = 123;
+        controller.roles = "FACCBT".to_owned();
+        let config = Config::default();
+
+        assert!(determine_staff_positions(&controller, &config).is_empty());
     }
 }

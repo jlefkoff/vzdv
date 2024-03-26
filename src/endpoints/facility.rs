@@ -1,6 +1,9 @@
-use crate::shared::{
-    sql::{self, Activity, Certification, Controller},
-    AppError, AppState, Config, UserInfo, SESSION_USER_INFO_KEY,
+use crate::{
+    shared::{
+        sql::{self, Activity, Certification, Controller},
+        AppError, AppState, Config, UserInfo, SESSION_USER_INFO_KEY,
+    },
+    utils::determine_staff_positions,
 };
 use axum::{extract::State, response::Html, routing::get, Router};
 use chrono::{DateTime, Months, Utc};
@@ -10,8 +13,6 @@ use minijinja::{context, Environment};
 use serde::Serialize;
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
-
-const IGNORE_MISSING_STAFF_POSITIONS_FOR: [&str; 1] = ["FACCBT"];
 
 #[derive(Debug, Serialize)]
 struct StaffPosition {
@@ -150,7 +151,7 @@ async fn page_roster(
                 Some(s) => s,
                 None => "",
             };
-            let roles = controller.roles.split(',').collect::<Vec<_>>().join(", ");
+            let roles = determine_staff_positions(controller, &state.config).join(", ");
 
             let certs = certifications
                 .iter()
@@ -191,37 +192,13 @@ async fn page_staff(
         .fetch_all(&state.db)
         .await?;
     for controller in &controllers {
-        let roles = controller.roles.split_terminator(',').collect::<Vec<_>>();
+        let roles = determine_staff_positions(controller, &state.config);
         for role in roles {
-            let mut is_assistant = false;
-            if let Some(role_override) =
-                state.config.staff.overrides.iter().find(|o| o.role == role)
-            {
-                if role_override.cid != controller.cid {
-                    is_assistant = true
-                }
-            }
-            // VATUSA doesn't differentiate between e.g. the main FE and their assistants,
-            // at least not at the API level. Need something to be able to differentiate.
-            let role = if is_assistant {
-                format!("A{role}")
-            } else {
-                role.to_string()
-            };
             if let Some(staff_pos) = staff_map.get_mut(role.as_str()) {
                 staff_pos.controllers.push(controller.clone());
-            } else if !IGNORE_MISSING_STAFF_POSITIONS_FOR.contains(&role.as_str()) {
+            } else {
                 warn!("No staff role found for: {role}");
             }
-        }
-        if controller.home_facility == state.config.vatsim.vatusa_facility_code
-            && [8, 9, 10].contains(&controller.rating)
-        {
-            staff_map
-                .get_mut("INS")
-                .unwrap()
-                .controllers
-                .push(controller.clone());
         }
     }
 
