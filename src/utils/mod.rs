@@ -106,7 +106,7 @@ pub fn parse_metar(line: &str) -> Result<AirportWeather> {
 /// Query the SimAware data endpoint for its data on active pilot sessions.
 ///
 /// This endpoint should be cached so as to not hit the SimAware server too frequently.
-pub async fn simaware_data() -> Result<HashMap<u64, String>> {
+pub async fn get_simaware_data() -> Result<HashMap<u64, String>> {
     #[derive(Deserialize)]
     struct Pilot {
         cid: u64,

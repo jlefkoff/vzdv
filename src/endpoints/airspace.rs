@@ -1,6 +1,6 @@
 use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
-    utils::{flashed_messages, parse_metar, simaware_data, GENERAL_HTTP_CLIENT},
+    utils::{flashed_messages, get_simaware_data, parse_metar, GENERAL_HTTP_CLIENT},
 };
 use anyhow::anyhow;
 use axum::{
@@ -66,7 +66,7 @@ async fn page_flights(
         .map(|airport| &airport.code)
         .collect();
     let vatsim_data = Vatsim::new().await?.get_v3_data().await?;
-    let simaware_data = simaware_data().await?;
+    let simaware_data = get_simaware_data().await?;
     let flights: Vec<OnlineFlight> = vatsim_data
         .pilots
         .iter()
