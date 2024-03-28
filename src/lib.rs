@@ -1,6 +1,8 @@
 //! New vZVD core logic.
 
 #![deny(clippy::all)]
+// TODO https://github.com/rust-lang/rust-clippy/issues/12564
+#![allow(clippy::manual_unwrap_or_default)]
 
 use anyhow::Result;
 use shared::Config;
