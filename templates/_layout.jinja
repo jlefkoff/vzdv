@@ -165,7 +165,17 @@
         {% endfor %}
       </div>
     {% endif %}
-    <div class="container">{% block body %}{% endblock %}</div>
+    <div class="container" style="min-height: 90vh">{% block body %}{% endblock %}</div>
+
+    <div class="footer">
+      <div class="container">
+        <p class="text-body-tertiary" style="font-size: 80%">
+          This site is not affiliated with the Federal Aviation Administration, actual Denver ARTCC, or any real-world governing aviation body.
+          <br>
+          All content herein is solely for use on the <a href="https://vatsim.net/" target="_blank" class="text-decoration-none">VATSIM network</a>.
+        </p>
+      </div>
+    </div>
 
     <script
       src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
