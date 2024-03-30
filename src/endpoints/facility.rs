@@ -331,6 +331,10 @@ async fn page_activity(
     Ok(Html(rendered))
 }
 
+// TODO resources
+
+// TODO visitor application
+
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template(
