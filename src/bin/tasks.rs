@@ -2,7 +2,7 @@
 
 #![deny(clippy::all)]
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::Months;
 use clap::Parser;
 use log::{debug, error, info};
@@ -117,16 +117,7 @@ async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
 /// and then (for on-roster controllers) fetched and stored in the DB as
 /// part of a transaction.
 async fn update_activity(config: &Config, db: &SqlitePool) -> Result<()> {
-    /*
-     * Run the entire operation in a transaction. If something goes wrong
-     * and the activity records couldn't be updated, I'd rather leave them
-     * as-is than have a half-blank activity page.
-     */
-    let mut tx = db.begin().await?;
-    // clear the table
-    sqlx::query(sql::DELETE_ALL_ACTIVITY).execute(db).await?;
-
-    // fetch activity for all on-roster controllers
+    // prep cids for on-roster controllers and a 5-month-ago timestamp that the API recognizes
     let controllers = sqlx::query(sql::GET_ALL_ROSTER_CONTROLLER_CIDS)
         .fetch_all(db)
         .await?;
@@ -147,7 +138,8 @@ async fn update_activity(config: &Config, db: &SqlitePool) -> Result<()> {
          */
         let sessions =
             rest_api::get_atc_sessions(cid as u64, None, None, Some(&five_months_ago), None)
-                .await?;
+                .await
+                .with_context(|| format!("Processing CID {cid}"))?;
         // group the controller's activity by month
         let mut seconds_map: HashMap<String, f32> = HashMap::new();
         for session in sessions.results {
@@ -163,6 +155,14 @@ async fn update_activity(config: &Config, db: &SqlitePool) -> Result<()> {
                 .and_modify(|acc| *acc += seconds)
                 .or_insert(seconds);
         }
+
+        // transaction for the ~6 queries
+        let mut tx = db.begin().await?;
+        // clear the controller's existing records in prep for replacement
+        sqlx::query(sql::DELETE_ACTIVITY_FOR_CID)
+            .execute(&mut *tx)
+            .await
+            .with_context(|| format!("Processing CID {cid}"))?;
         // for each relevant month, store their total controlled minutes in the DB
         for (month, seconds) in seconds_map {
             let minutes = (seconds / 60.0).round() as u32;
@@ -171,13 +171,15 @@ async fn update_activity(config: &Config, db: &SqlitePool) -> Result<()> {
                 .bind(month)
                 .bind(minutes)
                 .execute(&mut *tx)
-                .await?;
+                .await
+                .with_context(|| format!("Processing CID {cid}"))?;
         }
+        // commit the controller's changes
+        tx.commit().await?;
+
         // wait a second to be nice to the VATSIM API
         time::sleep(time::Duration::from_secs(1)).await;
     }
-    debug!("Committing activity transaction");
-    tx.commit().await?;
 
     Ok(())
 }
@@ -236,7 +238,7 @@ async fn main() {
                         error!("Error updating roster: {e}");
                     }
                 }
-                info!("Waiting 4 hours for next roster sync");
+                debug!("Waiting 4 hours for next roster sync");
                 time::sleep(time::Duration::from_secs(60 * 60 * 4)).await;
             }
         })
@@ -258,7 +260,7 @@ async fn main() {
                         error!("Error updating activity: {e}");
                     }
                 }
-                info!("Waiting 12 hours for next activity sync");
+                debug!("Waiting 12 hours for next activity sync");
                 time::sleep(time::Duration::from_secs(60 * 60 * 12)).await;
             }
         })
