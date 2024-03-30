@@ -6,7 +6,7 @@ use crate::{
     utils::{flashed_messages, GENERAL_HTTP_CLIENT},
 };
 use axum::{
-    extract::State,
+    extract::{Path, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Form, Router,
@@ -17,6 +17,12 @@ use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
 use tower_sessions::Session;
+
+/*
+ * TODO will need to group staff by role to control access
+ *
+ * Not all staff should have access to all staff pages.
+ */
 
 /// Returns a response to redirect to the homepage for non-staff users.
 ///
@@ -175,16 +181,20 @@ async fn post_feedback_form_handle(
     Ok(Redirect::to("/admin/feedback").into_response())
 }
 
-/// Page for managing the roster.
-async fn page_roster(
+/// Page for managing a controller.
+async fn page_controller(
     State(state): State<Arc<AppState>>,
     session: Session,
+    Path(cid): Path<u32>,
 ) -> Result<Html<String>, AppError> {
-    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    let template = state.templates.get_template("admin/roster")?;
-    let rendered = template.render(context! { user_info })?;
-    Ok(Html(rendered))
+    todo!()
 }
+
+// TODO allow taking action on managing the roster
+
+// TODO allow creating and modifying events
+
+// TODO allow taking action on visitor requests
 
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
@@ -192,12 +202,6 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .add_template(
             "admin/feedback",
             include_str!("../../templates/admin/feedback.jinja"),
-        )
-        .unwrap();
-    templates
-        .add_template(
-            "admin/roster",
-            include_str!("../../templates/admin/roster.jinja"),
         )
         .unwrap();
     templates.add_filter("nice_date", |date: String| {
@@ -210,5 +214,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     Router::new()
         .route("/admin/feedback", get(page_feedback))
         .route("/admin/feedback", post(post_feedback_form_handle))
-        .route("/admin/roster", get(page_roster))
+        .route("/admin/roster/:cid", get(page_controller))
 }

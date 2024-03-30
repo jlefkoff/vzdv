@@ -13,6 +13,9 @@
       <th class="col-3">Name</th>
       <th class="col-3">Rating</th>
       <th class="col">Certs</th>
+      {% if user_info and user_info.is_staff %}
+      <th class="col-1"></th>
+      {% endif %}
     </tr>
   </thead>
   <tbody>
@@ -43,6 +46,11 @@
             {% endif %}
           {% endfor %}
         </td>
+        {% if user_info and user_info.is_staff %}
+        <td class="col-1">
+          <a href="/admin/roster/{{ controller.cid }}" class="text-decoration-none">Edit</a>
+        </td>
+        {% endif %}
       </tr>
     {% endfor %}
   </tbody>
