@@ -179,7 +179,7 @@ pub const GET_CONTROLLER_CIDS_AND_NAMES: &str = "SELECT cid, first_name, last_na
 pub const GET_ALL_CERTIFICATIONS: &str = "SELECT * FROM certification";
 
 pub const GET_ALL_ACTIVITY: &str = "SELECT * FROM activity";
-pub const DELETE_ALL_ACTIVITY: &str = "DELETE FROM activity";
+pub const DELETE_ACTIVITY_FOR_CID: &str = "DELETE FROM activity WHERE cid=$1";
 pub const INSERT_INTO_ACTIVITY: &str = "
 INSERT INTO activity
     (id, cid, month, minutes)
