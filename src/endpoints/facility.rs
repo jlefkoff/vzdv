@@ -1,6 +1,6 @@
 use crate::{
     shared::{
-        sql::{self, Activity, Certification, Controller},
+        sql::{self, Activity, Certification, Controller, Resource},
         AppError, AppState, Config, UserInfo, SESSION_USER_INFO_KEY,
     },
     utils::determine_staff_positions,
@@ -8,10 +8,13 @@ use crate::{
 use axum::{extract::State, response::Html, routing::get, Router};
 use chrono::{DateTime, Months, Utc};
 use itertools::Itertools;
-use log::warn;
+use log::{info, warn};
 use minijinja::{context, Environment};
 use serde::Serialize;
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 use tower_sessions::Session;
 
 #[derive(Debug, Serialize)]
@@ -331,7 +334,25 @@ async fn page_activity(
     Ok(Html(rendered))
 }
 
-// TODO resources
+async fn page_resources(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Html<String>, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let template = state.templates.get_template("facility/resources")?;
+    let resources: Vec<Resource> = sqlx::query_as(sql::GET_ALL_RESOURCES)
+        .fetch_all(&state.db)
+        .await?;
+    let categories: Vec<_> = resources
+        .iter()
+        .map(|r| &r.category)
+        .collect::<HashSet<_>>()
+        .into_iter()
+        .sorted()
+        .collect();
+    let rendered = template.render(context! { user_info, resources, categories })?;
+    Ok(Html(rendered))
+}
 
 // TODO visitor application
 
@@ -354,6 +375,12 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/facility/activity.jinja"),
         )
         .unwrap();
+    templates
+        .add_template(
+            "facility/resources",
+            include_str!("../../templates/facility/resources.jinja"),
+        )
+        .unwrap();
     templates.add_filter("minutes_to_hm", |total_minutes: u32| {
         let hours = total_minutes / 60;
         let minutes = total_minutes % 60;
@@ -368,4 +395,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .route("/facility/roster", get(page_roster))
         .route("/facility/staff", get(page_staff))
         .route("/facility/activity", get(page_activity))
+        .route("/facility/resources", get(page_resources))
 }

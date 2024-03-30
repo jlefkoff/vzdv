@@ -1,0 +1,28 @@
+{% extends "_layout" %}
+
+{% block title %}Resources | {{ super() }}{% endblock %}
+
+{% block body %}
+
+<h2>Resources</h2>
+
+{% for category in categories %}
+  <div class="pt-2">
+    <div class="card shadow-sm">
+      <div class="card-header">{{ category }}</div>
+      <div class="card-body">
+        {% for resource in resources %}
+          {% if resource.category == category %}
+            <li class="list-group-item">
+              <a href="{{ resource.link }}" class="text-decoration-none" target="_blank">{{ resource.name }}</a>
+            </li>
+          {% endif %}
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+{% endfor %}
+
+<!-- TODO uploading and modifying for staff -->
+
+{% endblock %}

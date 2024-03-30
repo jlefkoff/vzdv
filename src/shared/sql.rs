@@ -79,6 +79,15 @@ pub struct Feedback {
     pub posted_to_discord: bool,
 }
 
+#[derive(Debug, FromRow, Serialize)]
+pub struct Resource {
+    pub id: u32,
+    pub category: String,
+    pub name: String,
+    pub link: String,
+    pub updated: DateTime<Utc>,
+}
+
 /// Statements to create tables. Only ran when the DB file does not exist,
 /// so no migration or "IF NOT EXISTS" conditions need to be added.
 pub const CREATE_TABLES: &str = r#"
@@ -127,6 +136,14 @@ CREATE TABLE activity (
     minutes INTEGER NOT NULL,
 
     FOREIGN KEY (cid) REFERENCES controller(cid)
+);
+
+CREATE TABLE resource (
+    id INTEGER PRIMARY KEY NOT NULL,
+    category TEXT NOT NULL,
+    name TEXT NOT NULL,
+    link TEXT NOT NULL,
+    updated TEXT NOT NULL
 );
 "#;
 
@@ -191,3 +208,5 @@ pub const GET_ALL_PENDING_FEEDBACK: &str = "SELECT * FROM feedback WHERE reviewe
 pub const GET_FEEDBACK_BY_ID: &str = "SELECT * FROM feedback WHERE id=$1";
 pub const UPDATE_FEEDBACK_IGNORE: &str =
     "UPDATE feedback SET reviewed_by_cid=$1, reviewer_action=$2, posted_to_discord=$3";
+
+pub const GET_ALL_RESOURCES: &str = "SELECT * FROM resource";
