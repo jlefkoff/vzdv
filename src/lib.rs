@@ -6,7 +6,10 @@
 
 use anyhow::Result;
 use shared::Config;
-use sqlx::{sqlite::SqliteConnectOptions, Executor, SqlitePool};
+use sqlx::{
+    sqlite::{SqliteConnectOptions, SqliteJournalMode, SqliteSynchronous},
+    Executor, SqlitePool,
+};
 use std::path::Path;
 
 pub mod endpoints;
@@ -25,7 +28,11 @@ pub fn load_config(path: &Path) -> Result<Config> {
 /// Connect to the SQLite file at the destination, if it exists. If it does
 /// not, a new file is created and statements to create tables are executed.
 pub async fn load_db(config: &Config) -> Result<SqlitePool> {
-    let options = SqliteConnectOptions::new().filename(&config.database.file);
+    let options = SqliteConnectOptions::new()
+        .filename(&config.database.file)
+        .journal_mode(SqliteJournalMode::Wal)
+        .synchronous(SqliteSynchronous::Normal)
+        .foreign_keys(true);
     let pool = if !Path::new(&config.database.file).exists() {
         let options = options.create_if_missing(true);
         let pool = SqlitePool::connect_with(options).await?;

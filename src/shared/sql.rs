@@ -102,10 +102,10 @@ CREATE TABLE controller (
     status TEXT,
     discord_id TEXT UNIQUE,
     home_facility TEXT,
-    is_on_roster BOOLEAN,
+    is_on_roster INTEGER,
     roles TEXT,
     loa_until TEXT
-);
+) STRICT;
 
 CREATE TABLE certification (
     id INTEGER PRIMARY KEY NOT NULL,
@@ -114,7 +114,7 @@ CREATE TABLE certification (
     value TEXT NOT NULL,
     changed_on TEXT NOT NULL,
     set_by INTEGER NOT NULL
-);
+) STRICT;
 
 CREATE TABLE feedback (
     id INTEGER PRIMARY KEY NOT NULL,
@@ -126,8 +126,8 @@ CREATE TABLE feedback (
     submitter_cid INTEGER NOT NULL,
     reviewed_by_cid INTEGER,
     reviewer_action TEXT,
-    posted_to_discord BOOLEAN NOT NULL DEFAULT FALSE
-);
+    posted_to_discord INTEGER NOT NULL DEFAULT FALSE
+) STRICT;
 
 CREATE TABLE activity (
     id INTEGER PRIMARY KEY NOT NULL,
@@ -136,7 +136,7 @@ CREATE TABLE activity (
     minutes INTEGER NOT NULL,
 
     FOREIGN KEY (cid) REFERENCES controller(cid)
-);
+) STRICT;
 
 CREATE TABLE resource (
     id INTEGER PRIMARY KEY NOT NULL,
@@ -144,7 +144,7 @@ CREATE TABLE resource (
     name TEXT NOT NULL,
     link TEXT NOT NULL,
     updated TEXT NOT NULL
-);
+) STRICT;
 "#;
 
 pub const UPSERT_USER_LOGIN: &str = "
