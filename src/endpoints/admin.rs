@@ -24,12 +24,27 @@ use tower_sessions::Session;
  * Not all staff should have access to all staff pages.
  */
 
+/// Access control by staff position.
+#[allow(unused)]
+enum StaffType {
+    /// Any staff position, including mentors
+    Any,
+    /// Any official staff position (ATM, DATM, TA, WM, EC, FE)
+    AnyPrimary,
+    /// Any senior staff position (ATM, DATM, TA)
+    ///
+    /// The WM can also access these, given the necessity for them
+    /// to implement and check these functions.
+    AnySenior,
+}
+
 /// Returns a response to redirect to the homepage for non-staff users.
 ///
 /// Also asserts that `user_info.is_some()`, so later unwrapping it is safe.
 async fn reject_if_not_staff(
     state: &Arc<AppState>,
     user_info: &Option<UserInfo>,
+    staff_type: StaffType,
 ) -> Option<Response> {
     let resp = Some(Redirect::to("/").into_response());
     if user_info.is_none() {
@@ -66,7 +81,32 @@ async fn reject_if_not_staff(
     if controller.roles.is_empty() {
         return resp;
     }
-    None
+    match staff_type {
+        StaffType::Any => None,
+        StaffType::AnyPrimary => {
+            let matching = controller
+                .roles
+                .split_terminator(' ')
+                .any(|role| ["ATM", "DATM", "TA", "WM", "EC", "FE"].contains(&role));
+            if matching {
+                None
+            } else {
+                resp
+            }
+        }
+        StaffType::AnySenior => {
+            // again, WM isn't a senior staff position, but needs access
+            let matching = controller
+                .roles
+                .split_terminator(' ')
+                .any(|role| ["ATM", "DATM", "TA", "WM"].contains(&role));
+            if matching {
+                None
+            } else {
+                resp
+            }
+        }
+    }
 }
 
 /// Page for managing controller feedback.
@@ -77,7 +117,7 @@ async fn page_feedback(
     session: Session,
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) = reject_if_not_staff(&state, &user_info).await {
+    if let Some(redirect) = reject_if_not_staff(&state, &user_info, StaffType::AnyPrimary).await {
         return Ok(redirect);
     }
     let template = state.templates.get_template("admin/feedback")?;
@@ -106,7 +146,7 @@ async fn post_feedback_form_handle(
     Form(feedback_form): Form<FeedbackReviewForm>,
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) = reject_if_not_staff(&state, &user_info).await {
+    if let Some(redirect) = reject_if_not_staff(&state, &user_info, StaffType::AnyPrimary).await {
         return Ok(redirect);
     }
     let db_feedback: Option<Feedback> = sqlx::query_as(sql::GET_FEEDBACK_BY_ID)
@@ -187,6 +227,14 @@ async fn page_controller(
     session: Session,
     Path(cid): Path<u32>,
 ) -> Result<Html<String>, AppError> {
+    /*
+     * Things to do:
+     *  - set controller rank
+     *  - add to / remove from the roster
+     *  - add / remove certifications
+     *  - add / remove staff ranks (incl. mentor and assoc. positions)
+     *  - add training note (unless I'm sending users to VATUSA here)
+     */
     todo!()
 }
 
