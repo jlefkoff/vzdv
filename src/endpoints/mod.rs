@@ -19,6 +19,7 @@ use tower_sessions::Session;
 pub mod admin;
 pub mod airspace;
 pub mod auth;
+pub mod events;
 pub mod facility;
 pub mod homepage;
 

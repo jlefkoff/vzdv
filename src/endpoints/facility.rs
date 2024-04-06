@@ -1,3 +1,5 @@
+//! Endpoints for getting information on the facility.
+
 use crate::{
     shared::{
         sql::{self, Activity, Certification, Controller, Resource},
@@ -8,7 +10,7 @@ use crate::{
 use axum::{extract::State, response::Html, routing::get, Router};
 use chrono::{DateTime, Months, Utc};
 use itertools::Itertools;
-use log::{info, warn};
+use log::warn;
 use minijinja::{context, Environment};
 use serde::Serialize;
 use std::{

@@ -1,3 +1,5 @@
+//! Endpoints for getting information on the airspace.
+
 use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
     utils::{flashed_messages, get_simaware_data, parse_metar, GENERAL_HTTP_CLIENT},
