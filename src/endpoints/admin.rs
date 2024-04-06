@@ -6,7 +6,7 @@ use crate::{
     utils::{flashed_messages, GENERAL_HTTP_CLIENT},
 };
 use axum::{
-    extract::{Path, State},
+    extract::State,
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Form, Router,
@@ -18,24 +18,44 @@ use serde_json::json;
 use std::sync::Arc;
 use tower_sessions::Session;
 
-/*
- * TODO will need to group staff by role to control access
- *
- * Not all staff should have access to all staff pages.
- */
-
 /// Access control by staff position.
+///
+/// ## Limitations
+///
+/// - Mentors, Instructors, TA, ATM, DATM (+ WM) can CRUD training notes, ratings, and certs.
+/// - TA, ATM, DATM (+ WM) can view and take action on feedback
+/// - TA, ATM, DATM (+ WM) can view and take action on visitor applications
+/// - EC, AEC, ATM, DATM (+ WM) can CRUD events
+///
+/// ## Unused roles
+///
+/// FE, AFE, and AWM are not granted any special access.
+///
 #[allow(unused)]
-enum StaffType {
-    /// Any staff position, including mentors
-    Any,
-    /// Any official staff position (ATM, DATM, TA, WM, EC, FE)
-    AnyPrimary,
-    /// Any senior staff position (ATM, DATM, TA)
+enum StaffRequirement {
+    /// Training staff (Mentors, Instructors, TA) and admins (ATM, DATM, WM)
+    TrainingStaff,
+    /// Events staff (EC, AEC) and admins (ATM, DATM, WM)
+    EventStaff,
+    /// Any senior staff position (ATM, DATM, TA) plus WM
+    SeniorStaff,
+    /// Just the ATM and DATM plus WM
+    Admins,
+}
+
+impl StaffRequirement {
+    /// Return a list of matching roles to satisfy the requirement.
     ///
-    /// The WM can also access these, given the necessity for them
-    /// to implement and check these functions.
-    AnySenior,
+    /// While the WM is not, by default, part of any of these groups,
+    /// their role satisfies all requirements.
+    fn matching_roles(&self) -> Vec<&'static str> {
+        match self {
+            Self::TrainingStaff => vec!["ATM", "DATM", "TA", "MTR", "INS", "WM"],
+            Self::EventStaff => vec!["ATM", "DATM", "EC", "AEC", "WM"],
+            Self::SeniorStaff => vec!["ATM", "DATM", "TA", "WM"],
+            Self::Admins => vec!["ATM", "DATM", "WM"],
+        }
+    }
 }
 
 /// Returns a response to redirect to the homepage for non-staff users.
@@ -44,7 +64,7 @@ enum StaffType {
 async fn reject_if_not_staff(
     state: &Arc<AppState>,
     user_info: &Option<UserInfo>,
-    staff_type: StaffType,
+    staff_type: StaffRequirement,
 ) -> Option<Response> {
     let resp = Some(Redirect::to("/").into_response());
     if user_info.is_none() {
@@ -81,31 +101,14 @@ async fn reject_if_not_staff(
     if controller.roles.is_empty() {
         return resp;
     }
-    match staff_type {
-        StaffType::Any => None,
-        StaffType::AnyPrimary => {
-            let matching = controller
-                .roles
-                .split_terminator(' ')
-                .any(|role| ["ATM", "DATM", "TA", "WM", "EC", "FE"].contains(&role));
-            if matching {
-                None
-            } else {
-                resp
-            }
-        }
-        StaffType::AnySenior => {
-            // again, WM isn't a senior staff position, but needs access
-            let matching = controller
-                .roles
-                .split_terminator(' ')
-                .any(|role| ["ATM", "DATM", "TA", "WM"].contains(&role));
-            if matching {
-                None
-            } else {
-                resp
-            }
-        }
+    let satisfied = controller
+        .roles
+        .split_terminator(' ')
+        .any(|role| staff_type.matching_roles().contains(&role));
+    if satisfied {
+        None
+    } else {
+        resp
     }
 }
 
@@ -117,7 +120,9 @@ async fn page_feedback(
     session: Session,
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) = reject_if_not_staff(&state, &user_info, StaffType::AnyPrimary).await {
+    if let Some(redirect) =
+        reject_if_not_staff(&state, &user_info, StaffRequirement::SeniorStaff).await
+    {
         return Ok(redirect);
     }
     let template = state.templates.get_template("admin/feedback")?;
@@ -146,7 +151,9 @@ async fn post_feedback_form_handle(
     Form(feedback_form): Form<FeedbackReviewForm>,
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) = reject_if_not_staff(&state, &user_info, StaffType::AnyPrimary).await {
+    if let Some(redirect) =
+        reject_if_not_staff(&state, &user_info, StaffRequirement::TrainingStaff).await
+    {
         return Ok(redirect);
     }
     let db_feedback: Option<Feedback> = sqlx::query_as(sql::GET_FEEDBACK_BY_ID)
@@ -221,28 +228,22 @@ async fn post_feedback_form_handle(
     Ok(Redirect::to("/admin/feedback").into_response())
 }
 
-/// Page for managing a controller.
-async fn page_controller(
-    State(state): State<Arc<AppState>>,
-    session: Session,
-    Path(cid): Path<u32>,
-) -> Result<Html<String>, AppError> {
-    /*
-     * Things to do:
-     *  - set controller rank
-     *  - add to / remove from the roster
-     *  - add / remove certifications
-     *  - add / remove staff ranks (incl. mentor and assoc. positions)
-     *  - add training note (unless I'm sending users to VATUSA here)
-     */
-    todo!()
-}
+/**
+ * TODO manage a controller
+ *
+ * Things to do:
+ *  - set controller rank
+ *  - add to / remove from the roster
+ *  - add / remove certifications
+ *  - add / remove staff ranks (incl. mentor and assoc. positions)
+ *  - add training note (unless I'm sending users to VATUSA here)
+ */
 
-// TODO allow taking action on managing the roster
+// TODO allow managing the roster
 
 // TODO allow creating and modifying events
 
-// TODO allow taking action on visitor requests
+// TODO allow managing visitor requests
 
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
@@ -262,5 +263,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     Router::new()
         .route("/admin/feedback", get(page_feedback))
         .route("/admin/feedback", post(post_feedback_form_handle))
-        .route("/admin/roster/:cid", get(page_controller))
+    // .route("/admin/roster/:cid", get(page_controller))
 }
