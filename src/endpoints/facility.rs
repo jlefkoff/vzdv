@@ -345,6 +345,10 @@ async fn page_resources(
     let resources: Vec<Resource> = sqlx::query_as(sql::GET_ALL_RESOURCES)
         .fetch_all(&state.db)
         .await?;
+    let resources: Vec<&Resource> = resources
+        .iter()
+        .sorted_by(|a, b| a.name.cmp(&b.name))
+        .collect();
     let categories: Vec<_> = resources
         .iter()
         .map(|r| &r.category)
@@ -391,6 +395,12 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         } else {
             String::new()
         }
+    });
+    templates.add_filter("simple_date", |date: String| {
+        chrono::DateTime::parse_from_rfc3339(&date)
+            .unwrap()
+            .format("%m/%d/%Y")
+            .to_string()
     });
 
     Router::new()

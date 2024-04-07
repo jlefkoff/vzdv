@@ -84,7 +84,8 @@ pub struct Resource {
     pub id: u32,
     pub category: String,
     pub name: String,
-    pub link: String,
+    pub file_name: Option<String>,
+    pub link: Option<String>,
     pub updated: DateTime<Utc>,
 }
 
@@ -142,7 +143,8 @@ CREATE TABLE resource (
     id INTEGER PRIMARY KEY NOT NULL,
     category TEXT NOT NULL,
     name TEXT NOT NULL,
-    link TEXT NOT NULL,
+    file_name TEXT,
+    link TEXT,
     updated TEXT NOT NULL
 ) STRICT;
 "#;

@@ -14,6 +14,7 @@ use axum::{
 use minijinja::{context, Environment};
 use serde::Deserialize;
 use std::sync::Arc;
+use tower_http::services::ServeDir;
 use tower_sessions::Session;
 
 pub mod admin;
@@ -106,4 +107,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .route("/404", get(page_404))
         .route("/feedback", get(page_feedback_form))
         .route("/feedback", post(page_feedback_form_post))
+        .nest_service("/assets", ServeDir::new("assets"))
 }
