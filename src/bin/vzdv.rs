@@ -5,12 +5,13 @@
 use anyhow::Result;
 use axum::{middleware as axum_middleware, response::Redirect, Router};
 use clap::Parser;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use mini_moka::sync::Cache;
 use minijinja::Environment;
 use std::{
-    env,
+    env, fs,
     path::{Path, PathBuf},
+    process,
     sync::Arc,
     time::Duration,
 };
@@ -79,19 +80,19 @@ fn load_router(
 // https://github.com/tokio-rs/axum/blob/main/examples/graceful-shutdown/src/main.rs
 async fn shutdown_signal() {
     let ctrl_c = async {
-        debug!("Got terminate signal");
         signal::ctrl_c()
             .await
             .expect("failed to install Ctrl+C handler");
+        warn!("Got terminate signal");
     };
 
     #[cfg(unix)]
     let terminate = async {
-        debug!("Got terminate signal");
         signal::unix::signal(signal::unix::SignalKind::terminate())
             .expect("failed to install signal handler")
             .recv()
             .await;
+        warn!("Got terminate signal");
     };
 
     #[cfg(not(unix))]
@@ -128,14 +129,14 @@ async fn main() {
         Ok(c) => c,
         Err(e) => {
             error!("Could not load config: {e}");
-            std::process::exit(1);
+            process::exit(1);
         }
     };
     let db = match load_db(&config).await {
         Ok(db) => db,
         Err(e) => {
             error!("Could not load DB: {e}");
-            std::process::exit(1);
+            process::exit(1);
         }
     };
     let sessions = SqliteStore::new(db.clone());
@@ -163,6 +164,14 @@ async fn main() {
         cache,
     });
     let app = router.with_state(app_state);
+    let assets_dir = Path::new("./assets");
+    if !assets_dir.exists() {
+        if let Err(e) = fs::create_dir(assets_dir) {
+            error!("Could not create assets directory: {e}");
+            process::exit(1);
+        }
+        debug!("Assets directory created");
+    }
     debug!("Set up");
 
     let host_and_port = format!("{}:{}", cli.host, cli.port);
