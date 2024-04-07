@@ -23,8 +23,8 @@ use tower_sessions::Session;
 /// ## Limitations
 ///
 /// - Mentors, Instructors, TA, ATM, DATM (+ WM) can CRUD training notes, ratings, and certs.
-/// - TA, ATM, DATM (+ WM) can view and take action on feedback
-/// - TA, ATM, DATM (+ WM) can view and take action on visitor applications
+/// - TA (view but no action), ATM, DATM (+ WM) can view and take action on feedback
+/// - ATM, DATM (+ WM) can view and take action on visitor applications
 /// - EC, AEC, ATM, DATM (+ WM) can CRUD events
 ///
 /// ## Unused roles
@@ -138,6 +138,8 @@ async fn page_feedback(
     Ok(Html(rendered).into_response())
 }
 
+// TODO archive/save option for feedback to pull it off the main list (still in DB)
+
 #[derive(Debug, Deserialize)]
 struct FeedbackReviewForm {
     id: u32,
@@ -232,11 +234,11 @@ async fn post_feedback_form_handle(
  * TODO manage a controller
  *
  * Things to do:
- *  - set controller rank
+ *  - set controller rating
  *  - add to / remove from the roster
  *  - add / remove certifications
  *  - add / remove staff ranks (incl. mentor and assoc. positions)
- *  - add training note (unless I'm sending users to VATUSA here)
+ *  - add training note (do it on this site, then post to VATUSA)
  */
 
 // TODO allow managing the roster
