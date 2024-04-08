@@ -1,5 +1,5 @@
-use anyhow::{anyhow, Result};
-use serde::Deserialize;
+use anyhow::{bail, Result};
+use serde::{Deserialize, Serialize};
 
 use crate::utils::GENERAL_HTTP_CLIENT;
 
@@ -11,12 +11,7 @@ pub enum MembershipType {
     Both,
 }
 
-#[derive(Debug, Deserialize)]
-pub struct VatusaRosterData {
-    pub data: Vec<RosterMember>,
-}
-
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RosterMemberRole {
     pub id: u32,
     pub cid: u32,
@@ -25,7 +20,7 @@ pub struct RosterMemberRole {
     pub created_at: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RosterMember {
     pub cid: u32,
     #[serde(rename = "fname")]
@@ -66,7 +61,12 @@ pub struct RosterMember {
 }
 
 /// Get the roster of a VATUSA facility.
-pub async fn get_roster(facility: &str, membership: MembershipType) -> Result<VatusaRosterData> {
+pub async fn get_roster(facility: &str, membership: MembershipType) -> Result<Vec<RosterMember>> {
+    #[derive(Deserialize)]
+    pub struct Wrapper {
+        pub data: Vec<RosterMember>,
+    }
+
     let mem_str = match membership {
         MembershipType::Home => "home",
         MembershipType::Visit => "visit",
@@ -77,12 +77,89 @@ pub async fn get_roster(facility: &str, membership: MembershipType) -> Result<Va
         .send()
         .await?;
     if !resp.status().is_success() {
-        return Err(anyhow!(
+        bail!(
             "Got status {} from VATUSA roster API at {}",
             resp.status().as_u16(),
             resp.url()
-        ));
+        );
     }
-    let data = resp.json().await?;
-    Ok(data)
+    let data: Wrapper = resp.json().await?;
+    Ok(data.data)
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+pub struct TransferChecklist {
+    #[serde(rename = "homecontroller")]
+    pub home_controller: bool,
+    #[serde(rename = "needbasic")]
+    pub need_basic: bool,
+    pub pending: bool,
+    pub initial: bool,
+    #[serde(rename = "90days")]
+    pub rating_90_days: bool,
+    pub promo: bool,
+    #[serde(rename = "50hrs")]
+    pub controlled_50_hrs: bool,
+    #[serde(rename = "override")]
+    pub has_override: bool,
+    pub is_first: bool,
+    pub days: bool,
+    #[serde(rename = "visitingDays")]
+    pub visiting_days: bool,
+    #[serde(rename = "60days")]
+    pub last_visit_60_days: bool,
+    #[serde(rename = "hasHome")]
+    pub has_home: bool,
+    #[serde(rename = "hasRating")]
+    pub has_rating: bool,
+    pub instructor: bool,
+    pub staff: bool,
+    /// computed flag for whether or not the controller meets basic visiting requirements
+    pub visiting: bool,
+    pub overall: bool,
+}
+
+/// Get the controller's transfer checklist information.
+pub async fn transfer_checklist(api_key: &str, cid: u32) -> Result<TransferChecklist> {
+    #[derive(Deserialize)]
+    pub struct Wrapper {
+        pub data: TransferChecklist,
+    }
+
+    let resp = GENERAL_HTTP_CLIENT
+        .get(format!("{BASE_URL}/v2/user/{cid}/transfer/checklist"))
+        .query(&[("api_key", api_key)])
+        .send()
+        .await?;
+    if !resp.status().is_success() {
+        // not including the URL since it'll have the API key in it
+        bail!(
+            "Got status {} from VATUSA transfer checklist API",
+            resp.status().as_u16()
+        );
+    }
+    let data: Wrapper = resp.json().await?;
+    Ok(data.data)
+}
+
+/// Get the controller's public information.
+pub async fn get_controller_info(cid: u32) -> Result<RosterMember> {
+    #[derive(Deserialize)]
+    pub struct Wrapper {
+        pub data: RosterMember,
+    }
+
+    let resp = GENERAL_HTTP_CLIENT
+        .get(format!("{BASE_URL}/user/{cid}"))
+        .send()
+        .await?;
+    if !resp.status().is_success() {
+        bail!(
+            "Got status {} from VATUSA controller API at {}",
+            resp.status().as_u16(),
+            resp.url()
+        );
+    }
+    let data: Wrapper = resp.json().await?;
+    Ok(data.data)
 }

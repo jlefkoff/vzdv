@@ -80,7 +80,7 @@ async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
      */
     let roster_data = get_roster(&config.vatsim.vatusa_facility_code, MembershipType::Both).await?;
     debug!("Got roster response");
-    for controller in &roster_data.data {
+    for controller in &roster_data {
         if let Err(e) = update_controller_record(config, db, controller).await {
             error!("Error updating controller {} in DB: {e}", controller.cid);
         };
@@ -88,7 +88,6 @@ async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
 
     debug!("Checking for removed controllers");
     let current_controllers: Vec<_> = roster_data
-        .data
         .iter()
         .map(|controller| controller.cid)
         .collect();

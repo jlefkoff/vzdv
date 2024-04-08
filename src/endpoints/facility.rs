@@ -2,17 +2,22 @@
 
 use crate::{
     shared::{
-        sql::{self, Activity, Certification, Controller, Resource},
+        sql::{self, Activity, Certification, Controller, Resource, VisitorApplication},
         AppError, AppState, Config, UserInfo, SESSION_USER_INFO_KEY,
     },
-    utils::determine_staff_positions,
+    utils::{determine_staff_positions, flashed_messages, vatusa},
 };
-use axum::{extract::State, response::Html, routing::get, Router};
+use axum::{
+    extract::State,
+    response::{Html, Redirect},
+    routing::get,
+    Form, Router,
+};
 use chrono::{DateTime, Months, Utc};
 use itertools::Itertools;
 use log::warn;
 use minijinja::{context, Environment};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
@@ -336,13 +341,11 @@ async fn page_activity(
     Ok(Html(rendered))
 }
 
+/// View files uploaded to the site.
 async fn page_resources(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, AppError> {
-    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    let template = state.templates.get_template("facility/resources")?;
-
     let resources: Vec<Resource> = sqlx::query_as(sql::GET_ALL_RESOURCES)
         .fetch_all(&state.db)
         .await?;
@@ -366,11 +369,111 @@ async fn page_resources(
         .filter(|category| categories.contains(category))
         .collect();
 
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let template = state.templates.get_template("facility/resources")?;
     let rendered = template.render(context! { user_info, resources, categories })?;
     Ok(Html(rendered))
 }
 
-// TODO visitor application
+/// Check visitor requirements and submit an application.
+async fn page_visitor_application(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Html<String>, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
+    let template = state
+        .templates
+        .get_template("facility/visitor_application")?;
+    let rendered = template.render(context! { user_info, flashed_messages })?;
+    Ok(Html(rendered))
+}
+
+/// Check visitor eligibility and return either a form or an error message.
+async fn page_visitor_application_form(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Html<String>, AppError> {
+    let user_info: UserInfo = match session.get(SESSION_USER_INFO_KEY).await? {
+        Some(user_info) => user_info,
+        // a little lazy, but no one should see this
+        None => return Ok(Html(String::from("Must be logged in"))),
+    };
+    // check pending request
+    let pending_request: Option<VisitorApplication> =
+        sqlx::query_as(sql::GET_PENDING_VISITOR_REQ_FOR)
+            .bind(user_info.cid)
+            .fetch_optional(&state.db)
+            .await?;
+    // check rating
+    let controller_info = match vatusa::get_controller_info(user_info.cid).await {
+        Ok(info) => Some(info),
+        Err(e) => {
+            warn!("{e}");
+            None
+        }
+    };
+    // check VATUSA checklist
+    let checklist = match vatusa::transfer_checklist(
+        &state.config.vatsim.vatusa_api_key,
+        user_info.cid,
+    )
+    .await
+    {
+        Ok(checklist) => Some(checklist),
+        Err(e) => {
+            warn!("{e}");
+            None
+        }
+    };
+    // the template will handle the
+    let template = state
+        .templates
+        .get_template("facility/visitor_application_form")?;
+    let rendered =
+        template.render(context! { user_info, pending_request, controller_info, checklist })?;
+    Ok(Html(rendered))
+}
+
+#[derive(Debug, Deserialize)]
+struct VisitorApplicationForm {
+    rating: u8,
+    facility: String,
+}
+
+/// Submit the request to join as a visitor.
+async fn page_visitor_application_form_submit(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Form(application_form): Form<VisitorApplicationForm>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(user_info) = user_info {
+        sqlx::query(sql::INSERT_INTO_VISITOR_REQ)
+            .bind(user_info.cid)
+            .bind(&user_info.first_name)
+            .bind(&user_info.last_name)
+            .bind(application_form.facility)
+            .bind(application_form.rating)
+            .bind(sqlx::types::chrono::Utc::now())
+            .execute(&state.db)
+            .await?;
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Success,
+            "Request submitted, thank you!",
+        )
+        .await?;
+    } else {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Error,
+            "You must be logged in to submit a visitor request.",
+        )
+        .await?;
+    }
+    Ok(Redirect::to("/facility/visitor_application"))
+}
 
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
@@ -397,6 +500,18 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/facility/resources.jinja"),
         )
         .unwrap();
+    templates
+        .add_template(
+            "facility/visitor_application",
+            include_str!("../../templates/facility/visitor_application.jinja"),
+        )
+        .unwrap();
+    templates
+        .add_template(
+            "facility/visitor_application_form",
+            include_str!("../../templates/facility/visitor_application_form.jinja"),
+        )
+        .unwrap();
     templates.add_filter("minutes_to_hm", |total_minutes: u32| {
         let hours = total_minutes / 60;
         let minutes = total_minutes % 60;
@@ -418,4 +533,12 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .route("/facility/staff", get(page_staff))
         .route("/facility/activity", get(page_activity))
         .route("/facility/resources", get(page_resources))
+        .route(
+            "/facility/visitor_application",
+            get(page_visitor_application),
+        )
+        .route(
+            "/facility/visitor_application/form",
+            get(page_visitor_application_form).post(page_visitor_application_form_submit),
+        )
 }

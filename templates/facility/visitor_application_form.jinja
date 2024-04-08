@@ -1,0 +1,26 @@
+<div class="pt-5">
+  {% if pending_request %}
+    <p style="font-size: 125%">
+      You already have a request pending.
+      <br>
+      Please allow up to 7 days before reaching out to the ATM or DATM.
+    </p>
+  {% else %}
+    {% if checklist.visiting and controller_info.rating >= 4 %}
+      <p>It looks like you're cleared to visit. Click the button below to submit the request.</p>
+      <form action="/facility/visitor_application" method="POST">
+        <input type="hidden" name="rating" value="{{ controller_info.rating }}">
+        <input type="hidden" name="facility" value="{{ controller_info.facility }}">
+        <button type="submit" class="btn btn-primary">Request visitor status</button>
+      </form>
+    {% else %}
+      <p style="font-size: 125%">
+        VATUSA is reporting you as <strong>ineligible</strong> for visiting.
+        <br><br>
+        For information why, please check the above documents.
+        <br>
+        If you believe this is in error, you can reach out to the facility's ATM or DATM.
+      </p>
+    {% endif %}
+  {% endif %}
+</div>

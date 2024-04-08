@@ -89,6 +89,17 @@ pub struct Resource {
     pub updated: DateTime<Utc>,
 }
 
+#[derive(Debug, FromRow, Serialize)]
+pub struct VisitorApplication {
+    pub id: u32,
+    pub cid: u32,
+    pub first_name: String,
+    pub last_name: String,
+    pub home_facility: String,
+    pub rating: u8,
+    pub date: DateTime<Utc>,
+}
+
 /// Statements to create tables. Only ran when the DB file does not exist,
 /// so no migration or "IF NOT EXISTS" conditions need to be added.
 pub const CREATE_TABLES: &str = r#"
@@ -146,6 +157,16 @@ CREATE TABLE resource (
     file_name TEXT,
     link TEXT,
     updated TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE visitor_request (
+    id INTEGER PRIMARY KEY NOT NULL,
+    cid INTEGER NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    home_facility TEXT NOT NULL,
+    rating INTEGER NOT NULL,
+    date TEXT NOT NULL
 ) STRICT;
 "#;
 
@@ -212,3 +233,7 @@ pub const UPDATE_FEEDBACK_IGNORE: &str =
     "UPDATE feedback SET reviewed_by_cid=$1, reviewer_action=$2, posted_to_discord=$3";
 
 pub const GET_ALL_RESOURCES: &str = "SELECT * FROM resource";
+
+pub const GET_PENDING_VISITOR_REQ_FOR: &str = "SELECT * FROM visitor_request WHERE cid=$1";
+pub const INSERT_INTO_VISITOR_REQ: &str =
+    "INSERT INTO visitor_request VALUES (NULL, $1, $2, $3, $4, $5, $6);";

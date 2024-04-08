@@ -90,7 +90,6 @@ async fn page_feedback_form_post(
         )
         .await?;
     }
-
     Ok(Redirect::to("/feedback"))
 }
 
