@@ -342,13 +342,15 @@ async fn page_resources(
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let template = state.templates.get_template("facility/resources")?;
+
     let resources: Vec<Resource> = sqlx::query_as(sql::GET_ALL_RESOURCES)
         .fetch_all(&state.db)
         .await?;
-    let resources: Vec<&Resource> = resources
+    let resources: Vec<_> = resources
         .iter()
         .sorted_by(|a, b| a.name.cmp(&b.name))
         .collect();
+
     let categories: Vec<_> = resources
         .iter()
         .map(|r| &r.category)
@@ -356,6 +358,14 @@ async fn page_resources(
         .into_iter()
         .sorted()
         .collect();
+    let categories: Vec<_> = state
+        .config
+        .database
+        .resource_category_ordering
+        .iter()
+        .filter(|category| categories.contains(category))
+        .collect();
+
     let rendered = template.render(context! { user_info, resources, categories })?;
     Ok(Html(rendered))
 }

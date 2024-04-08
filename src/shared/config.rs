@@ -17,6 +17,7 @@ pub struct Config {
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct ConfigDatabase {
     pub file: String,
+    pub resource_category_ordering: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
