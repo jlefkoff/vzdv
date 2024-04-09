@@ -76,6 +76,7 @@ pub struct Feedback {
     pub created_date: DateTime<Utc>,
     pub submitter_cid: u32,
     pub reviewed_by_cid: u32,
+    pub reviewer_action: String,
     pub posted_to_discord: bool,
 }
 
@@ -137,7 +138,7 @@ CREATE TABLE feedback (
     created_date TEXT NOT NULL,
     submitter_cid INTEGER NOT NULL,
     reviewed_by_cid INTEGER,
-    reviewer_action TEXT,
+    reviewer_action TEXT NOT NULL DEFAULT 'pending',
     posted_to_discord INTEGER NOT NULL DEFAULT FALSE
 ) STRICT;
 
@@ -183,13 +184,6 @@ WHERE
     cid=excluded.cid
 ";
 
-pub const INSERT_FEEDBACK: &str = "
-INSERT INTO feedback
-    (id, controller, position, rating, comments, created_date, submitter_cid)
-VALUES
-    (NULL, $1, $2, $3, $4, $5, $6)
-";
-
 pub const UPSERT_USER_TASK: &str = "
 INSERT INTO controller
     (id, cid, first_name, last_name, email, rating, home_facility, is_on_roster, roles)
@@ -227,10 +221,18 @@ VALUES
     (NULL, $1, $2, $3)
 ";
 
-pub const GET_ALL_PENDING_FEEDBACK: &str = "SELECT * FROM feedback WHERE reviewed_by_cid IS NULL";
+pub const INSERT_FEEDBACK: &str = "
+INSERT INTO feedback
+    (id, controller, position, rating, comments, created_date, submitter_cid)
+VALUES
+    (NULL, $1, $2, $3, $4, $5, $6)
+";
+pub const GET_ALL_PENDING_FEEDBACK: &str =
+    "SELECT * FROM feedback WHERE reviewed_by_cid IS NULL OR reviewer_action='archive'";
 pub const GET_FEEDBACK_BY_ID: &str = "SELECT * FROM feedback WHERE id=$1";
-pub const UPDATE_FEEDBACK_IGNORE: &str =
-    "UPDATE feedback SET reviewed_by_cid=$1, reviewer_action=$2, posted_to_discord=$3";
+pub const UPDATE_FEEDBACK_TAKE_ACTION: &str =
+    "UPDATE feedback SET reviewed_by_cid=$1, reviewer_action=$2, posted_to_discord=$3 WHERE id=$4";
+pub const DELETE_FROM_FEEDBACK: &str = "DELETE FROM feedback WHERE id=$1";
 
 pub const GET_ALL_RESOURCES: &str = "SELECT * FROM resource";
 

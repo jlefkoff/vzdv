@@ -138,8 +138,6 @@ async fn page_feedback(
     Ok(Html(rendered).into_response())
 }
 
-// TODO archive/save option for feedback to pull it off the main list (still in DB)
-
 #[derive(Debug, Deserialize)]
 struct FeedbackReviewForm {
     id: u32,
@@ -163,20 +161,32 @@ async fn post_feedback_form_handle(
         .fetch_optional(&state.db)
         .await?;
     if let Some(feedback) = db_feedback {
-        if feedback_form.action == "Ignore" {
-            sqlx::query(sql::UPDATE_FEEDBACK_IGNORE)
+        if feedback_form.action == "Archive" {
+            sqlx::query(sql::UPDATE_FEEDBACK_TAKE_ACTION)
                 .bind(user_info.unwrap().cid)
-                .bind("ignore")
+                .bind("archive")
                 .bind(false)
+                .bind(feedback_form.id)
                 .execute(&state.db)
                 .await?;
             flashed_messages::push_flashed_message(
                 session,
                 flashed_messages::FlashedMessageLevel::Success,
-                "Feedback ignored",
+                "Feedback archived",
             )
             .await?;
-        } else {
+        } else if feedback_form.action == "Delete" {
+            sqlx::query(sql::DELETE_FROM_FEEDBACK)
+                .bind(feedback_form.id)
+                .execute(&state.db)
+                .await?;
+            flashed_messages::push_flashed_message(
+                session,
+                flashed_messages::FlashedMessageLevel::Success,
+                "Feedback deleted",
+            )
+            .await?;
+        } else if feedback_form.action == "Post to Discord" {
             GENERAL_HTTP_CLIENT
                 .post(&state.config.discord.webhooks.feedback)
                 .json(&json!({
@@ -205,10 +215,11 @@ async fn post_feedback_form_handle(
                 }))
                 .send()
                 .await?;
-            sqlx::query(sql::UPDATE_FEEDBACK_IGNORE)
+            sqlx::query(sql::UPDATE_FEEDBACK_TAKE_ACTION)
                 .bind(user_info.unwrap().cid)
                 .bind("post")
                 .bind(true)
+                .bind(feedback_form.id)
                 .execute(&state.db)
                 .await?;
             flashed_messages::push_flashed_message(
