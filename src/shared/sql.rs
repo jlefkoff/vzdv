@@ -110,7 +110,7 @@ CREATE TABLE controller (
     first_name TEXT NOT NULL,
     last_name TEXT NOT NULL,
     email TEXT,
-    operating_initials TEXT UNIQUE,
+    operating_initials TEXT,
     rating INTEGER,
     status TEXT,
     discord_id TEXT UNIQUE,
