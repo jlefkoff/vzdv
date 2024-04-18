@@ -47,6 +47,8 @@ Licensed under either of
 * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE))
 * MIT license ([LICENSE-MIT](LICENSE-MIT))
 
+Loading indicator from [SamHerbert/SVG-Loaders](https://github.com/SamHerbert/SVG-Loaders).
+
 ## Contributing
 
 This repo is happily FOSS, but isn't likely to accept contributions from others right now given the specific and targeted use-case.

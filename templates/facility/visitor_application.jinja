@@ -14,6 +14,33 @@
   <a class="text-decoration-none" href="https://www.vatusa.net/info/policies" target="_blank">here for VATUSA (look for "DP001")</a>.
 </p>
 
-<a class="text-decoration-none" href="#" hx-get="/facility/visitor_application/form" hx-swap="outerHTML">If you believe you meet those requirements, click here to load the form.</a>
+<a class="text-decoration-none" href="#" hx-get="/facility/visitor_application/form" hx-swap="outerHTML">
+  If you believe you meet those requirements, click here to load the form.
+  <div class="htmx-indicator pt-2 ps-1">
+    <svg
+      width="38"
+      height="38"
+      viewBox="0 0 38 38"
+      xmlns="http://www.w3.org/2000/svg"
+      stroke="#fff"
+    >
+      <g fill="none" fill-rule="evenodd">
+        <g transform="translate(1 1)" stroke-width="2">
+          <circle stroke-opacity=".5" cx="18" cy="18" r="18" />
+          <path d="M36 18c0-9.94-8.06-18-18-18">
+            <animateTransform
+              attributeName="transform"
+              type="rotate"
+              from="0 18 18"
+              to="360 18 18"
+              dur="1s"
+              repeatCount="indefinite"
+            />
+          </path>
+        </g>
+      </g>
+    </svg>
+  </div>
+</a>
 
 {% endblock %}
