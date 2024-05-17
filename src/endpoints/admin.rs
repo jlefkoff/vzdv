@@ -60,6 +60,9 @@ impl StaffRequirement {
 
 /// Returns a response to redirect to the homepage for non-staff users.
 ///
+/// This function checks the database to ensure that the staff member is
+/// still actually a staff member at the time of making the request.
+///
 /// Also asserts that `user_info.is_some()`, so later unwrapping it is safe.
 async fn reject_if_not_staff(
     state: &Arc<AppState>,
