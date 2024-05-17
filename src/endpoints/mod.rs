@@ -23,6 +23,7 @@ pub mod auth;
 pub mod events;
 pub mod facility;
 pub mod homepage;
+pub mod user;
 
 /// 404 not found page.
 ///

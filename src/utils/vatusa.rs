@@ -119,6 +119,18 @@ pub struct TransferChecklist {
     pub overall: bool,
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct TrainingRecord {
+    pub id: u32,
+    pub student_id: u32,
+    pub instructor_id: u32,
+    pub session_date: String,
+    pub facility_id: String,
+    pub position: String,
+    pub duration: String,
+    pub notes: String,
+}
+
 /// Get the controller's transfer checklist information.
 pub async fn transfer_checklist(api_key: &str, cid: u32) -> Result<TransferChecklist> {
     #[derive(Deserialize)]
@@ -158,6 +170,29 @@ pub async fn get_controller_info(cid: u32) -> Result<RosterMember> {
             "Got status {} from VATUSA controller API at {}",
             resp.status().as_u16(),
             resp.url()
+        );
+    }
+    let data: Wrapper = resp.json().await?;
+    Ok(data.data)
+}
+
+/// Get the controller's training records.
+pub async fn get_training_records(api_key: &str, cid: u32) -> Result<Vec<TrainingRecord>> {
+    #[derive(Deserialize)]
+    pub struct Wrapper {
+        pub data: Vec<TrainingRecord>,
+    }
+
+    let resp = GENERAL_HTTP_CLIENT
+        .get(format!("{BASE_URL}/user/{cid}/training/records"))
+        .query(&[("api_key", api_key)])
+        .send()
+        .await?;
+    if !resp.status().is_success() {
+        // not including the URL since it'll have the API key in it
+        bail!(
+            "Got status {} from VATUSA training records API",
+            resp.status().as_u16()
         );
     }
     let data: Wrapper = resp.json().await?;

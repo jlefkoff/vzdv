@@ -64,6 +64,7 @@ fn load_router(
     Router::new()
         .merge(vzdv::endpoints::router(env))
         .merge(vzdv::endpoints::homepage::router(env))
+        .merge(vzdv::endpoints::user::router(env))
         .merge(vzdv::endpoints::auth::router(env))
         .merge(vzdv::endpoints::airspace::router(env))
         .merge(vzdv::endpoints::facility::router(env))
