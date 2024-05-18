@@ -38,6 +38,24 @@ async fn page_training_notes(
     Ok(Html(rendered).into_response())
 }
 
+/// Show the user a link to the Discord server, as well as provide
+/// the start of the Discord OAuth flow for account linking.
+async fn page_discord(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Response, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if user_info.is_none() {
+        return Ok(Redirect::to("/").into_response());
+    }
+    let template = state.templates.get_template("user/discord")?;
+    let rendered = template.render(context! {
+       user_info,
+       join_link => &state.config.discord.join_link
+    })?;
+    Ok(Html(rendered).into_response())
+}
+
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template(
@@ -45,6 +63,14 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/user/training_notes.jinja"),
         )
         .unwrap();
+    templates
+        .add_template(
+            "user/discord",
+            include_str!("../../templates/user/discord.jinja"),
+        )
+        .unwrap();
 
-    Router::new().route("/user/training_notes", get(page_training_notes))
+    Router::new()
+        .route("/user/training_notes", get(page_training_notes))
+        .route("/user/discord", get(page_discord))
 }
