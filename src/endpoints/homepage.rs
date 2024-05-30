@@ -3,7 +3,7 @@
 use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
     utils::{
-        get_controller_cids_and_names, parse_metar, parse_vatsim_timestamp,
+        flashed_messages, get_controller_cids_and_names, parse_metar, parse_vatsim_timestamp,
         position_in_facility_airspace, GENERAL_HTTP_CLIENT,
     },
 };
@@ -23,7 +23,8 @@ async fn page_home(
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let template = state.templates.get_template("homepage/home")?;
-    let rendered = template.render(context! { user_info })?;
+    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
+    let rendered = template.render(context! { user_info, flashed_messages })?;
     Ok(Html(rendered))
 }
 
