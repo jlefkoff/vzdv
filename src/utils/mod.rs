@@ -311,6 +311,7 @@ pub mod tests {
         let mut controller = Controller::default();
         controller.cid = 123;
         controller.rating = 10;
+        controller.home_facility = "ZDV".to_owned();
         let config = Config::default();
 
         assert_eq!(determine_staff_positions(&controller, &config), vec!["INS"]);
