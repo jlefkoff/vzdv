@@ -69,6 +69,7 @@ fn load_router(
         .merge(vzdv::endpoints::airspace::router(env))
         .merge(vzdv::endpoints::facility::router(env))
         .merge(vzdv::endpoints::admin::router(env))
+        .merge(vzdv::endpoints::events::router(env))
         .layer(
             ServiceBuilder::new()
                 .layer(TimeoutLayer::new(Duration::from_secs(30)))

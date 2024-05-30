@@ -101,6 +101,34 @@ pub struct VisitorApplication {
     pub date: DateTime<Utc>,
 }
 
+#[derive(Debug, FromRow, Serialize)]
+pub struct Event {
+    pub id: u32,
+    pub published: bool,
+    pub complete: bool,
+    pub name: String,
+    pub start: DateTime<Utc>,
+    pub end: DateTime<Utc>,
+    pub description: Option<String>,
+    pub image_url: Option<String>,
+}
+
+#[derive(Debug, FromRow, Serialize)]
+pub struct EventPosition {
+    pub id: u32,
+    pub event_id: u32,
+    pub name: String,
+    pub cid: Option<u32>,
+}
+
+#[derive(Debug, FromRow, Serialize)]
+pub struct EventRegistration {
+    pub id: u32,
+    pub event_id: u32,
+    pub position_id: u32,
+    pub cid: u32,
+}
+
 /// Statements to create tables. Only ran when the DB file does not exist,
 /// so no migration or "IF NOT EXISTS" conditions need to be added.
 pub const CREATE_TABLES: &str = r#"
@@ -168,6 +196,41 @@ CREATE TABLE visitor_request (
     home_facility TEXT NOT NULL,
     rating INTEGER NOT NULL,
     date TEXT NOT NULL
+) STRICT;
+
+CREATE TABLE event (
+    id INTEGER PRIMARY KEY NOT NULL,
+    created_by INTEGER NOT NULL,
+    published INTEGER NOT NULL DEFAULT FALSE,
+    complete INTEGER NOT NULL DEFAULT FALSE,
+    name TEXT NOT NULL,
+    start TEXT NOT NULL,
+    end TEXT NOT NULL,
+    description TEXT,
+    image_url TEXT,
+
+    FOREIGN KEY (created_by) REFERENCES controller(id)
+) STRICT;
+
+CREATE TABLE event_position (
+    id INTEGER PRIMARY KEY NOT NULL,
+    event_id INTEGER NOT NULL,
+    name TEXT NOT NULL,
+    cid INTEGER,
+
+    FOREIGN KEY (event_id) REFERENCES event(id),
+    FOREIGN KEY (cid) REFERENCES controller(cid)
+) STRICT;
+
+CREATE TABLE event_registration (
+    id INTEGER PRIMARY KEY NOT NULL,
+    event_id INTEGER NOT NULL,
+    position_id INTEGER NOT NULL,
+    cid INTEGER NOT NULL,
+
+    FOREIGN KEY (event_id) REFERENCES event(id),
+    FOREIGN KEY (position_id) REFERENCES event_position(id),
+    FOREIGN KEY (cid) REFERENCES controller(cid)
 ) STRICT;
 "#;
 
@@ -239,3 +302,5 @@ pub const GET_ALL_RESOURCES: &str = "SELECT * FROM resource";
 pub const GET_PENDING_VISITOR_REQ_FOR: &str = "SELECT * FROM visitor_request WHERE cid=$1";
 pub const INSERT_INTO_VISITOR_REQ: &str =
     "INSERT INTO visitor_request VALUES (NULL, $1, $2, $3, $4, $5, $6);";
+
+pub const GET_EVENT: &str = "SELECT * FROM event WHERE id=$1";
