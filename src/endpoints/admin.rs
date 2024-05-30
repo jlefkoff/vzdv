@@ -253,13 +253,11 @@ async fn post_feedback_form_handle(
  *  - add / remove certifications
  *  - add / remove staff ranks (incl. mentor and assoc. positions)
  *  - add training note (do it on this site, then post to VATUSA)
+ *
+ * TODO allow managing the roster
+ * TODO allow creating and modifying events
+ * TODO allow managing visitor requests
  */
-
-// TODO allow managing the roster
-
-// TODO allow creating and modifying events
-
-// TODO allow managing visitor requests
 
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
