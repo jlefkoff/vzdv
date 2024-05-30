@@ -200,9 +200,7 @@ pub fn determine_staff_positions(controller: &Controller, config: &Config) -> Ve
             ret_roles.push(role.to_owned());
         }
     }
-    if controller.home_facility == config.vatsim.vatusa_facility_code
-        && [8, 9, 10].contains(&controller.rating)
-    {
+    if controller.home_facility == "ZDV" && [8, 9, 10].contains(&controller.rating) {
         ret_roles.push("INS".to_owned());
     }
     ret_roles

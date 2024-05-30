@@ -39,15 +39,11 @@ struct Cli {
 }
 
 /// Update a single controller's stored data.
-async fn update_controller_record(
-    config: &Config,
-    db: &SqlitePool,
-    controller: &RosterMember,
-) -> Result<()> {
+async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) -> Result<()> {
     let roles = controller
         .roles
         .iter()
-        .filter(|role| role.facility == config.vatsim.vatusa_facility_code)
+        .filter(|role| role.facility == "ZDV")
         .map(|role| role.role.as_str())
         // there's 1 controller in ZDV who actually has an "INS" role in addition to their controller rating
         .filter(|&role| role != "INS")
@@ -73,15 +69,15 @@ async fn update_controller_record(
 }
 
 /// Update the stored roster with fresh data from VATUSA.
-async fn update_roster(config: &Config, db: &SqlitePool) -> Result<()> {
+async fn update_roster(db: &SqlitePool) -> Result<()> {
     /*
      * Don't use a transaction here; instead, attempt to update every controller's
      * data. Don't error-out unless VATSIM doesn't give any data.
      */
-    let roster_data = get_roster(&config.vatsim.vatusa_facility_code, MembershipType::Both).await?;
+    let roster_data = get_roster("ZDV", MembershipType::Both).await?;
     debug!("Got roster response");
     for controller in &roster_data {
-        if let Err(e) = update_controller_record(config, db, controller).await {
+        if let Err(e) = update_controller_record(db, controller).await {
             error!("Error updating controller {} in DB: {e}", controller.cid);
         };
     }
@@ -222,14 +218,13 @@ async fn main() {
     info!("Starting tasks");
 
     let roster_handle = {
-        let config = config.clone();
         let db = db.clone();
         tokio::spawn(async move {
             debug!("Waiting 10 seconds before starting roster sync");
             time::sleep(time::Duration::from_secs(10)).await;
             loop {
                 info!("Querying roster");
-                match update_roster(&config, &db).await {
+                match update_roster(&db).await {
                     Ok(_) => {
                         info!("Roster update successful");
                     }

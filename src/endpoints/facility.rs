@@ -175,7 +175,7 @@ async fn page_roster(
                 last_name: &controller.last_name,
                 operating_initials,
                 rating: Controller::rating_name(controller.rating),
-                is_home: controller.home_facility == state.config.vatsim.vatusa_facility_code,
+                is_home: controller.home_facility == "ZDV",
                 roles,
                 certs,
                 loa_until: controller.loa_until,

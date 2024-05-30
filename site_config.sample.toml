@@ -7,7 +7,6 @@ email_domain = ""
 overrides = []
 
 [vatsim]
-vatusa_facility_code = ""
 vatusa_api_key = ""
 oauth_url_base = ""
 oauth_client_id = ""
