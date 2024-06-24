@@ -155,6 +155,7 @@ async fn update_activity(config: &Config, db: &SqlitePool) -> Result<()> {
         let mut tx = db.begin().await?;
         // clear the controller's existing records in prep for replacement
         sqlx::query(sql::DELETE_ACTIVITY_FOR_CID)
+            .bind(cid)
             .execute(&mut *tx)
             .await
             .with_context(|| format!("Processing CID {cid}"))?;
