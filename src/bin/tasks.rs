@@ -11,6 +11,7 @@ use std::{
     collections::HashMap,
     env,
     path::{Path, PathBuf},
+    time::Duration,
 };
 use tokio::time;
 use vatsim_utils::rest_api;
@@ -103,6 +104,67 @@ async fn update_roster(db: &SqlitePool) -> Result<()> {
             }
         }
     }
+
+    Ok(())
+}
+
+/// Update the activity for a single controller.
+///
+/// In a separate function to easily use the `?` operator.
+async fn update_single_activity(
+    config: &Config,
+    db: &SqlitePool,
+    five_months_ago: &str,
+    cid: u32,
+) -> Result<()> {
+    /*
+     * Get the last 5 months of the controller's activity.
+     *
+     * I'm not (currently) worried about pagination as even the facility's most
+     * active controllers don't have enough sessions in this time range to go over
+     * the endpoint's single-page response limit.
+     */
+    let sessions = rest_api::get_atc_sessions(cid as u64, None, None, Some(five_months_ago), None)
+        .await
+        .with_context(|| format!("Processing CID {cid}"))?;
+    // group the controller's activity by month
+    let mut seconds_map: HashMap<String, f32> = HashMap::new();
+    for session in sessions.results {
+        // filter to only sessions in the facility
+        if !position_in_facility_airspace(config, &session.callsign) {
+            continue;
+        }
+
+        let month = session.start[0..7].to_string();
+        let seconds = session.minutes_on_callsign.parse::<f32>().unwrap() * 60.0;
+        seconds_map
+            .entry(month)
+            .and_modify(|acc| *acc += seconds)
+            .or_insert(seconds);
+    }
+
+    // transaction for the ~6 queries
+    let mut tx = db.begin().await?;
+    // clear the controller's existing records in prep for replacement
+    sqlx::query(sql::DELETE_ACTIVITY_FOR_CID)
+        .bind(cid)
+        .execute(&mut *tx)
+        .await
+        .with_context(|| format!("Processing CID {cid}"))?;
+    // for each relevant month, store their total controlled minutes in the DB
+    for (month, seconds) in seconds_map {
+        let minutes = (seconds / 60.0).round() as u32;
+        sqlx::query(sql::INSERT_INTO_ACTIVITY)
+            .bind(cid)
+            .bind(month)
+            .bind(minutes)
+            .execute(&mut *tx)
+            .await
+            .with_context(|| format!("Processing CID {cid}"))?;
+    }
+    // commit the controller's changes
+    tx.commit().await?;
+
     Ok(())
 }
 
@@ -124,59 +186,12 @@ async fn update_activity(config: &Config, db: &SqlitePool) -> Result<()> {
     for row in controllers {
         let cid: u32 = row.try_get("cid")?;
         debug!("Getting activity for {cid}");
-        /*
-         * Get the last 5 months of the controller's activity.
-         *
-         * I'm not (currently) worried about pagination as even the facility's most
-         * active controllers don't have enough sessions in this time range to go over
-         * the endpoint's single-page response limit.
-         */
-        let sessions =
-            rest_api::get_atc_sessions(cid as u64, None, None, Some(&five_months_ago), None)
-                .await
-                .with_context(|| format!("Processing CID {cid}"))?;
-        // group the controller's activity by month
-        let mut seconds_map: HashMap<String, f32> = HashMap::new();
-        for session in sessions.results {
-            // filter to only sessions in the facility
-            if !position_in_facility_airspace(config, &session.callsign) {
-                continue;
-            }
-
-            let month = session.start[0..7].to_string();
-            let seconds = session.minutes_on_callsign.parse::<f32>().unwrap() * 60.0;
-            seconds_map
-                .entry(month)
-                .and_modify(|acc| *acc += seconds)
-                .or_insert(seconds);
+        if let Err(e) = update_single_activity(config, db, &five_months_ago, cid).await {
+            error!("Error updating activity for {cid}: {e}");
         }
-
-        // transaction for the ~6 queries
-        let mut tx = db.begin().await?;
-        // clear the controller's existing records in prep for replacement
-        sqlx::query(sql::DELETE_ACTIVITY_FOR_CID)
-            .bind(cid)
-            .execute(&mut *tx)
-            .await
-            .with_context(|| format!("Processing CID {cid}"))?;
-        // for each relevant month, store their total controlled minutes in the DB
-        for (month, seconds) in seconds_map {
-            let minutes = (seconds / 60.0).round() as u32;
-            sqlx::query(sql::INSERT_INTO_ACTIVITY)
-                .bind(cid)
-                .bind(month)
-                .bind(minutes)
-                .execute(&mut *tx)
-                .await
-                .with_context(|| format!("Processing CID {cid}"))?;
-        }
-        // commit the controller's changes
-        tx.commit().await?;
-
         // wait a second to be nice to the VATSIM API
-        time::sleep(time::Duration::from_secs(1)).await;
+        time::sleep(Duration::from_secs(1)).await;
     }
-
     Ok(())
 }
 
