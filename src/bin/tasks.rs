@@ -278,4 +278,6 @@ async fn main() {
 
     roster_handle.await.unwrap();
     activity_handle.await.unwrap();
+
+    db.close().await;
 }
