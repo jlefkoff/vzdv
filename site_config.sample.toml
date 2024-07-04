@@ -26,6 +26,7 @@ position_suffixes = []
 
 [discord]
 join_link = ""
+api_key = ""
 
 [discord.webhooks]
 staffing_request = ""

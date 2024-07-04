@@ -65,6 +65,7 @@ pub struct ConfigStats {
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct ConfigDiscord {
     pub join_link: String,
+    pub api_key: String,
     pub webhooks: ConfigDiscordWebhooks,
 }
 
