@@ -3,16 +3,15 @@
 use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
     utils::{
-        flashed_messages, get_controller_cids_and_names, parse_metar, parse_vatsim_timestamp,
-        position_in_facility_airspace, GENERAL_HTTP_CLIENT,
+        flashed_messages, parse_metar, vatsim::get_online_facility_controllers, GENERAL_HTTP_CLIENT,
     },
 };
 use anyhow::{anyhow, Result};
 use axum::{extract::State, response::Html, routing::get, Router};
-use log::{error, warn};
+use log::warn;
 use minijinja::{context, Environment};
 use serde::Serialize;
-use std::{collections::HashMap, sync::Arc, time::Instant};
+use std::{sync::Arc, time::Instant};
 use tower_sessions::Session;
 use vatsim_utils::live_api::Vatsim;
 
@@ -32,14 +31,6 @@ async fn page_home(
 async fn snippet_online_controllers(
     State(state): State<Arc<AppState>>,
 ) -> Result<Html<String>, AppError> {
-    #[derive(Serialize)]
-    struct OnlineController {
-        cid: u64,
-        callsign: String,
-        name: String,
-        online_for: String,
-    }
-
     // cache this endpoint's returned data for 60 seconds
     let cache_key = "ONLINE_CONTROLLERS";
     if let Some(cached) = state.cache.get(&cache_key) {
@@ -50,36 +41,7 @@ async fn snippet_online_controllers(
         state.cache.invalidate(&cache_key);
     }
 
-    let cid_name_map = match get_controller_cids_and_names(&state.db).await {
-        Ok(map) => map,
-        Err(e) => {
-            error!("Error generating controller CID -> name map: {e}");
-            HashMap::new()
-        }
-    };
-
-    let now = chrono::Utc::now();
-    let data = Vatsim::new().await?.get_v3_data().await?;
-    let online: Vec<_> = data
-        .controllers
-        .iter()
-        .filter(|controller| position_in_facility_airspace(&state.config, &controller.callsign))
-        .map(|controller| {
-            let logon = parse_vatsim_timestamp(&controller.logon_time)
-                .expect("Could not parse VATSIM timestamp");
-            let seconds = (now - logon).num_seconds() as u32;
-            OnlineController {
-                cid: controller.cid,
-                callsign: controller.callsign.clone(),
-                name: cid_name_map
-                    .get(&controller.cid)
-                    .map(|s| format!("{} {}", s.0, s.1))
-                    .unwrap_or(String::from("?")),
-                online_for: format!("{}h{}m", seconds / 3600, (seconds / 60) % 60),
-            }
-        })
-        .collect();
-
+    let online = get_online_facility_controllers(&state.db, &state.config).await?;
     let template = state
         .templates
         .get_template("homepage/online_controllers")?;

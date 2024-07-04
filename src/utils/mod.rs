@@ -14,6 +14,7 @@ use std::collections::HashMap;
 
 pub mod auth;
 pub mod flashed_messages;
+pub mod vatsim;
 pub mod vatusa;
 
 // I don't know what this is, but there's a SUP in ZDV that has this rating.
