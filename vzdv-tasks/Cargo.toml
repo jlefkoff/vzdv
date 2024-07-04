@@ -1,0 +1,24 @@
+[package]
+name = "vzdv-tasks"
+version = "0.1.0"
+authors = ["Celeo <mattboulanger@fastmail.com>"]
+edition = "2021"
+description = "VATSIM ZDV task runner"
+readme = "../README.md"
+homepage = "https://github.com/Celeo/vzdv"
+repository = "https://github.com/Celeo/vzdv"
+documentation = "https://github.com/Celeo/vzdv"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[dependencies]
+vzdv = { path = "../vzdv" }
+
+anyhow = "1.0.79"
+chrono = { version = "0.4.34", features = ["serde"] }
+clap = { version = "4.5.1", features = ["derive"] }
+log = "0.4.20"
+pretty_env_logger = "0.5.0"
+sqlx = { version = "0.7.4", features = ["runtime-tokio", "sqlite", "chrono", "uuid"] }
+tokio = { version = "1.36.0", features = ["full"] }
+vatsim_utils = "0.5.0"

@@ -1,8 +1,8 @@
 //! HTTP endpoints.
 
 use crate::{
-    shared::{sql, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
-    utils::flashed_messages,
+    flashed_messages,
+    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 use anyhow::Result;
 use axum::{
@@ -16,6 +16,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tower_http::services::ServeDir;
 use tower_sessions::Session;
+use vzdv::sql;
 
 pub mod admin;
 pub mod airspace;

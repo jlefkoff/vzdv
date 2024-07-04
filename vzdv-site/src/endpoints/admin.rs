@@ -1,10 +1,5 @@
-use crate::{
-    shared::{
-        sql::{self, Controller, Feedback},
-        AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
-    },
-    utils::{flashed_messages, GENERAL_HTTP_CLIENT},
-};
+//! Endpoints for editing and controlling aspects of the site.
+
 use axum::{
     extract::State,
     response::{Html, IntoResponse, Redirect, Response},
@@ -17,6 +12,15 @@ use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
 use tower_sessions::Session;
+use vzdv::{
+    sql::{self, Controller, Feedback},
+    GENERAL_HTTP_CLIENT,
+};
+
+use crate::{
+    flashed_messages,
+    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
+};
 
 /// Access control by staff position.
 ///

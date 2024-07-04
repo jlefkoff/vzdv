@@ -1,9 +1,6 @@
 //! HTTP endpoints for user-specific pages.
 
-use crate::{
-    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
-    utils::vatusa,
-};
+use crate::shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY};
 use axum::{
     extract::State,
     response::{Html, IntoResponse, Redirect, Response},
@@ -13,6 +10,7 @@ use axum::{
 use minijinja::{context, Environment};
 use std::sync::Arc;
 use tower_sessions::Session;
+use vzdv::vatusa;
 
 /// Retrieve and show the user their training records from VATUSA.
 async fn page_training_notes(

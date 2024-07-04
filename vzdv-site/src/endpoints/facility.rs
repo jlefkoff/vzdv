@@ -1,12 +1,5 @@
 //! Endpoints for getting information on the facility.
 
-use crate::{
-    shared::{
-        sql::{self, Activity, Certification, Controller, Resource, VisitorApplication},
-        AppError, AppState, Config, UserInfo, SESSION_USER_INFO_KEY,
-    },
-    utils::{determine_staff_positions, flashed_messages, vatusa},
-};
 use axum::{
     extract::State,
     response::{Html, Redirect},
@@ -23,6 +16,17 @@ use std::{
     sync::Arc,
 };
 use tower_sessions::Session;
+use vzdv::{
+    config::Config,
+    determine_staff_positions,
+    sql::{self, Activity, Certification, Controller, Resource, VisitorApplication},
+    vatusa,
+};
+
+use crate::{
+    flashed_messages,
+    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
+};
 
 #[derive(Debug, Serialize)]
 struct StaffPosition {
@@ -153,6 +157,8 @@ async fn page_roster(
     let certifications: Vec<Certification> = sqlx::query_as(sql::GET_ALL_CERTIFICATIONS)
         .fetch_all(&state.db)
         .await?;
+
+    // TODO certification sorting?
 
     let controllers_with_certs: Vec<_> = controllers
         .iter()

@@ -16,12 +16,10 @@ use std::{
 use tokio::time;
 use vatsim_utils::rest_api;
 use vzdv::{
-    load_config, load_db,
-    shared::{self, sql, Config},
-    utils::{
-        position_in_facility_airspace,
-        vatusa::{get_roster, MembershipType, RosterMember},
-    },
+    config::{self, Config},
+    db::load_db,
+    position_in_facility_airspace, sql,
+    vatusa::{get_roster, MembershipType, RosterMember},
 };
 
 /// vZDV task runner.
@@ -30,7 +28,7 @@ use vzdv::{
 struct Cli {
     /// Load the config from a specific file.
     ///
-    /// [default: site_config.toml]
+    /// [default: vzdv.toml]
     #[arg(long)]
     config: Option<PathBuf>,
 
@@ -199,7 +197,7 @@ async fn update_activity(config: &Config, db: &SqlitePool) -> Result<()> {
 async fn main() {
     let cli = Cli::parse();
     if cli.debug {
-        env::set_var("RUST_LOG", "info,tasks=debug");
+        env::set_var("RUST_LOG", "info,vzdv_tasks=debug");
     } else if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", "info");
     }
@@ -209,13 +207,10 @@ async fn main() {
     debug!("Loading");
     let config_location = match cli.config {
         Some(path) => path,
-        None => Path::new(shared::DEFAULT_CONFIG_FILE_NAME).to_owned(),
+        None => Path::new(config::DEFAULT_CONFIG_FILE_NAME).to_owned(),
     };
-    debug!(
-        "> Loading from config file at: {}",
-        config_location.display()
-    );
-    let config = match load_config(&config_location) {
+    debug!("Loading from config file");
+    let config = match Config::load_from_disk(&config_location) {
         Ok(c) => c,
         Err(e) => {
             error!("Could not load config: {e}");

@@ -1,13 +1,10 @@
-//! New vZVD website.
-
-#![deny(clippy::all)]
-
 use anyhow::Result;
 use axum::{middleware as axum_middleware, response::Redirect, Router};
 use clap::Parser;
 use log::{debug, error, info, warn};
 use mini_moka::sync::Cache;
 use minijinja::Environment;
+use shared::AppState;
 use std::{
     env, fs,
     path::{Path, PathBuf},
@@ -20,10 +17,12 @@ use tower::ServiceBuilder;
 use tower_http::timeout::TimeoutLayer;
 use tower_sessions::SessionManagerLayer;
 use tower_sessions_sqlx_store::SqliteStore;
-use vzdv::{
-    load_config, load_db,
-    shared::{self, AppState},
-};
+use vzdv::{config, db};
+
+mod endpoints;
+mod flashed_messages;
+mod middleware;
+mod shared;
 
 /// vZDV website.
 #[derive(Parser)]
@@ -31,7 +30,7 @@ use vzdv::{
 struct Cli {
     /// Load the config from a specific file.
     ///
-    /// [default: site_config.toml]
+    /// [default: vzdv.toml]
     #[arg(long)]
     config: Option<PathBuf>,
 
@@ -52,7 +51,7 @@ struct Cli {
 /// macro and supply to the minijinja environment.
 fn load_templates() -> Result<Environment<'static>> {
     let mut env = Environment::new();
-    env.add_template("_layout", include_str!("../../templates/_layout.jinja"))?;
+    env.add_template("_layout", include_str!("../templates/_layout.jinja"))?;
     Ok(env)
 }
 
@@ -62,18 +61,18 @@ fn load_router(
     env: &mut Environment,
 ) -> Router<Arc<AppState>> {
     Router::new()
-        .merge(vzdv::endpoints::router(env))
-        .merge(vzdv::endpoints::homepage::router(env))
-        .merge(vzdv::endpoints::user::router(env))
-        .merge(vzdv::endpoints::auth::router(env))
-        .merge(vzdv::endpoints::airspace::router(env))
-        .merge(vzdv::endpoints::facility::router(env))
-        .merge(vzdv::endpoints::admin::router(env))
-        .merge(vzdv::endpoints::events::router(env))
+        .merge(crate::endpoints::router(env))
+        .merge(crate::endpoints::homepage::router(env))
+        .merge(crate::endpoints::user::router(env))
+        .merge(crate::endpoints::auth::router(env))
+        .merge(crate::endpoints::airspace::router(env))
+        .merge(crate::endpoints::facility::router(env))
+        .merge(crate::endpoints::admin::router(env))
+        .merge(crate::endpoints::events::router(env))
         .layer(
             ServiceBuilder::new()
                 .layer(TimeoutLayer::new(Duration::from_secs(30)))
-                .layer(axum_middleware::from_fn(vzdv::middleware::logging))
+                .layer(axum_middleware::from_fn(crate::middleware::logging))
                 .layer(sessions_layer),
         )
         .fallback(|| async { Redirect::to("/404") })
@@ -111,7 +110,7 @@ async fn shutdown_signal() {
 async fn main() {
     let cli = Cli::parse();
     if cli.debug {
-        env::set_var("RUST_LOG", "info,tracing::span=warn,vzdv=debug");
+        env::set_var("RUST_LOG", "info,tracing::span=warn,vzdv_site=debug");
     } else if env::var("RUST_LOG").is_err() {
         env::set_var("RUST_LOG", "tracing::span=warn,info");
     }
@@ -121,20 +120,17 @@ async fn main() {
     debug!("Loading");
     let config_location = match cli.config {
         Some(path) => path,
-        None => Path::new(shared::DEFAULT_CONFIG_FILE_NAME).to_owned(),
+        None => Path::new(config::DEFAULT_CONFIG_FILE_NAME).to_owned(),
     };
-    debug!(
-        "> Loading from config file at: {}",
-        config_location.display()
-    );
-    let config = match load_config(&config_location) {
+    debug!("Loading from config file");
+    let config = match config::Config::load_from_disk(&config_location) {
         Ok(c) => c,
         Err(e) => {
             error!("Could not load config: {e}");
             process::exit(1);
         }
     };
-    let db = match load_db(&config).await {
+    let db = match db::load_db(&config).await {
         Ok(db) => db,
         Err(e) => {
             error!("Could not load DB: {e}");

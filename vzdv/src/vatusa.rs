@@ -1,7 +1,6 @@
+use crate::GENERAL_HTTP_CLIENT;
 use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
-
-use crate::utils::GENERAL_HTTP_CLIENT;
 
 const BASE_URL: &str = "https://api.vatusa.net/";
 

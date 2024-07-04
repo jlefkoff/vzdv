@@ -1,7 +1,72 @@
-use crate::shared::Config;
-use anyhow::{anyhow, Result};
-use serde::Deserialize;
+use std::collections::HashMap;
+
+use anyhow::{bail, Result};
+use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use log::error;
+use serde::{Deserialize, Serialize};
 use serde_json::json;
+use sqlx::SqlitePool;
+use vatsim_utils::live_api::Vatsim;
+
+use crate::{config::Config, get_controller_cids_and_names, position_in_facility_airspace};
+
+/// Parse a VATSIM timestamp into a `chrono::DateTime`.
+pub fn parse_vatsim_timestamp(stamp: &str) -> Result<DateTime<Utc>> {
+    let naive = NaiveDateTime::parse_from_str(stamp, "%Y-%m-%dT%H:%M:%S%.fZ")?;
+    let utc = match Utc.from_local_datetime(&naive) {
+        chrono::LocalResult::Single(t) => t,
+        _ => {
+            bail!("Could not parse VATSIM timestamp");
+        }
+    };
+    Ok(utc)
+}
+
+#[derive(Debug, Serialize)]
+pub struct OnlineController {
+    pub cid: u64,
+    pub callsign: String,
+    pub name: String,
+    pub online_for: String,
+}
+
+/// Get facility controllers currently online.
+pub async fn get_online_facility_controllers(
+    db: &SqlitePool,
+    config: &Config,
+) -> Result<Vec<OnlineController>> {
+    let cid_name_map = match get_controller_cids_and_names(db).await {
+        Ok(map) => map,
+        Err(e) => {
+            error!("Error generating controller CID -> name map: {e}");
+            HashMap::new()
+        }
+    };
+
+    let now = chrono::Utc::now();
+    let data = Vatsim::new().await?.get_v3_data().await?;
+    let online: Vec<_> = data
+        .controllers
+        .iter()
+        .filter(|controller| position_in_facility_airspace(config, &controller.callsign))
+        .map(|controller| {
+            let logon = parse_vatsim_timestamp(&controller.logon_time)
+                .expect("Could not parse VATSIM timestamp");
+            let seconds = (now - logon).num_seconds() as u32;
+            OnlineController {
+                cid: controller.cid,
+                callsign: controller.callsign.clone(),
+                name: cid_name_map
+                    .get(&controller.cid)
+                    .map(|s| format!("{} {}", s.0, s.1))
+                    .unwrap_or(String::from("?")),
+                online_for: format!("{}h{}m", seconds / 3600, (seconds / 60) % 60),
+            }
+        })
+        .collect();
+
+    Ok(online)
+}
 
 #[derive(Debug, Deserialize)]
 pub struct AuthCallback {
@@ -87,10 +152,10 @@ pub async fn code_to_tokens(code: &str, config: &Config) -> Result<TokenResponse
         .send()
         .await?;
     if !resp.status().is_success() {
-        return Err(anyhow!(
+        bail!(
             "Got status code {} from VATSIM OAuth exchange",
             resp.status().as_u16()
-        ));
+        );
     }
     let data = resp.json().await?;
     Ok(data)
@@ -105,10 +170,10 @@ pub async fn get_user_info(access_token: &str, config: &Config) -> Result<UserIn
         .send()
         .await?;
     if !resp.status().is_success() {
-        return Err(anyhow!(
+        bail!(
             "Got status code {} from VATSIM OAuth user info",
             resp.status().as_u16()
-        ));
+        );
     }
     let data = resp.json().await?;
     Ok(data)

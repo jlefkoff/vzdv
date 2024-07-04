@@ -1,19 +1,18 @@
-//! Various utility structs and functions.
+//! vZDV site, tasks, and bot core and shared logic.
 
-use crate::shared::{
-    sql::{self, Controller},
-    Config,
-};
-use anyhow::{anyhow, Result};
-use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
+use anyhow::Result;
+use config::Config;
 use once_cell::sync::Lazy;
 use reqwest::ClientBuilder;
-use serde::{Deserialize, Serialize};
+use sql::Controller;
 use sqlx::{sqlite::SqliteRow, Pool, Row, Sqlite};
 use std::collections::HashMap;
 
-pub mod auth;
-pub mod flashed_messages;
+pub mod aviation;
+pub mod config;
+pub mod db;
+pub mod simaware;
+pub mod sql;
 pub mod vatsim;
 pub mod vatusa;
 
@@ -22,122 +21,13 @@ const IGNORE_MISSING_STAFF_POSITIONS_FOR: [&str; 1] = ["FACCBT"];
 
 /// HTTP client for making external requests.
 ///
-/// Include an HTTP Agent of the project's repo for contact.
+/// Include an HTTP user agent of the project's repo for contact.
 pub static GENERAL_HTTP_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
     ClientBuilder::new()
         .user_agent("github.com/celeo/vzdv")
         .build()
         .expect("Could not construct HTTP client")
 });
-
-/// Parse a VATSIM timestamp into a `chrono::DateTime`.
-pub fn parse_vatsim_timestamp(stamp: &str) -> Result<DateTime<Utc>> {
-    let naive = NaiveDateTime::parse_from_str(stamp, "%Y-%m-%dT%H:%M:%S%.fZ")?;
-    let utc = match Utc.from_local_datetime(&naive) {
-        chrono::LocalResult::Single(t) => t,
-        _ => {
-            return Err(anyhow!("Could not parse VATSIM timestamp"));
-        }
-    };
-    Ok(utc)
-}
-
-/// Derived weather conditions.
-#[allow(clippy::upper_case_acronyms)]
-#[derive(Serialize, Debug, PartialEq)]
-pub enum WeatherConditions {
-    VFR,
-    MVFR,
-    IFR,
-    LIFR,
-}
-
-/// Parsed weather information for an airport.
-#[derive(Serialize)]
-pub struct AirportWeather<'a> {
-    pub name: &'a str,
-    pub conditions: WeatherConditions,
-    pub visibility: u8,
-    pub ceiling: u16,
-    pub raw: &'a str,
-}
-
-/// Parse a METAR into a struct of data.
-pub fn parse_metar(line: &str) -> Result<AirportWeather> {
-    let parts: Vec<_> = line.split(' ').collect();
-    let airport = parts.first().ok_or_else(|| anyhow!("Blank metar?"))?;
-    let mut ceiling = 3_456;
-    for part in &parts {
-        if part.starts_with("BKN") || part.starts_with("OVC") {
-            ceiling = part
-                .chars()
-                .skip_while(|c| c.is_alphabetic())
-                .take_while(|c| c.is_numeric())
-                .collect::<String>()
-                .parse::<u16>()?
-                * 100;
-            break;
-        }
-    }
-
-    let visibility: u8 = parts
-        .iter()
-        .find(|part| part.ends_with("SM"))
-        .map(|part| {
-            let vis = part.replace("SM", "");
-            if vis.contains('/') {
-                0
-            } else {
-                vis.parse().unwrap()
-            }
-        })
-        .unwrap_or(0);
-
-    let conditions = if visibility > 5 && ceiling > 3_000 {
-        WeatherConditions::VFR
-    } else if visibility >= 3 && ceiling > 1_000 {
-        WeatherConditions::MVFR
-    } else if visibility >= 1 && ceiling > 500 {
-        WeatherConditions::IFR
-    } else {
-        WeatherConditions::LIFR
-    };
-
-    Ok(AirportWeather {
-        name: airport,
-        conditions,
-        visibility,
-        ceiling,
-        raw: line,
-    })
-}
-
-/// Query the SimAware data endpoint for its data on active pilot sessions.
-///
-/// This endpoint should be cached so as to not hit the SimAware server too frequently.
-pub async fn get_simaware_data() -> Result<HashMap<u64, String>> {
-    #[derive(Deserialize)]
-    struct Pilot {
-        cid: u64,
-    }
-
-    #[derive(Deserialize)]
-    struct TopLevel {
-        pilots: HashMap<String, Pilot>,
-    }
-
-    let mut mapping = HashMap::new();
-    let data: TopLevel = GENERAL_HTTP_CLIENT
-        .get("https://r2.simaware.ca/api/livedata/data.json")
-        .send()
-        .await?
-        .json()
-        .await?;
-    for (id, pilot) in data.pilots {
-        mapping.insert(pilot.cid, id);
-    }
-    Ok(mapping)
-}
 
 /// Check whether the VATSIM session position is in this facility's airspace.
 ///
@@ -207,14 +97,52 @@ pub fn determine_staff_positions(controller: &Controller, config: &Config) -> Ve
     ret_roles
 }
 
+#[allow(clippy::upper_case_acronyms)]
+pub enum ControllerRating {
+    OBS,
+    S1,
+    S2,
+    S3,
+    C1,
+    C3,
+    L1,
+    L3,
+    SUP,
+    ADM,
+    INA,
+}
+
+pub enum ControllerStatus {
+    Active,
+    Inactive,
+    LeaveOfAbsence,
+}
+
+#[allow(clippy::upper_case_acronyms)]
+pub enum StaffPosition {
+    None,
+    ATM,
+    DATM,
+    TA,
+    FE,
+    EC,
+    WM,
+    AFE,
+    AEC,
+    AWM,
+    INS,
+    MTR,
+}
+
 #[cfg(test)]
 pub mod tests {
-    use super::{
-        determine_staff_positions, parse_metar, parse_vatsim_timestamp,
-        position_in_facility_airspace, WeatherConditions,
+    use super::{determine_staff_positions, position_in_facility_airspace};
+    use crate::{
+        aviation::{parse_metar, WeatherConditions},
+        config::{Config, ConfigStaffOverride},
+        sql::Controller,
+        vatsim::parse_vatsim_timestamp,
     };
-    use crate::shared::{config::ConfigStaffOverride, sql::Controller, Config};
-    use pretty_assertions::assert_eq;
 
     #[test]
     fn test_parse_vatsim_timestamp() {

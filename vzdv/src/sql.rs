@@ -1,11 +1,7 @@
 use serde::Serialize;
 use sqlx::{
-    prelude::{FromRow, Row},
-    sqlite::SqliteRow,
-    types::{
-        chrono::{DateTime, Utc},
-        Uuid,
-    },
+    prelude::FromRow,
+    types::chrono::{DateTime, Utc},
 };
 
 #[derive(Debug, FromRow, Serialize, Clone, Default)]

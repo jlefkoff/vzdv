@@ -159,7 +159,7 @@ position_suffixes = ["_RMP", "_DEL", "_GND", "_TWR", "_APP", "_DEP", "_CTR", "_R
 
 [discord]
 join_link = ""
-api_key = ""
+bot_token = ""
 
 [discord.webhooks]
 staffing_request = ""

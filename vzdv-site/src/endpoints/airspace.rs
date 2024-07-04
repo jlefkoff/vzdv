@@ -1,8 +1,8 @@
 //! Endpoints for getting information on the airspace.
 
 use crate::{
+    flashed_messages,
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
-    utils::{flashed_messages, get_simaware_data, parse_metar, GENERAL_HTTP_CLIENT},
 };
 use anyhow::anyhow;
 use axum::{
@@ -20,6 +20,7 @@ use std::{sync::Arc, time::Instant};
 use thousands::Separable;
 use tower_sessions::Session;
 use vatsim_utils::live_api::Vatsim;
+use vzdv::{aviation::parse_metar, simaware::get_simaware_data, GENERAL_HTTP_CLIENT};
 
 /// Table of all the airspace's airports.
 async fn page_airports(

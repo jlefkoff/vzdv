@@ -1,7 +1,9 @@
+use anyhow::{bail, Result};
 use serde::{Deserialize, Serialize};
+use std::{fs, path::Path};
 
 /// Default place to look for the config file.
-pub const DEFAULT_CONFIG_FILE_NAME: &str = "site_config.toml";
+pub const DEFAULT_CONFIG_FILE_NAME: &str = "vzdv.toml";
 
 /// App configuration.
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -65,7 +67,7 @@ pub struct ConfigStats {
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct ConfigDiscord {
     pub join_link: String,
-    pub api_key: String,
+    pub bot_token: String,
     pub webhooks: ConfigDiscordWebhooks,
 }
 
@@ -73,4 +75,16 @@ pub struct ConfigDiscord {
 pub struct ConfigDiscordWebhooks {
     pub staffing_request: String,
     pub feedback: String,
+}
+
+impl Config {
+    /// Read the TOML file at the given path and load into the app's configuration file.
+    pub fn load_from_disk(path: &Path) -> Result<Self> {
+        if !Path::new(path).exists() {
+            bail!("Config file \"{}\" not found", path.display());
+        }
+        let text = fs::read_to_string(path)?;
+        let config: Config = toml::from_str(&text)?;
+        Ok(config)
+    }
 }

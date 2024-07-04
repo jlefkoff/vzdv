@@ -3,11 +3,8 @@
 //! The CRUD of events themselves is under /admin routes.
 
 use crate::{
-    shared::{
-        sql::{self, Event},
-        AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
-    },
-    utils::flashed_messages,
+    flashed_messages,
+    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 use axum::{
     extract::{Path, State},
@@ -18,6 +15,7 @@ use axum::{
 use minijinja::{context, Environment};
 use std::sync::Arc;
 use tower_sessions::Session;
+use vzdv::sql::{self, Event};
 
 /// Render a snippet that lists published upcoming events.
 ///

@@ -1,12 +1,5 @@
 //! HTTP endpoints for logging in and out.
 
-use crate::{
-    shared::{
-        sql::{self, Controller},
-        AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
-    },
-    utils::auth::{code_to_tokens, get_user_info, oauth_redirect_start, AuthCallback},
-};
 use anyhow::Result;
 use axum::{
     extract::{Query, State},
@@ -18,6 +11,12 @@ use log::debug;
 use minijinja::{context, Environment};
 use std::sync::Arc;
 use tower_sessions::Session;
+use vzdv::{
+    sql::{self, Controller},
+    vatsim::{code_to_tokens, get_user_info, oauth_redirect_start, AuthCallback},
+};
+
+use crate::shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY};
 
 /// Login page.
 ///

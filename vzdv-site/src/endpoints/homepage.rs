@@ -1,10 +1,8 @@
 //! HTTP endpoints for the homepage.
 
 use crate::{
+    flashed_messages,
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
-    utils::{
-        flashed_messages, parse_metar, vatsim::get_online_facility_controllers, GENERAL_HTTP_CLIENT,
-    },
 };
 use anyhow::{anyhow, Result};
 use axum::{extract::State, response::Html, routing::get, Router};
@@ -14,6 +12,7 @@ use serde::Serialize;
 use std::{sync::Arc, time::Instant};
 use tower_sessions::Session;
 use vatsim_utils::live_api::Vatsim;
+use vzdv::{aviation::parse_metar, vatsim::get_online_facility_controllers, GENERAL_HTTP_CLIENT};
 
 /// Homepage.
 async fn page_home(
