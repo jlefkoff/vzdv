@@ -70,7 +70,7 @@ async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) ->
         match controller_record {
             Some(cr) => {
                 let mut all_roles = HashSet::new();
-                cr.roles.split(",").for_each(|r| {
+                cr.roles.split(',').for_each(|r| {
                     all_roles.insert(r);
                 });
                 roles.iter().for_each(|r| {
