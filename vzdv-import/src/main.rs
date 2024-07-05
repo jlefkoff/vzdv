@@ -63,6 +63,7 @@ async fn update_single(db: &Pool<Sqlite>, controller: &AdhController) -> Result<
         .await?;
 
     sqlx::query("DELETE FROM certification WHERE cid=$1")
+        .bind(controller.cid)
         .execute(db)
         .await?;
     for certification in controller.certifications.values() {
