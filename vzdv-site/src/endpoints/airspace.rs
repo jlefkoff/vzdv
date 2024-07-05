@@ -20,7 +20,7 @@ use std::{sync::Arc, time::Instant};
 use thousands::Separable;
 use tower_sessions::Session;
 use vatsim_utils::live_api::Vatsim;
-use vzdv::{aviation::parse_metar, simaware::get_simaware_data, GENERAL_HTTP_CLIENT};
+use vzdv::{aviation::parse_metar, GENERAL_HTTP_CLIENT};
 
 /// Table of all the airspace's airports.
 async fn page_airports(
@@ -48,7 +48,6 @@ async fn page_flights(
         arrival: &'a str,
         altitude: String,
         speed: String,
-        simaware_id: &'a str,
     }
 
     // cache this endpoint's returned data for 60 seconds
@@ -69,7 +68,6 @@ async fn page_flights(
         .map(|airport| &airport.code)
         .collect();
     let vatsim_data = Vatsim::new().await?.get_v3_data().await?;
-    let simaware_data = get_simaware_data().await?;
     let flights: Vec<OnlineFlight> = vatsim_data
         .pilots
         .iter()
@@ -86,10 +84,6 @@ async fn page_flights(
                         arrival: &plan.arrival,
                         altitude: flight.altitude.separate_with_commas(),
                         speed: flight.groundspeed.separate_with_commas(),
-                        simaware_id: match simaware_data.get(&flight.cid) {
-                            Some(id) => id,
-                            None => "",
-                        },
                     })
                 } else {
                     None

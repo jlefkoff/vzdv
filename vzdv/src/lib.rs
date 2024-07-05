@@ -11,7 +11,6 @@ use std::collections::HashMap;
 pub mod aviation;
 pub mod config;
 pub mod db;
-pub mod simaware;
 pub mod sql;
 pub mod vatsim;
 pub mod vatusa;
