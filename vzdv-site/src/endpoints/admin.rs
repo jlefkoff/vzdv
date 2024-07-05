@@ -261,6 +261,8 @@ async fn post_feedback_form_handle(
  * TODO allow managing the roster
  * TODO allow creating and modifying events
  * TODO allow managing visitor requests
+ * TODO allow running reports on the roster to find controllers who aren't
+ *      meeting specified activity requirements
  */
 
 /// This file's routes and templates.

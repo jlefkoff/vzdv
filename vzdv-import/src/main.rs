@@ -1,3 +1,5 @@
+//! vZDV importer to get data from existing site.
+
 #![deny(clippy::all)]
 #![deny(unsafe_code)]
 

@@ -1,9 +1,10 @@
 [workspace]
 
 members = [
-  "vzdv", "vzdv-import",
+  "vzdv",
   "vzdv-site",
-  "vzdv-tasks"
+  "vzdv-tasks",
+  "vzdv-import",
 ]
 
 resolver = "2"

@@ -1,4 +1,4 @@
-//! New vZDV website background task runner.
+//! vZDV website background task runner.
 
 #![deny(clippy::all)]
 #![deny(unsafe_code)]
@@ -82,6 +82,7 @@ async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) ->
         }
     };
 
+    // update record
     sqlx::query(sql::UPSERT_USER_TASK)
         .bind(controller.cid)
         .bind(&controller.first_name)
@@ -92,7 +93,6 @@ async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) ->
         // controller will be on the roster since that's what the VATSIM API is showing
         .bind(true)
         .bind(roles.join(","))
-        .bind("")
         .execute(db)
         .await?;
     debug!(
