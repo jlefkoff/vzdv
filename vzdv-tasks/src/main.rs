@@ -8,7 +8,7 @@ use clap::Parser;
 use log::{debug, error, info};
 use sqlx::{sqlite::SqliteRow, Row, SqlitePool};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     env,
     path::{Path, PathBuf},
     time::Duration,
@@ -18,7 +18,8 @@ use vatsim_utils::rest_api;
 use vzdv::{
     config::{self, Config},
     db::load_db,
-    position_in_facility_airspace, sql,
+    position_in_facility_airspace,
+    sql::{self, Controller},
     vatusa::{get_roster, MembershipType, RosterMember},
 };
 
@@ -39,15 +40,47 @@ struct Cli {
 
 /// Update a single controller's stored data.
 async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) -> Result<()> {
-    let roles = controller
+    let sr_staff_roles = &["ATM", "DATM", "TA"];
+    let roles: Vec<_> = controller
         .roles
         .iter()
         .filter(|role| role.facility == "ZDV")
-        .map(|role| role.role.as_str())
+        .flat_map(|role| {
+            // VATUSA doesn't handle Jr staff roles well, so ignore them in the sync
+            let n = &role.role;
+            if sr_staff_roles.contains(&n.as_str()) {
+                Some(n.clone())
+            } else {
+                None
+            }
+        })
         // there's 1 controller in ZDV who actually has an "INS" role in addition to their controller rating
-        .filter(|&role| role != "INS")
-        .collect::<Vec<_>>()
-        .join(",");
+        .filter(|role| role != "INS")
+        .collect();
+
+    // merge any new roles with any existing roles
+    let roles = if roles.is_empty() {
+        roles
+    } else {
+        let controller_record: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+            .bind(controller.cid)
+            .fetch_optional(db)
+            .await?;
+        match controller_record {
+            Some(cr) => {
+                let mut all_roles = HashSet::new();
+                cr.roles.split(",").for_each(|r| {
+                    all_roles.insert(r);
+                });
+                roles.iter().for_each(|r| {
+                    all_roles.insert(r);
+                });
+                all_roles.iter().map(|s| s.to_string()).collect()
+            }
+            None => roles,
+        }
+    };
+
     sqlx::query(sql::UPSERT_USER_TASK)
         .bind(controller.cid)
         .bind(&controller.first_name)
@@ -55,9 +88,10 @@ async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) ->
         .bind(&controller.email)
         .bind(controller.rating)
         .bind(&controller.facility)
-        // controller *will* be on the roster since that's what the VATSIM API is showing
+        // controller will be on the roster since that's what the VATSIM API is showing
         .bind(true)
-        .bind(roles)
+        .bind(roles.join(","))
+        .bind("")
         .execute(db)
         .await?;
     debug!(
