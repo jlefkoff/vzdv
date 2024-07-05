@@ -1,6 +1,7 @@
 //! New vZDV website background task runner.
 
 #![deny(clippy::all)]
+#![deny(unsafe_code)]
 
 use anyhow::{Context, Result};
 use chrono::Months;

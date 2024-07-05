@@ -1,3 +1,6 @@
+#![deny(clippy::all)]
+#![deny(unsafe_code)]
+
 use anyhow::Result;
 use axum::{middleware as axum_middleware, response::Redirect, Router};
 use clap::Parser;

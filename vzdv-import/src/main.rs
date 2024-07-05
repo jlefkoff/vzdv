@@ -1,3 +1,6 @@
+#![deny(clippy::all)]
+#![deny(unsafe_code)]
+
 use anyhow::Result;
 use clap::Parser;
 use log::{debug, error, info};
