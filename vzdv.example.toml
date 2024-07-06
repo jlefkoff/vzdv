@@ -164,3 +164,34 @@ bot_token = ""
 [discord.webhooks]
 staffing_request = ""
 feedback = ""
+
+[discord.roles]
+# role
+guest = ""
+controller_otm = ""
+visiting_controller = ""
+neighboring_controller = ""
+
+# staff
+sr_staff = ""
+jr_staff = ""
+vatusa_vatgov_staff = ""
+
+# staff teams
+training_staff = ""
+event_team = ""
+fe_team = ""
+web_team = ""
+ace_team = ""
+
+# ratings
+administrator = ""
+supervisor = ""
+instructor_3 = ""
+instructor_1 = ""
+controller_3 = ""
+controller_1 = ""
+student_3 = ""
+student_2 = ""
+student_1 = ""
+observer = ""

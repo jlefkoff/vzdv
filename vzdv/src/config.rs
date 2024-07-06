@@ -69,12 +69,47 @@ pub struct ConfigDiscord {
     pub join_link: String,
     pub bot_token: String,
     pub webhooks: ConfigDiscordWebhooks,
+    pub roles: ConfigDiscordRoles,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct ConfigDiscordWebhooks {
     pub staffing_request: String,
     pub feedback: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct ConfigDiscordRoles {
+    // status
+    pub guest: String,
+    pub controller_otm: String,
+    pub home_controller: String,
+    pub visiting_controller: String,
+    pub neighboring_controller: String,
+
+    // staff
+    pub sr_staff: String,
+    pub jr_staff: String,
+    pub vatusa_vatgov_staff: String,
+
+    // staff teams
+    pub training_staff: String,
+    pub event_team: String,
+    pub fe_team: String,
+    pub web_team: String,
+    pub ace_team: String,
+
+    // ratings
+    pub administrator: String,
+    pub supervisor: String,
+    pub instructor_3: String,
+    pub instructor_1: String,
+    pub controller_3: String,
+    pub controller_1: String,
+    pub student_3: String,
+    pub student_2: String,
+    pub student_1: String,
+    pub observer: String,
 }
 
 impl Config {
