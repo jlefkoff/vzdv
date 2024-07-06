@@ -4,6 +4,7 @@ members = [
   "vzdv",
   "vzdv-site",
   "vzdv-tasks",
+  "vzdv-bot",
   "vzdv-import",
 ]
 
