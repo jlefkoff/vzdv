@@ -5,11 +5,17 @@
 
 use anyhow::Result;
 use config::Config;
+use db::load_db;
+use log::{debug, error};
 use once_cell::sync::Lazy;
 use reqwest::ClientBuilder;
 use sql::Controller;
 use sqlx::{sqlite::SqliteRow, Pool, Row, Sqlite};
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    env,
+    path::{Path, PathBuf},
+};
 
 pub mod aviation;
 pub mod config;
@@ -134,6 +140,46 @@ pub enum StaffPosition {
     AWM,
     INS,
     MTR,
+}
+
+/// Setup logging, load the config, connect to the DB; return config and DB.
+///
+/// Exit the process with an error code if anything goes wrong.
+pub async fn general_setup(
+    debug_logging: bool,
+    binary_name: &str,
+    config_path: Option<PathBuf>,
+) -> (Config, Pool<Sqlite>) {
+    if debug_logging {
+        env::set_var("RUST_LOG", format!("info,{binary_name}=debug"));
+    } else {
+        env::set_var("RUST_LOG", "info");
+    }
+    pretty_env_logger::init();
+    debug!("Logging configured");
+
+    let config_location = match config_path {
+        Some(path) => path,
+        None => Path::new(config::DEFAULT_CONFIG_FILE_NAME).to_owned(),
+    };
+    debug!("Loading from config file");
+    let config = match Config::load_from_disk(&config_location) {
+        Ok(c) => c,
+        Err(e) => {
+            error!("Could not load config: {e}");
+            std::process::exit(1);
+        }
+    };
+    debug!("Creating DB connection");
+    let db = match load_db(&config).await {
+        Ok(db) => db,
+        Err(e) => {
+            error!("Could not load DB: {e}");
+            std::process::exit(1);
+        }
+    };
+
+    (config, db)
 }
 
 #[cfg(test)]

@@ -8,16 +8,8 @@ use clap::Parser;
 use log::{debug, error, info};
 use serde::Deserialize;
 use sqlx::{Pool, Sqlite};
-use std::{
-    collections::HashMap,
-    env,
-    path::{Path, PathBuf},
-};
-use vzdv::{
-    config::{self, Config},
-    db::load_db,
-    GENERAL_HTTP_CLIENT,
-};
+use std::{collections::HashMap, path::PathBuf};
+use vzdv::{general_setup, GENERAL_HTTP_CLIENT};
 
 const ROSTER_URL: &str = "https://api.zdvartcc.org/v1/user/all";
 
@@ -86,35 +78,7 @@ async fn update_single(db: &Pool<Sqlite>, controller: &AdhController) -> Result<
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
-    if cli.debug {
-        env::set_var("RUST_LOG", "info,vzdv_tasks=debug");
-    } else if env::var("RUST_LOG").is_err() {
-        env::set_var("RUST_LOG", "info");
-    }
-    pretty_env_logger::init();
-    debug!("Logging configured");
-
-    debug!("Loading");
-    let config_location = match cli.config {
-        Some(path) => path,
-        None => Path::new(config::DEFAULT_CONFIG_FILE_NAME).to_owned(),
-    };
-    debug!("Loading from config file");
-    let config = match Config::load_from_disk(&config_location) {
-        Ok(c) => c,
-        Err(e) => {
-            error!("Could not load config: {e}");
-            std::process::exit(1);
-        }
-    };
-    debug!("Creating DB connection");
-    let db = match load_db(&config).await {
-        Ok(db) => db,
-        Err(e) => {
-            error!("Could not load DB: {e}");
-            std::process::exit(1);
-        }
-    };
+    let (_config, db) = general_setup(cli.debug, "vzdv_import", cli.config).await;
 
     info!("Retrieving data");
     let data = match get_adh_data().await {
