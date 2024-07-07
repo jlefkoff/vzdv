@@ -3297,9 +3297,11 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
+ "clap",
  "log",
  "pretty_env_logger",
  "rand",
+ "sqlx",
  "tokio",
  "twilight-gateway",
  "twilight-http",

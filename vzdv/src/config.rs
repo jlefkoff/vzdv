@@ -86,6 +86,7 @@ pub struct ConfigDiscordRoles {
     pub home_controller: String,
     pub visiting_controller: String,
     pub neighboring_controller: String,
+    pub event_controller: String,
 
     // staff
     pub sr_staff: String,
