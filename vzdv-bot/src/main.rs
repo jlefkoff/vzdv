@@ -6,12 +6,14 @@
 use anyhow::Result;
 use base64::{engine::general_purpose, Engine as _};
 use clap::Parser;
-use log::{error, info, warn};
+use log::{debug, error, info, warn};
 use sqlx::{Pool, Sqlite};
 use std::{path::PathBuf, sync::Arc};
 use twilight_gateway::{Event, Intents, Shard, ShardId};
 use twilight_http::Client as HttpClient;
 use vzdv::{config::Config, general_setup};
+
+mod tasks;
 
 /// vZDV Discord bot.
 #[derive(Parser)]
@@ -56,7 +58,34 @@ async fn main() {
     let mut shard = Shard::new(ShardId::ONE, token.clone(), intents);
     let http = Arc::new(HttpClient::new(token.clone()));
 
-    // TODO start background tasks
+    debug!("Spawning background tasks");
+
+    {
+        let config = config.clone();
+        let db = db.clone();
+        let http = http.clone();
+        tokio::spawn(async move {
+            tasks::online::process(config, db, http).await;
+        });
+    };
+
+    {
+        let config = config.clone();
+        let db = db.clone();
+        let http = http.clone();
+        tokio::spawn(async move {
+            tasks::roles::process(config, db, http).await;
+        });
+    };
+
+    {
+        let config = config.clone();
+        let db = db.clone();
+        let http = http.clone();
+        tokio::spawn(async move {
+            tasks::off_roster::process(config, db, http).await;
+        });
+    };
 
     info!("Waiting for events");
     loop {
@@ -81,7 +110,6 @@ async fn main() {
     }
 }
 
-#[allow(unused)] // TODO remove
 async fn handle_event(
     event: Event,
     http: Arc<HttpClient>,
