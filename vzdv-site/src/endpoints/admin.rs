@@ -1,5 +1,9 @@
 //! Endpoints for editing and controlling aspects of the site.
 
+use crate::{
+    flashed_messages,
+    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
+};
 use axum::{
     extract::State,
     response::{Html, IntoResponse, Redirect, Response},
@@ -15,11 +19,6 @@ use tower_sessions::Session;
 use vzdv::{
     sql::{self, Controller, Feedback},
     GENERAL_HTTP_CLIENT,
-};
-
-use crate::{
-    flashed_messages,
-    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 
 /// Access control by staff position.

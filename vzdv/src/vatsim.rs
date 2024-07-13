@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use crate::{config::Config, get_controller_cids_and_names, position_in_facility_airspace};
 use anyhow::{bail, Result};
 use chrono::{DateTime, NaiveDateTime, TimeZone, Utc};
 use log::error;
@@ -7,8 +8,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::SqlitePool;
 use vatsim_utils::live_api::Vatsim;
-
-use crate::{config::Config, get_controller_cids_and_names, position_in_facility_airspace};
 
 /// Parse a VATSIM timestamp into a `chrono::DateTime`.
 pub fn parse_vatsim_timestamp(stamp: &str) -> Result<DateTime<Utc>> {

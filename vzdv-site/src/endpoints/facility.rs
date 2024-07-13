@@ -1,5 +1,9 @@
 //! Endpoints for getting information on the facility.
 
+use crate::{
+    flashed_messages,
+    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
+};
 use axum::{
     extract::State,
     response::{Html, Redirect},
@@ -21,11 +25,6 @@ use vzdv::{
     determine_staff_positions,
     sql::{self, Activity, Certification, Controller, Resource, VisitorApplication},
     vatusa,
-};
-
-use crate::{
-    flashed_messages,
-    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 
 #[derive(Debug, Serialize)]

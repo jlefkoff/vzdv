@@ -1,5 +1,6 @@
 //! HTTP endpoints for logging in and out.
 
+use crate::shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY};
 use anyhow::Result;
 use axum::{
     extract::{Query, State},
@@ -15,8 +16,6 @@ use vzdv::{
     sql::{self, Controller},
     vatsim::{code_to_tokens, get_user_info, oauth_redirect_start, AuthCallback},
 };
-
-use crate::shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY};
 
 /// Login page.
 ///
