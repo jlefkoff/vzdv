@@ -16,7 +16,7 @@ pub enum WeatherConditions {
 pub struct AirportWeather<'a> {
     pub name: &'a str,
     pub conditions: WeatherConditions,
-    pub visibility: u8,
+    pub visibility: u16,
     pub ceiling: u16,
     pub raw: &'a str,
 }
@@ -39,18 +39,18 @@ pub fn parse_metar(line: &str) -> Result<AirportWeather> {
         }
     }
 
-    let visibility: u8 = parts
+    let visibility: u16 = parts
         .iter()
         .find(|part| part.ends_with("SM"))
         .map(|part| {
             let vis = part.replace("SM", "");
             if vis.contains('/') {
-                0
+                Ok(0)
             } else {
-                vis.parse().unwrap()
+                vis.parse()
             }
         })
-        .unwrap_or(0);
+        .ok_or(anyhow!("Could not determine visibility"))??;
 
     let conditions = if visibility > 5 && ceiling > 3_000 {
         WeatherConditions::VFR
@@ -69,4 +69,25 @@ pub fn parse_metar(line: &str) -> Result<AirportWeather> {
         ceiling,
         raw: line,
     })
+}
+
+#[cfg(test)]
+pub mod tests {
+    use super::{parse_metar, WeatherConditions};
+
+    #[test]
+    fn test_parse_metar() {
+        let ret = parse_metar("KDEN 030253Z 22013KT 10SM SCT100 BKN160 13/M12 A2943 RMK AO2 PK WND 21036/0211 SLP924 T01331117 58005").unwrap();
+        assert_eq!(ret.name, "KDEN");
+        assert_eq!(ret.conditions, WeatherConditions::VFR);
+
+        let ret = parse_metar("KDEN 2SM BNK005").unwrap();
+        assert_eq!(ret.conditions, WeatherConditions::IFR);
+
+        let ret = parse_metar("KDEN 4SM OVC020").unwrap();
+        assert_eq!(ret.conditions, WeatherConditions::MVFR);
+
+        let ret = parse_metar("KDEN 1/2SM OVC001").unwrap();
+        assert_eq!(ret.conditions, WeatherConditions::LIFR);
+    }
 }

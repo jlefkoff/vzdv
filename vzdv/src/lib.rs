@@ -186,7 +186,6 @@ pub async fn general_setup(
 pub mod tests {
     use super::{determine_staff_positions, position_in_facility_airspace};
     use crate::{
-        aviation::{parse_metar, WeatherConditions},
         config::{Config, ConfigStaffOverride},
         sql::Controller,
         vatsim::parse_vatsim_timestamp,
@@ -195,22 +194,6 @@ pub mod tests {
     #[test]
     fn test_parse_vatsim_timestamp() {
         parse_vatsim_timestamp("2024-03-02T16:20:37.0439318Z").unwrap();
-    }
-
-    #[test]
-    fn test_parse_metar() {
-        let ret = parse_metar("KDEN 030253Z 22013KT 10SM SCT100 BKN160 13/M12 A2943 RMK AO2 PK WND 21036/0211 SLP924 T01331117 58005").unwrap();
-        assert_eq!(ret.name, "KDEN");
-        assert_eq!(ret.conditions, WeatherConditions::VFR);
-
-        let ret = parse_metar("KDEN 2SM BNK005").unwrap();
-        assert_eq!(ret.conditions, WeatherConditions::IFR);
-
-        let ret = parse_metar("KDEN 4SM OVC020").unwrap();
-        assert_eq!(ret.conditions, WeatherConditions::MVFR);
-
-        let ret = parse_metar("KDEN 1/2SM OVC001").unwrap();
-        assert_eq!(ret.conditions, WeatherConditions::LIFR);
     }
 
     #[test]
