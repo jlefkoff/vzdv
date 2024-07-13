@@ -151,7 +151,7 @@ pub async fn general_setup(
     config_path: Option<PathBuf>,
 ) -> (Config, Pool<Sqlite>) {
     if debug_logging {
-        env::set_var("RUST_LOG", format!("info,{binary_name}=debug"));
+        env::set_var("RUST_LOG", format!("info,tracing=warn,{binary_name}=debug"));
     } else {
         env::set_var("RUST_LOG", "info");
     }
