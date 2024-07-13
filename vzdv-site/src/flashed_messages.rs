@@ -23,7 +23,7 @@ impl FlashedMessageLevel {
         match self {
             FlashedMessageLevel::Info => "info",
             FlashedMessageLevel::Success => "success",
-            FlashedMessageLevel::Error => "error",
+            FlashedMessageLevel::Error => "danger",
         }
     }
 }
