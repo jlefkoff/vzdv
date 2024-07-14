@@ -4,8 +4,28 @@
 
 {% block body %}
 
-<h2>{{ event.name }}</h2>
+<div class="row">
+  <div class="col">
+    <h2>{{ event.name }}</h2>
+    <h5>Start: <span class="d-none event-time">{{ event.start }}</span></h5>
+    <h5>End: <span class="d-none event-time">{{ event.end }}</span></h5>
 
-<!-- TODO -->
+    <p>{{ event.description }}</p>
+
+    <!-- TODO -->
+
+  </div>
+  <div class="col">
+    <img src="{{ event.image_url }}" alt="Event banner" class="img-fluid" />
+  </div>
+</div>
+
+<script defer>
+  const opts = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' };
+  document.querySelectorAll('.event-time').forEach((element) => {
+    element.innerText = new Date(element.innerText).toLocaleDateString('en-US', opts);
+    element.classList.remove('d-none');
+  });
+</script>
 
 {% endblock %}

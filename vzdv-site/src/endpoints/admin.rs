@@ -2,7 +2,7 @@
 
 use crate::{
     flashed_messages,
-    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
+    shared::{reject_if_not_staff, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 use axum::{
     extract::State,
@@ -10,113 +10,15 @@ use axum::{
     routing::{get, post},
     Form, Router,
 };
-use log::{error, warn};
 use minijinja::{context, Environment};
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
 use tower_sessions::Session;
 use vzdv::{
-    sql::{self, Controller, Feedback},
-    GENERAL_HTTP_CLIENT,
+    sql::{self, Feedback},
+    PermissionsGroup, GENERAL_HTTP_CLIENT,
 };
-
-/// Access control by staff position.
-///
-/// ## Limitations
-///
-/// - Mentors, Instructors, TA, ATM, DATM (+ WM) can CRUD training notes, ratings, and certs.
-/// - TA (view but no action), ATM, DATM (+ WM) can view and take action on feedback
-/// - ATM, DATM (+ WM) can view and take action on visitor applications
-/// - EC, AEC, ATM, DATM (+ WM) can CRUD events
-///
-/// ## Unused roles
-///
-/// FE, AFE, and AWM are not granted any special access.
-///
-#[allow(unused)]
-enum StaffRequirement {
-    /// Training staff (Mentors, Instructors, TA) and admins (ATM, DATM, WM)
-    TrainingStaff,
-    /// Events staff (EC, AEC) and admins (ATM, DATM, WM)
-    EventStaff,
-    /// Any senior staff position (ATM, DATM, TA) plus WM
-    SeniorStaff,
-    /// Just the ATM and DATM plus WM
-    Admins,
-}
-
-impl StaffRequirement {
-    /// Return a list of matching roles to satisfy the requirement.
-    ///
-    /// While the WM is not, by default, part of any of these groups,
-    /// their role satisfies all requirements.
-    fn matching_roles(&self) -> Vec<&'static str> {
-        match self {
-            Self::TrainingStaff => vec!["ATM", "DATM", "TA", "MTR", "INS", "WM"],
-            Self::EventStaff => vec!["ATM", "DATM", "EC", "AEC", "WM"],
-            Self::SeniorStaff => vec!["ATM", "DATM", "TA", "WM"],
-            Self::Admins => vec!["ATM", "DATM", "WM"],
-        }
-    }
-}
-
-/// Returns a response to redirect to the homepage for non-staff users.
-///
-/// This function checks the database to ensure that the staff member is
-/// still actually a staff member at the time of making the request.
-///
-/// Also asserts that `user_info.is_some()`, so later unwrapping it is safe.
-async fn reject_if_not_staff(
-    state: &Arc<AppState>,
-    user_info: &Option<UserInfo>,
-    staff_type: StaffRequirement,
-) -> Option<Response> {
-    let resp = Some(Redirect::to("/").into_response());
-    if user_info.is_none() {
-        return resp;
-    }
-    let user_info = user_info.as_ref().unwrap();
-    if !user_info.is_staff {
-        return resp;
-    }
-    let controller: Option<Controller> = match sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
-        .bind(user_info.cid)
-        .fetch_optional(&state.db)
-        .await
-    {
-        Ok(c) => c,
-        Err(e) => {
-            error!(
-                "Could not look up staff controller with CID {}: {e}",
-                user_info.cid
-            );
-            return resp;
-        }
-    };
-    let controller = match controller {
-        Some(c) => c,
-        None => {
-            warn!(
-                "No located controller by CID {} for staff check",
-                user_info.cid
-            );
-            return resp;
-        }
-    };
-    if controller.roles.is_empty() {
-        return resp;
-    }
-    let satisfied = controller
-        .roles
-        .split_terminator(' ')
-        .any(|role| staff_type.matching_roles().contains(&role));
-    if satisfied {
-        None
-    } else {
-        resp
-    }
-}
 
 /// Page for managing controller feedback.
 ///
@@ -126,9 +28,7 @@ async fn page_feedback(
     session: Session,
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) =
-        reject_if_not_staff(&state, &user_info, StaffRequirement::SeniorStaff).await
-    {
+    if let Some(redirect) = reject_if_not_staff(&state, &user_info, PermissionsGroup::Admin).await {
         return Ok(redirect);
     }
     let template = state.templates.get_template("admin/feedback")?;
@@ -158,7 +58,7 @@ async fn post_feedback_form_handle(
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     if let Some(redirect) =
-        reject_if_not_staff(&state, &user_info, StaffRequirement::TrainingStaff).await
+        reject_if_not_staff(&state, &user_info, PermissionsGroup::TrainingTeam).await
     {
         return Ok(redirect);
     }

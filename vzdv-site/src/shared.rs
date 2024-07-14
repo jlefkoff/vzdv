@@ -2,15 +2,20 @@
 
 use axum::{
     http::StatusCode,
-    response::{Html, IntoResponse, Response},
+    response::{Html, IntoResponse, Redirect, Response},
 };
 use log::error;
 use mini_moka::sync::Cache;
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
-use std::time::Instant;
+use std::{sync::Arc, time::Instant};
 use tower_sessions_sqlx_store::sqlx::SqlitePool;
-use vzdv::config::Config;
+use vzdv::{
+    config::Config,
+    controller_can_see,
+    sql::{self, Controller},
+    PermissionsGroup,
+};
 
 /// Wrapper around `anyhow`'s `Error` type, which is itself a wrapper
 /// around the stdlib's `Error` type.
@@ -91,5 +96,43 @@ pub struct UserInfo {
     pub cid: u32,
     pub first_name: String,
     pub last_name: String,
-    pub is_staff: bool,
+    pub is_staff: bool, // TODO I'm not sure I like this here
+}
+
+/// Returns a response to redirect to the homepage for non-staff users.
+///
+/// This function checks the database to ensure that the staff member is
+/// still actually a staff member at the time of making the request.
+///
+/// So long as the permissions being checked against aren't `PermissionsGroup::Anon`,
+/// it's safe to assume that `user_info` is `Some<UserInfo>`.
+pub async fn reject_if_not_staff(
+    state: &Arc<AppState>,
+    user_info: &Option<UserInfo>,
+    permissions: PermissionsGroup,
+) -> Option<Response> {
+    let resp = Some(Redirect::to("/").into_response());
+    if user_info.is_none() {
+        return resp;
+    }
+    let user_info = user_info.as_ref().unwrap();
+    let controller: Option<Controller> = match sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+        .bind(user_info.cid)
+        .fetch_optional(&state.db)
+        .await
+    {
+        Ok(c) => c,
+        Err(e) => {
+            error!(
+                "Could not look up staff controller with CID {}: {e}",
+                user_info.cid
+            );
+            return resp;
+        }
+    };
+    if controller_can_see(&controller, permissions) {
+        None
+    } else {
+        resp
+    }
 }

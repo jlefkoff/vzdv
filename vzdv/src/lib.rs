@@ -120,6 +120,25 @@ pub enum ControllerRating {
     INA,
 }
 
+impl ControllerRating {
+    /// Enum values as a string.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::OBS => "OBS",
+            Self::S1 => "S1",
+            Self::S2 => "S2",
+            Self::S3 => "S3",
+            Self::C1 => "C1",
+            Self::C3 => "C3",
+            Self::L1 => "L1",
+            Self::L3 => "L3",
+            Self::SUP => "SUP",
+            Self::ADM => "ADM",
+            Self::INA => "INA",
+        }
+    }
+}
+
 pub enum ControllerStatus {
     Active,
     Inactive,
@@ -127,6 +146,7 @@ pub enum ControllerStatus {
 }
 
 #[allow(clippy::upper_case_acronyms)]
+#[derive(Debug, PartialEq)]
 pub enum StaffPosition {
     None,
     ATM,
@@ -140,6 +160,124 @@ pub enum StaffPosition {
     AWM,
     INS,
     MTR,
+}
+
+impl StaffPosition {
+    /// Enum value as a string.
+    ///
+    /// "None" roles is an empty string.
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::None => "",
+            Self::ATM => "ATM",
+            Self::DATM => "DATM",
+            Self::TA => "TA",
+            Self::FE => "FE",
+            Self::EC => "EC",
+            Self::WM => "WM",
+            Self::AFE => "AFE",
+            Self::AEC => "AEC",
+            Self::AWM => "AWM",
+            Self::INS => "INS",
+            Self::MTR => "MTR",
+        }
+    }
+}
+
+impl From<&str> for StaffPosition {
+    /// Inverse of `StaffPosition::as_str`.
+    fn from(value: &str) -> Self {
+        match value {
+            "ATM" => StaffPosition::ATM,
+            "DATM" => StaffPosition::DATM,
+            "TA" => StaffPosition::TA,
+            "FE" => StaffPosition::FE,
+            "EC" => StaffPosition::EC,
+            "WM" => StaffPosition::WM,
+            "AFE" => StaffPosition::AFE,
+            "AEC" => StaffPosition::AEC,
+            "AWM" => StaffPosition::AWM,
+            "INS" => StaffPosition::INS,
+            "MTR" => StaffPosition::MTR,
+            _ => StaffPosition::None,
+        }
+    }
+}
+
+#[derive(PartialEq)]
+pub enum PermissionsGroup {
+    Anon,
+    LoggedIn,
+    EventsTeam,
+    TrainingTeam,
+    Admin,
+}
+
+/// Simple permissions control for accessing endpoints.
+///
+/// Generally only intended to be used in places where access limitation is needed rather than
+/// on all pages. Anyone can see `PermissionsGroup::Anon` pages, any logged-in user can see
+/// `PermissionsGroup::LoggedIn` pages, and various groupings of staff can see the other pages,
+/// with the ATM, DATM, and WM being granted site-wide permissions.
+///
+/// ## Limitations
+///
+/// - Mentors, Instructors, TA, ATM, DATM (+ WM) can CRUD training notes, ratings, and certs.
+/// - TA (view but no action), ATM, DATM (+ WM) can view and take action on feedback
+/// - ATM, DATM (+ WM) can view and take action on visitor applications
+/// - EC, AEC, ATM, DATM (+ WM) can CRUD events
+///
+/// ## Unused roles
+///
+/// FE, AFE, and AWM are not granted any special access.
+///
+pub fn controller_can_see(controller: &Option<Controller>, team: PermissionsGroup) -> bool {
+    let controller = match controller {
+        Some(c) => c,
+        None => return team == PermissionsGroup::Anon,
+    };
+    let roles: Vec<_> = controller
+        .roles
+        .split(',')
+        .map(StaffPosition::from)
+        .collect();
+    match team {
+        PermissionsGroup::Anon => true,
+        PermissionsGroup::LoggedIn => true,
+        PermissionsGroup::EventsTeam => {
+            return [
+                StaffPosition::EC,
+                StaffPosition::AEC,
+                StaffPosition::ATM,
+                StaffPosition::DATM,
+                StaffPosition::WM,
+            ]
+            .iter()
+            .any(|r| roles.contains(r))
+        }
+        PermissionsGroup::TrainingTeam => {
+            return [
+                StaffPosition::MTR,
+                StaffPosition::INS,
+                StaffPosition::TA,
+                StaffPosition::ATM,
+                StaffPosition::DATM,
+                StaffPosition::WM,
+            ]
+            .iter()
+            .any(|r| roles.contains(r))
+        }
+        PermissionsGroup::Admin => {
+            return [
+                StaffPosition::TA,
+                StaffPosition::ATM,
+                StaffPosition::DATM,
+                StaffPosition::WM,
+            ]
+            .iter()
+            .any(|r| roles.contains(r))
+        }
+    }
 }
 
 /// Setup logging, load the config, connect to the DB; return config and DB.

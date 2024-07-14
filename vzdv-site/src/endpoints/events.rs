@@ -4,7 +4,7 @@
 
 use crate::{
     flashed_messages,
-    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
+    shared::{reject_if_not_staff, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 use axum::{
     extract::{Path, State},
@@ -12,10 +12,14 @@ use axum::{
     routing::get,
     Router,
 };
+use log::debug;
 use minijinja::{context, Environment};
 use std::sync::Arc;
 use tower_sessions::Session;
-use vzdv::sql::{self, Event};
+use vzdv::{
+    sql::{self, Event},
+    PermissionsGroup,
+};
 
 /// Render a snippet that lists published upcoming events.
 ///
@@ -44,6 +48,8 @@ async fn get_upcoming_events(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, AppError> {
+    // TODO show unpublished events to event staff here
+
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let template = state.templates.get_template("events/upcoming_events")?;
     let rendered = template.render(context! { user_info })?;
@@ -63,6 +69,14 @@ async fn page_get_event(
         .await?;
     match event {
         Some(event) => {
+            if !event.published {
+                // only event staff can see unpublished events
+                if let Some(redirect) =
+                    reject_if_not_staff(&state, &user_info, PermissionsGroup::EventsTeam).await
+                {
+                    return Ok(redirect);
+                }
+            }
             let template = state.templates.get_template("events/event")?;
             let rendered = template.render(context! { user_info, event })?;
             Ok(Html(rendered).into_response())
