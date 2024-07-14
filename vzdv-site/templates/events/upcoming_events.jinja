@@ -1,1 +1,11 @@
-<p>foobar</p>
+{% extends "_layout" %}
+
+{% block title %}Events | {{ super() }}{% endblock %}
+
+{% block body %}
+
+<h2>Events</h2>
+
+<div id="events" hx-get="/events/upcoming" hx-trigger="load"></div>
+
+{% endblock %}

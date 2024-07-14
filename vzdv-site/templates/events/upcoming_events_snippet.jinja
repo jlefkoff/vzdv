@@ -1,0 +1,28 @@
+{% if events|length == 0 %}
+  No upcoming events
+{% else %}
+  {% for event in events %}
+    <h4 class="mb-1">
+      <a href="/events/{{ event.id }}" class="icon-link icon-link-hover text-decoration-none">
+        {{ event.name }}
+        <i class="bi bi-arrow-right-short"></i>
+      </a>
+    </h4>
+    <p class="mb-1">
+      <span class="d-none event-time">{{ event.start }} -- {{ event.end }}</span>
+    </p>
+    <a href="/events/{{ event.id }}">
+      <img src="{{ event.image_url }}" alt="Event banner" class="img-fluid" />
+    </a>
+  {% endfor %}
+{% endif %}
+
+<script defer>
+  const opts = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' };
+  document.querySelectorAll('.event-time').forEach((element) => {
+    const parts = element.innerText.split(' -- ')
+    const start = new Date(parts[0]).toLocaleDateString('en-US', opts);
+    const end = new Date(parts[1]).toLocaleDateString('en-US', opts);
+    element.parentElement.innerText = `${start} - ${end}`;
+  });
+</script>

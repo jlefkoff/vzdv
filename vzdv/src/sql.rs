@@ -299,4 +299,5 @@ pub const GET_PENDING_VISITOR_REQ_FOR: &str = "SELECT * FROM visitor_request WHE
 pub const INSERT_INTO_VISITOR_REQ: &str =
     "INSERT INTO visitor_request VALUES (NULL, $1, $2, $3, $4, $5, $6);";
 
+pub const GET_UPCOMING_EVENTS: &str = "SELECT * FROM event WHERE end > $1 AND published = TRUE";
 pub const GET_EVENT: &str = "SELECT * FROM event WHERE id=$1";

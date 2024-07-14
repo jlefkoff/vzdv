@@ -26,17 +26,31 @@ async fn snippet_get_upcoming_events(
     session: Session,
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let events: Vec<Event> = sqlx::query_as(sql::GET_UPCOMING_EVENTS)
+        .bind(chrono::Utc::now())
+        .fetch_all(&state.db)
+        .await?;
+    let template = state
+        .templates
+        .get_template("events/upcoming_events_snippet")?;
+    let rendered = template.render(context! { user_info, events })?;
+    Ok(Html(rendered))
+}
+
+/// Render a full page of upcoming events.
+///
+/// Basically what the homepage does, but without the rest of the homepage.
+async fn get_upcoming_events(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Html<String>, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let template = state.templates.get_template("events/upcoming_events")?;
     let rendered = template.render(context! { user_info })?;
     Ok(Html(rendered))
 }
 
 /// Render the full page for a single event, including controls for signup.
-///
-/// TODO decide if controls for editing the event will be rendered on this
-/// page or a separate page. Separate page would generally follow the patterns
-/// being established in this app, but joined would be inline with what the EC
-/// noted liking.
 async fn page_get_event(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -69,6 +83,12 @@ async fn page_get_event(
 pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
     template
         .add_template(
+            "events/upcoming_events_snippet",
+            include_str!("../../templates/events/upcoming_events_snippet.jinja"),
+        )
+        .unwrap();
+    template
+        .add_template(
             "events/upcoming_events",
             include_str!("../../templates/events/upcoming_events.jinja"),
         )
@@ -81,6 +101,7 @@ pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
         .unwrap();
 
     Router::new()
-        .route("/events/", get(snippet_get_upcoming_events))
+        .route("/events/upcoming", get(snippet_get_upcoming_events))
+        .route("/events/", get(get_upcoming_events))
         .route("/events/:id", get(page_get_event))
 }
