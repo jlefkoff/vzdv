@@ -1,5 +1,6 @@
 //! vZDV Discord bot.
 
+#![allow(unused)] // TODO remove
 #![deny(clippy::all)]
 #![deny(unsafe_code)]
 

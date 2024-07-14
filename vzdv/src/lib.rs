@@ -204,7 +204,7 @@ impl From<&str> for StaffPosition {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(Debug, PartialEq)]
 pub enum PermissionsGroup {
     Anon,
     LoggedIn,
@@ -322,7 +322,10 @@ pub async fn general_setup(
 
 #[cfg(test)]
 pub mod tests {
-    use super::{determine_staff_positions, position_in_facility_airspace};
+    use super::{
+        controller_can_see, determine_staff_positions, position_in_facility_airspace,
+        PermissionsGroup,
+    };
     use crate::{
         config::{Config, ConfigStaffOverride},
         sql::Controller,
@@ -423,5 +426,95 @@ pub mod tests {
         let config = Config::default();
 
         assert!(determine_staff_positions(&controller, &config).is_empty());
+    }
+
+    #[test]
+    fn test_controller_can_see_anon() {
+        assert!(controller_can_see(&None, PermissionsGroup::Anon));
+        let mut controller = Controller::default();
+        assert!(controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::Anon
+        ));
+        controller.roles = "DATM,INS".to_string();
+        assert!(controller_can_see(
+            &Some(controller),
+            PermissionsGroup::Anon
+        ));
+    }
+
+    #[test]
+    fn test_controller_can_see_logged_in() {
+        assert!(!controller_can_see(&None, PermissionsGroup::LoggedIn));
+        let mut controller = Controller::default();
+        assert!(controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::LoggedIn
+        ));
+        controller.roles = "DATM,INS".to_string();
+        assert!(controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::LoggedIn
+        ));
+    }
+
+    #[test]
+    fn test_controller_can_see_teams() {
+        assert!(!controller_can_see(&None, PermissionsGroup::EventsTeam));
+        let mut controller = Controller::default();
+        assert!(!controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::EventsTeam
+        ));
+        controller.roles = "EC".to_string();
+        assert!(controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::EventsTeam
+        ));
+        controller.roles = "AEC".to_string();
+        assert!(controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::EventsTeam
+        ));
+
+        controller.roles = "MTR".to_string();
+        assert!(!controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::EventsTeam
+        ));
+        assert!(controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::TrainingTeam
+        ));
+    }
+
+    #[test]
+    fn test_controller_can_see_admin() {
+        assert!(!controller_can_see(&None, PermissionsGroup::Admin));
+        let mut controller = Controller::default();
+        assert!(!controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::Admin
+        ));
+        controller.roles = "EC".to_string();
+        assert!(!controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::Admin
+        ));
+        controller.roles = "ATM".to_string();
+        assert!(controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::Admin
+        ));
+        controller.roles = "DATM".to_string();
+        assert!(controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::Admin
+        ));
+        controller.roles = "WM".to_string();
+        assert!(controller_can_see(
+            &Some(controller.clone()),
+            PermissionsGroup::Admin
+        ));
     }
 }

@@ -12,7 +12,6 @@ use axum::{
     routing::get,
     Router,
 };
-use log::debug;
 use minijinja::{context, Environment};
 use std::sync::Arc;
 use tower_sessions::Session;
