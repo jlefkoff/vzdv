@@ -7,6 +7,9 @@
 
 New vZDV website. Completely in-dev and unfinished.
 
+This site is not affiliated with the Federal Aviation Administration, actual Denver ARTCC, or any real-world governing aviation body.
+All content herein is solely for use on the VATSIM network.
+
 ## Project goals
 
 TBD
