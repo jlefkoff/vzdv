@@ -33,11 +33,11 @@ This app follows all [Clippy](https://doc.rust-lang.org/clippy/) lints on _Night
 
 ## Running
 
-From the project root, you can run `cargo run` to start the app. If you build and export a binary (`cargo b --release`, ...), just execute the binary.
+This project contains multiple binaries. From the project root, you can run `cargo run --bin vzdv-site` to start the site. If you build and export the binaries (`cargo b --release`, ...), just execute the correct binary.
 
-You'll need to create a configuration file. An empty layout example is supplied [here](./site_config.sample.toml). You can put this file anywhere on the system and point to it with the `--config <path>` flag; if the file is in the same directory as the binary and named "site_config.toml", you do not need to supply the flag.
+You'll need to create a configuration file. An empty layout example is supplied [here](./vzdv.sample.toml). You can put this file anywhere on the system and point to it with the `--config <path>` flag; if the file is in the same directory as the binary and named "vzdv.toml", you do not need to supply the flag.
 
-Additional CLI parameters can be found by running the app with the `--help` flag.
+Additional CLI parameters can be found by running each binary with the `--help` flag.
 
 ## Deploying
 
