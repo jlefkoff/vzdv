@@ -114,6 +114,7 @@ pub struct EventPosition {
     pub id: u32,
     pub event_id: u32,
     pub name: String,
+    pub category: String,
     pub cid: Option<u32>,
 }
 
@@ -212,6 +213,7 @@ CREATE TABLE event_position (
     id INTEGER PRIMARY KEY NOT NULL,
     event_id INTEGER NOT NULL,
     name TEXT NOT NULL,
+    category TEXT NOT NULL,
     cid INTEGER,
 
     FOREIGN KEY (event_id) REFERENCES event(id),
@@ -301,3 +303,7 @@ pub const INSERT_INTO_VISITOR_REQ: &str =
 
 pub const GET_UPCOMING_EVENTS: &str = "SELECT * FROM event WHERE end > $1 AND published = TRUE";
 pub const GET_EVENT: &str = "SELECT * FROM event WHERE id=$1";
+
+pub const GET_EVENT_POSITIONS: &str = "SELECT * FROM event_position WHERE event_id=$1";
+
+pub const GET_EVENT_REGISTRATIONS: &str = "SELECT * FROM event_registration WHERE event_id=$1";

@@ -7,16 +7,52 @@
 <div class="row">
   <div class="col">
     <h2>{{ event.name }}</h2>
-    <h5>Start: <span class="d-none event-time">{{ event.start }}</span></h5>
-    <h5>End: <span class="d-none event-time">{{ event.end }}</span></h5>
+    <h5 class="pt-3"><strong>Start:</strong> <span class="d-none event-time">{{ event.start }}</span></h5>
+    <h5><strong>End:</strong> <span class="d-none event-time">{{ event.end }}</span></h5>
 
-    <p>{{ event.description }}</p>
+    <p class="pt-3">{{ event.description }}</p>
 
-    <!-- TODO -->
+    {% if user_info and user_info.cid %}
+      <!-- TODO controls -->
+    {% endif %}
+
 
   </div>
   <div class="col">
     <img src="{{ event.image_url }}" alt="Event banner" class="img-fluid" />
+  </div>
+</div>
+
+<div class="row pt-4">
+  <div class="col">
+    <h4>Enroute Positions</h4>
+    <ul class="list-group">
+      {% for position in positions %}
+        {% if position.category == 'Enroute' %}
+          <li class="list-group-item">{{ position.name }} - {{ position.controller }}</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="col">
+    <h4>TRACON Positions</h4>
+    <ul class="list-group">
+      {% for position in positions %}
+        {% if position.category == 'TRACON' %}
+          <li class="list-group-item">{{ position.name }} - {{ position.controller }}</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
+  </div>
+  <div class="col">
+    <h4>Local Positions</h4>
+    <ul class="list-group">
+      {% for position in positions %}
+        {% if position.category == 'Local' %}
+          <li class="list-group-item">{{ position.name }} - {{ position.controller }}</li>
+        {% endif %}
+      {% endfor %}
+    </ul>
   </div>
 </div>
 
@@ -25,6 +61,7 @@
   document.querySelectorAll('.event-time').forEach((element) => {
     element.innerText = new Date(element.innerText).toLocaleDateString('en-US', opts);
     element.classList.remove('d-none');
+    element.classList.remove('event-time');
   });
 </script>
 

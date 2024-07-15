@@ -13,10 +13,12 @@ use axum::{
     Router,
 };
 use minijinja::{context, Environment};
+use serde::Serialize;
+use sqlx::{Pool, Sqlite};
 use std::sync::Arc;
 use tower_sessions::Session;
 use vzdv::{
-    sql::{self, Event},
+    sql::{self, Controller, Event, EventPosition, EventRegistration},
     PermissionsGroup,
 };
 
@@ -66,30 +68,73 @@ async fn page_get_event(
         .bind(id)
         .fetch_optional(&state.db)
         .await?;
-    match event {
-        Some(event) => {
-            if !event.published {
-                // only event staff can see unpublished events
-                if let Some(redirect) =
-                    reject_if_not_staff(&state, &user_info, PermissionsGroup::EventsTeam).await
-                {
-                    return Ok(redirect);
-                }
-            }
-            let template = state.templates.get_template("events/event")?;
-            let rendered = template.render(context! { user_info, event })?;
-            Ok(Html(rendered).into_response())
-        }
-        None => {
-            flashed_messages::push_flashed_message(
-                session,
-                flashed_messages::FlashedMessageLevel::Error,
-                "Event not found",
-            )
+    if let Some(event) = event {
+        let positions = event_positions_extra(event.id, &state.db).await?;
+        let registrations: Vec<EventRegistration> = sqlx::query_as(sql::GET_EVENT_REGISTRATIONS)
+            .bind(event.id)
+            .fetch_all(&state.db)
             .await?;
-            Ok(Redirect::to("/").into_response())
+        if !event.published {
+            // only event staff can see unpublished events
+            if let Some(redirect) =
+                reject_if_not_staff(&state, &user_info, PermissionsGroup::EventsTeam).await
+            {
+                return Ok(redirect);
+            }
         }
+        let template = state.templates.get_template("events/event")?;
+        let rendered = template.render(context! { user_info, event, positions, registrations })?;
+        Ok(Html(rendered).into_response())
+    } else {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Error,
+            "Event not found",
+        )
+        .await?;
+        Ok(Redirect::to("/").into_response())
     }
+}
+
+#[derive(Serialize)]
+struct EventPositionDisplay {
+    name: String,
+    category: String,
+    controller: String,
+}
+
+/// Supply event positions with the controller's name, if set.
+async fn event_positions_extra(
+    event_id: u32,
+    db: &Pool<Sqlite>,
+) -> anyhow::Result<Vec<EventPositionDisplay>> {
+    let positions: Vec<EventPosition> = sqlx::query_as(sql::GET_EVENT_POSITIONS)
+        .bind(event_id)
+        .fetch_all(db)
+        .await?;
+    let mut ret = Vec::with_capacity(positions.len());
+    for position in &positions {
+        if let Some(pos_cid) = position.cid {
+            let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+                .bind(pos_cid)
+                .fetch_optional(db)
+                .await?;
+            if let Some(controller) = controller {
+                ret.push(EventPositionDisplay {
+                    name: position.name.clone(),
+                    category: position.category.clone(),
+                    controller: format!("{} {}", controller.first_name, controller.last_name),
+                });
+                continue;
+            }
+        }
+        ret.push(EventPositionDisplay {
+            name: position.name.clone(),
+            category: position.category.clone(),
+            controller: String::new(),
+        });
+    }
+    Ok(ret)
 }
 
 /// This file's routes and templates.
