@@ -19,7 +19,7 @@ use std::sync::Arc;
 use tower_sessions::Session;
 use vzdv::{
     sql::{self, Controller, Event, EventPosition, EventRegistration},
-    PermissionsGroup,
+    ControllerRating, PermissionsGroup,
 };
 
 /// Render a snippet that lists published upcoming events.
@@ -57,6 +57,9 @@ async fn get_upcoming_events(
     Ok(Html(rendered))
 }
 
+// TODO opportunity for some minor speed improvements here by not loading
+// controller records twice for each controller assigned to an event.
+
 /// Render the full page for a single event, including controls for signup.
 async fn page_get_event(
     State(state): State<Arc<AppState>>,
@@ -69,21 +72,28 @@ async fn page_get_event(
         .fetch_optional(&state.db)
         .await?;
     if let Some(event) = event {
-        let positions = event_positions_extra(event.id, &state.db).await?;
-        let registrations: Vec<EventRegistration> = sqlx::query_as(sql::GET_EVENT_REGISTRATIONS)
+        let positions_raw: Vec<EventPosition> = sqlx::query_as(sql::GET_EVENT_POSITIONS)
             .bind(event.id)
             .fetch_all(&state.db)
             .await?;
+        let positions = event_positions_extra(&positions_raw, &state.db).await?;
+        let registrations = event_registrations_extra(event.id, &positions_raw, &state.db).await?;
+        let not_staff_redirect =
+            reject_if_not_staff(&state, &user_info, PermissionsGroup::EventsTeam).await;
         if !event.published {
             // only event staff can see unpublished events
-            if let Some(redirect) =
-                reject_if_not_staff(&state, &user_info, PermissionsGroup::EventsTeam).await
-            {
+            if let Some(redirect) = not_staff_redirect {
                 return Ok(redirect);
             }
         }
         let template = state.templates.get_template("events/event")?;
-        let rendered = template.render(context! { user_info, event, positions, registrations })?;
+        let rendered = template.render(context! {
+            user_info,
+            event,
+            positions,
+            registrations,
+            is_event_staff => not_staff_redirect.is_some()
+        })?;
         Ok(Html(rendered).into_response())
     } else {
         flashed_messages::push_flashed_message(
@@ -105,15 +115,11 @@ struct EventPositionDisplay {
 
 /// Supply event positions with the controller's name, if set.
 async fn event_positions_extra(
-    event_id: u32,
+    positions: &[EventPosition],
     db: &Pool<Sqlite>,
 ) -> anyhow::Result<Vec<EventPositionDisplay>> {
-    let positions: Vec<EventPosition> = sqlx::query_as(sql::GET_EVENT_POSITIONS)
-        .bind(event_id)
-        .fetch_all(db)
-        .await?;
     let mut ret = Vec::with_capacity(positions.len());
-    for position in &positions {
+    for position in positions {
         if let Some(pos_cid) = position.cid {
             let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
                 .bind(pos_cid)
@@ -123,7 +129,12 @@ async fn event_positions_extra(
                 ret.push(EventPositionDisplay {
                     name: position.name.clone(),
                     category: position.category.clone(),
-                    controller: format!("{} {}", controller.first_name, controller.last_name),
+                    controller: format!(
+                        "{} {} ({})",
+                        controller.first_name,
+                        controller.last_name,
+                        controller.operating_initials.unwrap_or_default()
+                    ),
                 });
                 continue;
             }
@@ -131,9 +142,75 @@ async fn event_positions_extra(
         ret.push(EventPositionDisplay {
             name: position.name.clone(),
             category: position.category.clone(),
-            controller: String::new(),
+            controller: "unassigned".to_string(),
         });
     }
+    Ok(ret)
+}
+
+#[derive(Serialize)]
+struct EventRegistrationDisplay {
+    controller: String,
+    choice_1: String,
+    choice_2: String,
+    choice_3: String,
+    notes: String,
+}
+
+/// Supply event registration data with controller and position names.
+async fn event_registrations_extra(
+    event_id: u32,
+    positions: &[EventPosition],
+    db: &Pool<Sqlite>,
+) -> anyhow::Result<Vec<EventRegistrationDisplay>> {
+    let registrations: Vec<EventRegistration> = sqlx::query_as(sql::GET_EVENT_REGISTRATIONS)
+        .bind(event_id)
+        .fetch_all(db)
+        .await?;
+    let mut ret = Vec::with_capacity(registrations.len());
+
+    for registration in &registrations {
+        let c_1 = positions
+            .iter()
+            .find(|pos| pos.id == registration.choice_1)
+            .map(|pos| pos.name.clone());
+        let c_2 = positions
+            .iter()
+            .find(|pos| pos.id == registration.choice_2)
+            .map(|pos| pos.name.clone());
+        let c_3 = positions
+            .iter()
+            .find(|pos| pos.id == registration.choice_3)
+            .map(|pos| pos.name.clone());
+        let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+            .bind(registration.cid)
+            .fetch_optional(db)
+            .await?;
+        let controller = match controller {
+            Some(c) => format!(
+                "{} {} ({}) - {}",
+                c.first_name,
+                c.last_name,
+                c.operating_initials.unwrap_or_default(),
+                ControllerRating::try_from(c.rating)
+                    .map(|r| r.as_str())
+                    .unwrap_or(""),
+            ),
+            None => "???".to_string(),
+        };
+        let notes = match registration.notes.as_ref() {
+            Some(s) => s.clone(),
+            None => String::new(),
+        };
+        ret.push(EventRegistrationDisplay {
+            controller,
+            choice_1: c_1.unwrap_or_default(),
+            choice_2: c_2.unwrap_or_default(),
+            choice_3: c_3.unwrap_or_default(),
+            notes,
+        });
+    }
+
     Ok(ret)
 }
 

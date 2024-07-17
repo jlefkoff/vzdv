@@ -24,7 +24,7 @@ use vzdv::{
     config::Config,
     determine_staff_positions,
     sql::{self, Activity, Certification, Controller, Resource, VisitorApplication},
-    vatusa,
+    vatusa, ControllerRating,
 };
 
 #[derive(Debug, Serialize)]
@@ -179,7 +179,9 @@ async fn page_roster(
                 first_name: &controller.first_name,
                 last_name: &controller.last_name,
                 operating_initials,
-                rating: Controller::rating_name(controller.rating),
+                rating: ControllerRating::try_from(controller.rating)
+                    .map(|r| r.as_str())
+                    .unwrap_or(""),
                 is_home: controller.home_facility == "ZDV",
                 roles,
                 certs,

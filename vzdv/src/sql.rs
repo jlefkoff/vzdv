@@ -20,29 +20,6 @@ pub struct Controller {
     pub loa_until: Option<DateTime<Utc>>,
 }
 
-impl Controller {
-    /// Friendly name for the controller's numeric rating.
-    pub fn rating_name(rating: i8) -> &'static str {
-        match rating {
-            -1 => "INA",
-            0 => "SUS",
-            1 => "OBS",
-            2 => "S1",
-            3 => "S2",
-            4 => "S3",
-            5 => "C1",
-            6 => "C2",
-            7 => "C3",
-            8 => "I1",
-            9 => "I2",
-            10 => "I3",
-            11 => "SUP",
-            12 => "ADM",
-            _ => "???",
-        }
-    }
-}
-
 #[derive(Debug, FromRow, Serialize, Clone)]
 pub struct Certification {
     pub id: u32,
@@ -122,8 +99,11 @@ pub struct EventPosition {
 pub struct EventRegistration {
     pub id: u32,
     pub event_id: u32,
-    pub position_id: u32,
     pub cid: u32,
+    pub choice_1: u32,
+    pub choice_2: u32,
+    pub choice_3: u32,
+    pub notes: Option<String>,
 }
 
 /// Statements to create tables. Only ran when the DB file does not exist,
@@ -223,12 +203,17 @@ CREATE TABLE event_position (
 CREATE TABLE event_registration (
     id INTEGER PRIMARY KEY NOT NULL,
     event_id INTEGER NOT NULL,
-    position_id INTEGER NOT NULL,
     cid INTEGER NOT NULL,
+    choice_1 INTEGER NOT NULL,
+    choice_2 INTEGER NOT NULL,
+    choice_3 INTEGER NOT NULL,
+    notes TEXT,
 
     FOREIGN KEY (event_id) REFERENCES event(id),
-    FOREIGN KEY (position_id) REFERENCES event_position(id),
-    FOREIGN KEY (cid) REFERENCES controller(cid)
+    FOREIGN KEY (cid) REFERENCES controller(cid),
+    FOREIGN KEY (choice_1) REFERENCES event_position(id),
+    FOREIGN KEY (choice_2) REFERENCES event_position(id),
+    FOREIGN KEY (choice_3) REFERENCES event_position(id)
 ) STRICT;
 "#;
 

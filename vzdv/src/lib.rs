@@ -107,34 +107,64 @@ pub fn determine_staff_positions(controller: &Controller, config: &Config) -> Ve
 
 #[allow(clippy::upper_case_acronyms)]
 pub enum ControllerRating {
+    INA,
+    SUS,
     OBS,
     S1,
     S2,
     S3,
     C1,
+    C2,
     C3,
-    L1,
-    L3,
+    I1,
+    I2,
+    I3,
     SUP,
     ADM,
-    INA,
 }
 
 impl ControllerRating {
     /// Enum values as a string.
     pub fn as_str(&self) -> &'static str {
         match self {
+            Self::INA => "INA",
+            Self::SUS => "SUS",
             Self::OBS => "OBS",
             Self::S1 => "S1",
             Self::S2 => "S2",
             Self::S3 => "S3",
             Self::C1 => "C1",
+            Self::C2 => "C2",
             Self::C3 => "C3",
-            Self::L1 => "L1",
-            Self::L3 => "L3",
+            Self::I1 => "I1",
+            Self::I2 => "I2",
+            Self::I3 => "I3",
             Self::SUP => "SUP",
             Self::ADM => "ADM",
-            Self::INA => "INA",
+        }
+    }
+}
+
+impl TryFrom<i8> for ControllerRating {
+    type Error = &'static str;
+
+    fn try_from(value: i8) -> std::result::Result<Self, Self::Error> {
+        match value {
+            -1 => Ok(Self::INA),
+            0 => Ok(Self::SUS),
+            1 => Ok(Self::OBS),
+            2 => Ok(Self::S1),
+            3 => Ok(Self::S2),
+            4 => Ok(Self::S3),
+            5 => Ok(Self::C1),
+            6 => Ok(Self::C2),
+            7 => Ok(Self::C3),
+            8 => Ok(Self::I1),
+            9 => Ok(Self::I2),
+            10 => Ok(Self::I3),
+            11 => Ok(Self::SUP),
+            12 => Ok(Self::ADM),
+            _ => Err("Unknown controller rating"),
         }
     }
 }

@@ -3,7 +3,7 @@
 #![deny(clippy::all)]
 #![deny(unsafe_code)]
 
-use anyhow::Result;
+use anyhow::{bail, Result};
 use clap::Parser;
 use log::{debug, error, info};
 use serde::Deserialize;
@@ -43,6 +43,12 @@ struct AdhController {
 
 async fn get_adh_data() -> Result<Vec<AdhController>> {
     let response = GENERAL_HTTP_CLIENT.get(ROSTER_URL).send().await?;
+    if !response.status().is_success() {
+        bail!(
+            "Got status {} from ZDV ADH roster endpoint",
+            response.status().as_u16()
+        );
+    }
     let data = response.json().await?;
     Ok(data)
 }
