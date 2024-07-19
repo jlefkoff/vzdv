@@ -92,7 +92,7 @@ async fn page_get_event(
             event,
             positions,
             registrations,
-            is_event_staff => not_staff_redirect.is_some()
+            is_event_staff => not_staff_redirect.is_none()
         })?;
         Ok(Html(rendered).into_response())
     } else {

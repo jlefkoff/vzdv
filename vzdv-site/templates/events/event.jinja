@@ -5,17 +5,35 @@
 {% block body %}
 
 <div class="row">
-  <div class="col">
+  <div class="col" id="event-">
     <h2>{{ event.name }}</h2>
     <h5 class="pt-3"><strong>Start:</strong> <span class="d-none event-time">{{ event.start }}</span></h5>
     <h5><strong>End:</strong> <span class="d-none event-time">{{ event.end }}</span></h5>
 
     <p class="pt-3">{{ event.description }}</p>
 
-    {% if user_info and user_info.cid %}
-      <!-- TODO controls -->
-    {% endif %}
-
+    <div class="d-flex justify-content-around">
+      {% if user_info and user_info.cid %}
+        <button class="btn btn-primary" role="button">
+          <i class="bi bi-plus-circle"></i>
+          Register
+        </button>
+      {% endif %}
+      {% if is_event_staff %}
+        <button role="button" class="btn btn-warning">
+          <i class="bi bi-pencil"></i>
+          Edit event
+        </button>
+        <button role="button" class="btn btn-warning">
+          <i class="bi bi-list"></i>
+          Edit positions
+        </button>
+        <button role="button" class="btn btn-danger">
+          <i class="bi bi-trash"></i>
+          Delete
+        </button>
+      {% endif %}
+    </div>
 
   </div>
   <div class="col">
@@ -57,31 +75,31 @@
 </div>
 
 {% if is_event_staff %}
-<div class="pt-5"></div>
-<hr />
-<h2>Sign-ups</h2>
-<table class="table table-striped table-hover">
-  <thead>
-    <tr>
-      <th>Controller</th>
-      <th>Choice 1</th>
-      <th>Choice 2</th>
-      <th>Choice 3</th>
-      <th>Notes</th>
-    </tr>
-  </thead>
-  <tbody>
-    {% for registration in registrations %}
+  <div class="pt-3"></div>
+  <hr />
+  <h2>Sign-ups</h2>
+  <table class="table table-striped table-hover">
+    <thead>
       <tr>
-        <td>{{ registration.controller }}</td>
-        <td>{{ registration.choice_1 }}</td>
-        <td>{{ registration.choice_2 }}</td>
-        <td>{{ registration.choice_3 }}</td>
-        <td>{{ registration.notes }}</td>
+        <th>Controller</th>
+        <th>Choice 1</th>
+        <th>Choice 2</th>
+        <th>Choice 3</th>
+        <th>Notes</th>
       </tr>
-    {% endfor %}
-  </tbody>
-</table>
+    </thead>
+    <tbody>
+      {% for registration in registrations %}
+        <tr>
+          <td>{{ registration.controller }}</td>
+          <td>{{ registration.choice_1 }}</td>
+          <td>{{ registration.choice_2 }}</td>
+          <td>{{ registration.choice_3 }}</td>
+          <td>{{ registration.notes }}</td>
+        </tr>
+      {% endfor %}
+    </tbody>
+  </table>
 {% endif %}
 
 <script defer>

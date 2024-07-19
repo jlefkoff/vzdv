@@ -433,7 +433,7 @@ async fn page_visitor_application_form(
             None
         }
     };
-    // the template will handle the
+
     let template = state
         .templates
         .get_template("facility/visitor_application_form")?;
