@@ -28,7 +28,7 @@
           <i class="bi bi-list"></i>
           Edit positions
         </button>
-        <button role="button" class="btn btn-danger">
+        <button role="button" class="btn btn-danger" id="button-delete">
           <i class="bi bi-trash"></i>
           Delete
         </button>
@@ -108,6 +108,25 @@
     element.innerText = new Date(element.innerText).toLocaleDateString('en-US', opts);
     element.classList.remove('d-none');
     element.classList.remove('event-time');
+  });
+
+  document.getElementById('button-delete').addEventListener('click', () => {
+    const result = window.confirm('Are you sure you want to delete this event?');
+    if (result) {
+      fetch('/events/{{ event.id }}', { method: 'DELETE' })
+        .then((response) => {
+          if (response.status === 200 ) {
+            window.location = '/events/';
+          } else {
+            console.error(response);
+            window.alert(`Something went wrong; got status ${response.status}`);
+          }
+        })
+        .catch((error) => {
+          console.error(error);
+          window.alert(`Something went wrong: ${error}`);
+        });
+    }
   });
 </script>
 

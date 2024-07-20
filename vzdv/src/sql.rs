@@ -288,6 +288,7 @@ pub const INSERT_INTO_VISITOR_REQ: &str =
 
 pub const GET_UPCOMING_EVENTS: &str = "SELECT * FROM event WHERE end > $1 AND published = TRUE";
 pub const GET_EVENT: &str = "SELECT * FROM event WHERE id=$1";
+pub const DELETE_EVENT: &str = "DELETE FROM event WHERE id=$1";
 
 pub const GET_EVENT_POSITIONS: &str = "SELECT * FROM event_position WHERE event_id=$1";
 

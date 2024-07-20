@@ -8,6 +8,7 @@ use crate::{
 };
 use axum::{
     extract::{Path, State},
+    http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
     Router,
@@ -214,6 +215,40 @@ async fn event_registrations_extra(
     Ok(ret)
 }
 
+/// API endpoint to delete an event.
+async fn api_delete_event(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(id): Path<u32>,
+) -> Result<StatusCode, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if reject_if_not_staff(&state, &user_info, PermissionsGroup::EventsTeam)
+        .await
+        .is_some()
+    {
+        return Ok(StatusCode::FORBIDDEN);
+    }
+    let event: Option<Event> = sqlx::query_as(sql::GET_EVENT)
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?;
+    if event.is_some() {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Info,
+            "Event deleted",
+        )
+        .await?;
+        sqlx::query(sql::DELETE_EVENT)
+            .bind(id)
+            .execute(&state.db)
+            .await?;
+        Ok(StatusCode::OK)
+    } else {
+        Ok(StatusCode::NOT_FOUND)
+    }
+}
+
 /// This file's routes and templates.
 pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
     template
@@ -238,5 +273,5 @@ pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
     Router::new()
         .route("/events/upcoming", get(snippet_get_upcoming_events))
         .route("/events/", get(get_upcoming_events))
-        .route("/events/:id", get(page_get_event))
+        .route("/events/:id", get(page_get_event).delete(api_delete_event))
 }
