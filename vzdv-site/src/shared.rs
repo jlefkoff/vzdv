@@ -111,9 +111,27 @@ pub async fn reject_if_not_staff(
     user_info: &Option<UserInfo>,
     permissions: PermissionsGroup,
 ) -> Option<Response> {
-    let resp = Some(Redirect::to("/").into_response());
+    if is_user_member_of(state, user_info, permissions).await {
+        None
+    } else {
+        Some(Redirect::to("/").into_response())
+    }
+}
+
+/// Return whether the user is a member of the corresponding staff group.
+///
+/// This function checks the database to ensure that the staff member is
+/// still actually a staff member at the time of making the request.
+///
+/// So long as the permissions being checked against aren't `PermissionsGroup::Anon`,
+/// it's safe to assume that `user_info` is `Some<UserInfo>`.
+pub async fn is_user_member_of(
+    state: &Arc<AppState>,
+    user_info: &Option<UserInfo>,
+    permissions: PermissionsGroup,
+) -> bool {
     if user_info.is_none() {
-        return resp;
+        return false;
     }
     let user_info = user_info.as_ref().unwrap();
     let controller: Option<Controller> = match sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
@@ -127,12 +145,8 @@ pub async fn reject_if_not_staff(
                 "Could not look up staff controller with CID {}: {e}",
                 user_info.cid
             );
-            return resp;
+            return false;
         }
     };
-    if controller_can_see(&controller, permissions) {
-        None
-    } else {
-        resp
-    }
+    controller_can_see(&controller, permissions)
 }

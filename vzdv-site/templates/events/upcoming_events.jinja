@@ -6,6 +6,10 @@
 
 <h2>Events</h2>
 
-<div id="events" hx-get="/events/upcoming" hx-trigger="load"></div>
+{% if is_event_staff %}
+  <div id="events" hx-get="/events/upcoming?staff=true" hx-trigger="load"></div>
+{% else %}
+  <div id="events" hx-get="/events/upcoming" hx-trigger="load"></div>
+{% endif %}
 
 {% endblock %}

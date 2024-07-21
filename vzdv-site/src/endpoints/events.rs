@@ -4,38 +4,58 @@
 
 use crate::{
     flashed_messages,
-    shared::{reject_if_not_staff, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
+    shared::{
+        is_user_member_of, reject_if_not_staff, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
+    },
 };
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
     Router,
 };
+use log::debug;
 use minijinja::{context, Environment};
 use serde::Serialize;
 use sqlx::{Pool, Sqlite};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 use vzdv::{
     sql::{self, Controller, Event, EventPosition, EventRegistration},
     ControllerRating, PermissionsGroup,
 };
 
+async fn query_for_events(db: &Pool<Sqlite>, show_all: bool) -> sqlx::Result<Vec<Event>> {
+    if show_all {
+        sqlx::query_as(sql::GET_ALL_UPCOMING_EVENTS)
+            .bind(chrono::Utc::now())
+            .fetch_all(db)
+            .await
+    } else {
+        sqlx::query_as(sql::GET_UPCOMING_EVENTS)
+            .bind(chrono::Utc::now())
+            .fetch_all(db)
+            .await
+    }
+}
+
 /// Render a snippet that lists published upcoming events.
 ///
-/// No controls are rendered; instead each event should link to the full
+/// No controls are rendered; instead each event links to the full
 /// page for that single event.
 async fn snippet_get_upcoming_events(
     State(state): State<Arc<AppState>>,
     session: Session,
+    Query(params): Query<HashMap<String, String>>,
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    let events: Vec<Event> = sqlx::query_as(sql::GET_UPCOMING_EVENTS)
-        .bind(chrono::Utc::now())
-        .fetch_all(&state.db)
-        .await?;
+    let show_all = if let Some(val) = params.get("staff") {
+        val == "true" && is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await
+    } else {
+        false
+    };
+    let events = query_for_events(&state.db, show_all).await?;
     let template = state
         .templates
         .get_template("events/upcoming_events_snippet")?;
@@ -50,11 +70,10 @@ async fn get_upcoming_events(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, AppError> {
-    // TODO show unpublished events to event staff here
-
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let is_event_staff = is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await;
     let template = state.templates.get_template("events/upcoming_events")?;
-    let rendered = template.render(context! { user_info })?;
+    let rendered = template.render(context! { user_info, is_event_staff })?;
     Ok(Html(rendered))
 }
 
@@ -73,12 +92,6 @@ async fn page_get_event(
         .fetch_optional(&state.db)
         .await?;
     if let Some(event) = event {
-        let positions_raw: Vec<EventPosition> = sqlx::query_as(sql::GET_EVENT_POSITIONS)
-            .bind(event.id)
-            .fetch_all(&state.db)
-            .await?;
-        let positions = event_positions_extra(&positions_raw, &state.db).await?;
-        let registrations = event_registrations_extra(event.id, &positions_raw, &state.db).await?;
         let not_staff_redirect =
             reject_if_not_staff(&state, &user_info, PermissionsGroup::EventsTeam).await;
         if !event.published {
@@ -87,6 +100,12 @@ async fn page_get_event(
                 return Ok(redirect);
             }
         }
+        let positions_raw: Vec<EventPosition> = sqlx::query_as(sql::GET_EVENT_POSITIONS)
+            .bind(event.id)
+            .fetch_all(&state.db)
+            .await?;
+        let positions = event_positions_extra(&positions_raw, &state.db).await?;
+        let registrations = event_registrations_extra(event.id, &positions_raw, &state.db).await?;
         let template = state.templates.get_template("events/event")?;
         let rendered = template.render(context! {
             user_info,
@@ -222,10 +241,7 @@ async fn api_delete_event(
     Path(id): Path<u32>,
 ) -> Result<StatusCode, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if reject_if_not_staff(&state, &user_info, PermissionsGroup::EventsTeam)
-        .await
-        .is_some()
-    {
+    if !is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await {
         return Ok(StatusCode::FORBIDDEN);
     }
     let event: Option<Event> = sqlx::query_as(sql::GET_EVENT)
