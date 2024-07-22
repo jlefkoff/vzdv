@@ -186,7 +186,7 @@ CREATE TABLE event (
     description TEXT,
     image_url TEXT,
 
-    FOREIGN KEY (created_by) REFERENCES controller(id)
+    FOREIGN KEY (created_by) REFERENCES controller(cid)
 ) STRICT;
 
 CREATE TABLE event_position (
@@ -290,6 +290,8 @@ pub const GET_UPCOMING_EVENTS: &str = "SELECT * FROM event WHERE end > $1 AND pu
 pub const GET_ALL_UPCOMING_EVENTS: &str = "SELECT * FROM event WHERE end > $1";
 pub const GET_EVENT: &str = "SELECT * FROM event WHERE id=$1";
 pub const DELETE_EVENT: &str = "DELETE FROM event WHERE id=$1";
+pub const CREATE_EVENT: &str =
+    "INSERT INTO event VALUES (NULL, $1, FALSE, FALSE, $2, $3, $4, $5, $6);";
 
 pub const GET_EVENT_POSITIONS: &str = "SELECT * FROM event_position WHERE event_id=$1";
 

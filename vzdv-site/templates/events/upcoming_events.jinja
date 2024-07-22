@@ -2,14 +2,89 @@
 
 {% block title %}Events | {{ super() }}{% endblock %}
 
+{% block head_extra %}
+<style>
+  dialog::backdrop {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  dialog {
+    background-color: var(--bs-body-bg);
+    width: 30%;
+    border: none;
+    border-radius: 1.5rem;
+  }
+</style>
+{% endblock %}
+
 {% block body %}
 
-<h2>Events</h2>
+<div class="clearfix">
+  <div class="float-start">
+    <h2>Events</h2>
+  </div>
+  {% if is_event_staff %}
+    <div class="float-end">
+      <button type="button" class="btn btn-primary" id="btn-modal-open">
+        <i class="bi bi-plus-circle"></i>
+        Create event
+      </button>
+    </div>
+  {% endif %}
+</div>
 
 {% if is_event_staff %}
   <div id="events" hx-get="/events/upcoming?staff=true" hx-trigger="load"></div>
 {% else %}
   <div id="events" hx-get="/events/upcoming" hx-trigger="load"></div>
 {% endif %}
+
+<dialog id="modalNewForm">
+  <h2 class="pb-3">Create new event</h2>
+  <form action="/events/" method="POST">
+    <div class="row">
+      <div class="col">
+          <input type="hidden" name="timezone" id="input-timezone">
+        <div class="mb-3">
+          <label for="name" class="form-label">Event name</label>
+          <input type="text" class="form-control" name="name" required>
+        </div>
+        <div class="mb-3">
+          <label for="description" class="form-label">Description</label>
+          <textarea name="description" class="form-control"></textarea>
+        </div>
+        <div class="mb-3">
+          <label for="banner" class="form-label">Banner URL</label>
+          <input type="text" class="form-control" name="banner" required>
+        </div>
+        <div class="row mb-3">
+          <div class="col">
+            <label for="start" class="form-label">Start</label>
+            <input type="datetime-local" name="start" class="form-control" required>
+          </div>
+          <div class="col">
+            <label for="end" class="form-label">End</label>
+            <input type="datetime-local" name="end" class="form-control" required>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-warning" role="button" id="btn-modal-close">Close</button>
+          <button class="btn btn-primary" role="button" type="submit">Create</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<script defer>
+  document.getElementById('btn-modal-open').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('modalNewForm').showModal();
+  });
+  document.getElementById('btn-modal-close').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('modalNewForm').close();
+  });
+  document.getElementById('input-timezone').value = Intl.DateTimeFormat().resolvedOptions().timeZone;
+</script>
 
 {% endblock %}

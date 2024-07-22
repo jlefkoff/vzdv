@@ -8,16 +8,17 @@ use crate::{
         is_user_member_of, reject_if_not_staff, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
     },
 };
+use anyhow::anyhow;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
-    Router,
+    Form, Router,
 };
-use log::debug;
+use chrono::{TimeZone, Utc};
 use minijinja::{context, Environment};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Sqlite};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
@@ -29,12 +30,12 @@ use vzdv::{
 async fn query_for_events(db: &Pool<Sqlite>, show_all: bool) -> sqlx::Result<Vec<Event>> {
     if show_all {
         sqlx::query_as(sql::GET_ALL_UPCOMING_EVENTS)
-            .bind(chrono::Utc::now())
+            .bind(Utc::now())
             .fetch_all(db)
             .await
     } else {
         sqlx::query_as(sql::GET_UPCOMING_EVENTS)
-            .bind(chrono::Utc::now())
+            .bind(Utc::now())
             .fetch_all(db)
             .await
     }
@@ -75,6 +76,69 @@ async fn get_upcoming_events(
     let template = state.templates.get_template("events/upcoming_events")?;
     let rendered = template.render(context! { user_info, is_event_staff })?;
     Ok(Html(rendered))
+}
+
+#[derive(Debug, Deserialize)]
+struct CreateNewEventForm {
+    name: String,
+    description: String,
+    banner: String,
+    start: String, // 2024-08-01T10:00
+    end: String,
+    timezone: String,
+}
+
+/// Submit the form to create a new event.
+///
+/// Limited to event staff.
+async fn post_new_event_form(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Form(create_new_form): Form<CreateNewEventForm>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let is_event_staff = is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await;
+    if !is_event_staff {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Error,
+            "You are not a member of the events team",
+        )
+        .await?;
+        return Ok(Redirect::to("/"));
+    }
+
+    dbg!(&user_info);
+
+    // wow, this is annoying
+    let timezone: chrono_tz::Tz = create_new_form.timezone.parse()?;
+    let start_raw =
+        chrono::NaiveDateTime::parse_from_str(&create_new_form.start, "%Y-%m-%dT%H:%M")?;
+    let start = timezone
+        .from_local_datetime(&start_raw)
+        .single()
+        .ok_or_else(|| anyhow!("Error parsing start datetime"))?
+        .naive_utc();
+    let end_raw = chrono::NaiveDateTime::parse_from_str(&create_new_form.end, "%Y-%m-%dT%H:%M")?;
+    let end = timezone
+        .from_local_datetime(&end_raw)
+        .single()
+        .ok_or_else(|| anyhow!("Error parsing end datetime"))?
+        .naive_utc();
+
+    let result = sqlx::query(sql::CREATE_EVENT)
+        .bind(user_info.unwrap().cid)
+        .bind(create_new_form.name)
+        .bind(start)
+        .bind(end)
+        .bind(create_new_form.description)
+        .bind(create_new_form.banner)
+        .execute(&state.db)
+        .await?;
+    Ok(Redirect::to(&format!(
+        "/events/{}",
+        result.last_insert_rowid()
+    )))
 }
 
 // TODO opportunity for some minor speed improvements here by not loading
@@ -288,6 +352,9 @@ pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
 
     Router::new()
         .route("/events/upcoming", get(snippet_get_upcoming_events))
-        .route("/events/", get(get_upcoming_events))
+        .route(
+            "/events/",
+            get(get_upcoming_events).post(post_new_event_form),
+        )
         .route("/events/:id", get(page_get_event).delete(api_delete_event))
 }
