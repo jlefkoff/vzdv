@@ -2,6 +2,20 @@
 
 {% block title %}{{ event.name }} | {{ super() }}{% endblock %}
 
+{% block head_extra %}
+<style>
+  dialog::backdrop {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  dialog {
+    background-color: var(--bs-body-bg);
+    width: 30%;
+    border: none;
+    border-radius: 1.5rem;
+  }
+</style>
+{% endblock %}
+
 {% block body %}
 
 <div class="row">
@@ -20,7 +34,7 @@
         </button>
       {% endif %}
       {% if is_event_staff %}
-        <button role="button" class="btn btn-warning">
+        <button role="button" class="btn btn-warning" id="btn-modal-open">
           <i class="bi bi-pencil"></i>
           Edit event
         </button>
@@ -102,6 +116,44 @@
   </table>
 {% endif %}
 
+<dialog id="modalEditForm">
+  <h2 class="pb-3">Edit event</h2>
+  <form action="/events/{{ event.id }}" method="POST">
+    <div class="row">
+      <div class="col">
+        <!-- TODO pre-populate -->
+        <input type="hidden" name="timezone" id="input-timezone">
+        <div class="mb-3">
+          <label for="name" class="form-label">Event name</label>
+          <input type="text" class="form-control" name="name" required>
+        </div>
+        <div class="mb-3">
+          <label for="description" class="form-label">Description</label>
+          <textarea name="description" class="form-control"></textarea>
+        </div>
+        <div class="mb-3">
+          <label for="banner" class="form-label">Banner URL</label>
+          <input type="text" class="form-control" name="banner" required>
+        </div>
+        <div class="row mb-3">
+          <div class="col">
+            <label for="start" class="form-label">Start</label>
+            <input type="datetime-local" name="start" class="form-control" required>
+          </div>
+          <div class="col">
+            <label for="end" class="form-label">End</label>
+            <input type="datetime-local" name="end" class="form-control" required>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-warning" role="button" id="btn-modal-close">Close</button>
+          <button class="btn btn-primary" role="button" type="submit">Save</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</dialog>
+
 <script defer>
   const opts = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' };
   document.querySelectorAll('.event-time').forEach((element) => {
@@ -110,7 +162,8 @@
     element.classList.remove('event-time');
   });
 
-  document.getElementById('button-delete').addEventListener('click', () => {
+  document.getElementById('button-delete').addEventListener('click', (e) => {
+    e.preventDefault();
     const result = window.confirm('Are you sure you want to delete this event?');
     if (result) {
       fetch('/events/{{ event.id }}', { method: 'DELETE' })
@@ -127,6 +180,15 @@
           window.alert(`Something went wrong: ${error}`);
         });
     }
+  });
+
+  document.getElementById('btn-modal-open').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('modalEditForm').showModal();
+  });
+  document.getElementById('btn-modal-close').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('modalEditForm').close();
   });
 </script>
 

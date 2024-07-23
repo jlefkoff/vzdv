@@ -78,7 +78,6 @@ pub struct VisitorApplication {
 pub struct Event {
     pub id: u32,
     pub published: bool,
-    pub complete: bool,
     pub name: String,
     pub start: DateTime<Utc>,
     pub end: DateTime<Utc>,
@@ -179,7 +178,6 @@ CREATE TABLE event (
     id INTEGER PRIMARY KEY NOT NULL,
     created_by INTEGER NOT NULL,
     published INTEGER NOT NULL DEFAULT FALSE,
-    complete INTEGER NOT NULL DEFAULT FALSE,
     name TEXT NOT NULL,
     start TEXT NOT NULL,
     end TEXT NOT NULL,
@@ -290,8 +288,7 @@ pub const GET_UPCOMING_EVENTS: &str = "SELECT * FROM event WHERE end > $1 AND pu
 pub const GET_ALL_UPCOMING_EVENTS: &str = "SELECT * FROM event WHERE end > $1";
 pub const GET_EVENT: &str = "SELECT * FROM event WHERE id=$1";
 pub const DELETE_EVENT: &str = "DELETE FROM event WHERE id=$1";
-pub const CREATE_EVENT: &str =
-    "INSERT INTO event VALUES (NULL, $1, FALSE, FALSE, $2, $3, $4, $5, $6);";
+pub const CREATE_EVENT: &str = "INSERT INTO event VALUES (NULL, $1, FALSE, $2, $3, $4, $5, $6);";
 
 pub const GET_EVENT_POSITIONS: &str = "SELECT * FROM event_position WHERE event_id=$1";
 
