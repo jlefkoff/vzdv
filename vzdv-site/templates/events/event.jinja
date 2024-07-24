@@ -21,8 +21,8 @@
 <div class="row">
   <div class="col" id="event-">
     <h2>{{ event.name }}</h2>
-    <h5 class="pt-3"><strong>Start:</strong> <span class="d-none event-time">{{ event.start }}</span></h5>
-    <h5><strong>End:</strong> <span class="d-none event-time">{{ event.end }}</span></h5>
+    <h5 class="pt-3"><strong>Start:</strong> <span class="d-none event-time" updateTarget="editFormStart">{{ event.start }}</span></h5>
+    <h5><strong>End:</strong> <span class="d-none event-time" updateTarget="editFormEnd">{{ event.end }}</span></h5>
 
     <p class="pt-3">{{ event.description }}</p>
 
@@ -121,28 +121,33 @@
   <form action="/events/{{ event.id }}" method="POST">
     <div class="row">
       <div class="col">
-        <!-- TODO pre-populate -->
         <input type="hidden" name="timezone" id="input-timezone">
         <div class="mb-3">
           <label for="name" class="form-label">Event name</label>
-          <input type="text" class="form-control" name="name" required>
+          <input type="text" class="form-control" name="name" value="{{ event.name }}" required>
         </div>
         <div class="mb-3">
           <label for="description" class="form-label">Description</label>
-          <textarea name="description" class="form-control"></textarea>
+          <textarea name="description" class="form-control">{{ event.description }}</textarea>
         </div>
         <div class="mb-3">
           <label for="banner" class="form-label">Banner URL</label>
-          <input type="text" class="form-control" name="banner" required>
+          <input type="text" class="form-control" name="banner" value="{{ event.image_url }}" required>
+        </div>
+        <div class="form-check mb-3">
+          <input class="form-check-input" type="checkbox" value="" id="published" name="published" {% if event.published %}checked{% endif %}>
+          <label class="form-check-label" for="published">
+            Published
+          </label>
         </div>
         <div class="row mb-3">
           <div class="col">
             <label for="start" class="form-label">Start</label>
-            <input type="datetime-local" name="start" class="form-control" required>
+            <input type="datetime-local" name="start" id="editFormStart" class="form-control" required>
           </div>
           <div class="col">
             <label for="end" class="form-label">End</label>
-            <input type="datetime-local" name="end" class="form-control" required>
+            <input type="datetime-local" name="end" id="editFormEnd" class="form-control" required>
           </div>
         </div>
         <div class="d-flex justify-content-between">
@@ -155,12 +160,23 @@
 </dialog>
 
 <script defer>
-  const opts = { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' };
   document.querySelectorAll('.event-time').forEach((element) => {
-    element.innerText = new Date(element.innerText).toLocaleDateString('en-US', opts);
+    const date = new Date(element.innerText);
+    element.innerText = date.toLocaleDateString('en-US',
+      { year: 'numeric', month: 'long', day: 'numeric', hour: 'numeric', minute: 'numeric' }
+    );
     element.classList.remove('d-none');
     element.classList.remove('event-time');
+
+    // this is annoying
+    const year = date.getFullYear();
+    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+    const dom = date.getDate().toString().padStart(2, '0');
+    const hour = date.getHours().toString().padStart(2, '0');
+    const minute = date.getMinutes().toString().padStart(2, '0');
+    document.getElementById(element.getAttribute('updateTarget')).value = `${year}-${month}-${dom}T${hour}:${minute}`;
   });
+  document.getElementById('input-timezone').value = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   document.getElementById('button-delete').addEventListener('click', (e) => {
     e.preventDefault();

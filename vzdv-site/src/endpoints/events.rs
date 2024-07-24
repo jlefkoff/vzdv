@@ -5,10 +5,10 @@
 use crate::{
     flashed_messages,
     shared::{
-        is_user_member_of, reject_if_not_staff, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
+        is_user_member_of, js_timestamp_to_utc, reject_if_not_staff, AppError, AppState, UserInfo,
+        SESSION_USER_INFO_KEY,
     },
 };
-use anyhow::anyhow;
 use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
@@ -16,7 +16,7 @@ use axum::{
     routing::get,
     Form, Router,
 };
-use chrono::{TimeZone, Utc};
+use chrono::Utc;
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Sqlite};
@@ -79,22 +79,22 @@ async fn get_upcoming_events(
 }
 
 #[derive(Debug, Deserialize)]
-struct CreateNewEventForm {
+struct CreateEventForm {
     name: String,
     description: String,
     banner: String,
-    start: String, // 2024-08-01T10:00
+    start: String,
     end: String,
     timezone: String,
 }
 
 /// Submit the form to create a new event.
 ///
-/// Limited to event staff.
+/// Event staff only.
 async fn post_new_event_form(
     State(state): State<Arc<AppState>>,
     session: Session,
-    Form(create_new_form): Form<CreateNewEventForm>,
+    Form(create_new_form): Form<CreateEventForm>,
 ) -> Result<Redirect, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let is_event_staff = is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await;
@@ -108,24 +108,8 @@ async fn post_new_event_form(
         return Ok(Redirect::to("/"));
     }
 
-    dbg!(&user_info);
-
-    // wow, this is annoying
-    let timezone: chrono_tz::Tz = create_new_form.timezone.parse()?;
-    let start_raw =
-        chrono::NaiveDateTime::parse_from_str(&create_new_form.start, "%Y-%m-%dT%H:%M")?;
-    let start = timezone
-        .from_local_datetime(&start_raw)
-        .single()
-        .ok_or_else(|| anyhow!("Error parsing start datetime"))?
-        .naive_utc();
-    let end_raw = chrono::NaiveDateTime::parse_from_str(&create_new_form.end, "%Y-%m-%dT%H:%M")?;
-    let end = timezone
-        .from_local_datetime(&end_raw)
-        .single()
-        .ok_or_else(|| anyhow!("Error parsing end datetime"))?
-        .naive_utc();
-
+    let start = js_timestamp_to_utc(&create_new_form.start, &create_new_form.timezone)?;
+    let end = js_timestamp_to_utc(&create_new_form.end, &create_new_form.timezone)?;
     let result = sqlx::query(sql::CREATE_EVENT)
         .bind(user_info.unwrap().cid)
         .bind(create_new_form.name)
@@ -298,7 +282,69 @@ async fn event_registrations_extra(
     Ok(ret)
 }
 
+#[derive(Deserialize)]
+struct UpdateEventForm {
+    name: String,
+    description: String,
+    published: Option<String>,
+    banner: String,
+    start: String,
+    end: String,
+    timezone: String,
+}
+
+/// Submit a form to update an event, and redirect back to the same page.
+///
+/// Event staff only.
+async fn post_edit_event_form(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(id): Path<u32>,
+    Form(details_form): Form<UpdateEventForm>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if !is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Error,
+            "You are not a member of the events team",
+        )
+        .await?;
+        return Ok(Redirect::to("/"));
+    }
+
+    let event: Option<Event> = sqlx::query_as(sql::GET_EVENT)
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?;
+    if event.is_some() {
+        let start = js_timestamp_to_utc(&details_form.start, &details_form.timezone)?;
+        let end = js_timestamp_to_utc(&details_form.end, &details_form.timezone)?;
+        sqlx::query(sql::UPDATE_EVENT)
+            .bind(id)
+            .bind(details_form.name)
+            .bind(details_form.published.is_some())
+            .bind(start)
+            .bind(end)
+            .bind(details_form.description)
+            .bind(details_form.banner)
+            .execute(&state.db)
+            .await?;
+        Ok(Redirect::to(&format!("/events/{id}")))
+    } else {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Error,
+            "You are not a member of the events team",
+        )
+        .await?;
+        Ok(Redirect::to("/"))
+    }
+}
+
 /// API endpoint to delete an event.
+///
+/// Event staff only.
 async fn api_delete_event(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -356,5 +402,10 @@ pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
             "/events/",
             get(get_upcoming_events).post(post_new_event_form),
         )
-        .route("/events/:id", get(page_get_event).delete(api_delete_event))
+        .route(
+            "/events/:id",
+            get(page_get_event)
+                .delete(api_delete_event)
+                .post(post_edit_event_form),
+        )
 }

@@ -1,9 +1,11 @@
 //! Structs and data to be shared across multiple parts of the site.
 
+use anyhow::{anyhow, Result};
 use axum::{
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
 };
+use chrono::{NaiveDateTime, TimeZone};
 use log::error;
 use mini_moka::sync::Cache;
 use minijinja::{context, Environment};
@@ -22,7 +24,7 @@ use vzdv::{
 pub struct AppError(anyhow::Error);
 
 /// Try to construct the error page.
-fn try_build_error_page() -> anyhow::Result<String> {
+fn try_build_error_page() -> Result<String> {
     let mut env = Environment::new();
     env.add_template("_layout", include_str!("../templates/_layout.jinja"))?;
     env.add_template("_error", include_str!("../templates/_error.jinja"))?;
@@ -149,4 +151,18 @@ pub async fn is_user_member_of(
         }
     };
     controller_can_see(&controller, permissions)
+}
+
+/// Convert an HTML `datetime-local` input and JS timezone name to a UTC timestamp.
+///
+/// Kind of annoying.
+pub fn js_timestamp_to_utc(timestamp: &str, timezone: &str) -> Result<NaiveDateTime> {
+    let tz: chrono_tz::Tz = timezone.parse()?;
+    let original = NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%dT%H:%M")?;
+    let converted = tz
+        .from_local_datetime(&original)
+        .single()
+        .ok_or_else(|| anyhow!("Error parsing HTML datetime"))?
+        .naive_utc();
+    Ok(converted)
 }

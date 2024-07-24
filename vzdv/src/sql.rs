@@ -289,6 +289,7 @@ pub const GET_ALL_UPCOMING_EVENTS: &str = "SELECT * FROM event WHERE end > $1";
 pub const GET_EVENT: &str = "SELECT * FROM event WHERE id=$1";
 pub const DELETE_EVENT: &str = "DELETE FROM event WHERE id=$1";
 pub const CREATE_EVENT: &str = "INSERT INTO event VALUES (NULL, $1, FALSE, $2, $3, $4, $5, $6);";
+pub const UPDATE_EVENT: &str = "UPDATE event SET name=$2, published=$3, start=$4, end=$5, description=$6, image_url=$7 where id=$1";
 
 pub const GET_EVENT_POSITIONS: &str = "SELECT * FROM event_position WHERE event_id=$1";
 
