@@ -6,6 +6,10 @@
 use anyhow::Result;
 use config::Config;
 use db::load_db;
+use fern::{
+    colors::{Color, ColoredLevelConfig},
+    Dispatch,
+};
 use log::{debug, error};
 use once_cell::sync::Lazy;
 use reqwest::ClientBuilder;
@@ -13,8 +17,8 @@ use sql::Controller;
 use sqlx::{sqlite::SqliteRow, Pool, Row, Sqlite};
 use std::{
     collections::HashMap,
-    env,
     path::{Path, PathBuf},
+    time::SystemTime,
 };
 
 pub mod aviation;
@@ -318,12 +322,84 @@ pub async fn general_setup(
     binary_name: &str,
     config_path: Option<PathBuf>,
 ) -> (Config, Pool<Sqlite>) {
-    if debug_logging {
-        env::set_var("RUST_LOG", format!("info,tracing=warn,{binary_name}=debug"));
-    } else {
-        env::set_var("RUST_LOG", "info,tracing=warn");
-    }
-    pretty_env_logger::init();
+    let colors_line = ColoredLevelConfig::new()
+        .error(Color::Red)
+        .warn(Color::Yellow)
+        .info(Color::Green)
+        .debug(Color::Blue);
+    Dispatch::new()
+        .level(log::LevelFilter::Info)
+        .level_for("tracing", log::LevelFilter::Warn)
+        .level_for(
+            "vzdv",
+            if debug_logging {
+                log::LevelFilter::Debug
+            } else {
+                log::LevelFilter::Info
+            },
+        )
+        .level_for(
+            "vzdv_site",
+            if debug_logging {
+                log::LevelFilter::Debug
+            } else {
+                log::LevelFilter::Info
+            },
+        )
+        .level_for(
+            "vzdv_bot",
+            if debug_logging {
+                log::LevelFilter::Debug
+            } else {
+                log::LevelFilter::Info
+            },
+        )
+        .level_for(
+            "vzdv_tasks",
+            if debug_logging {
+                log::LevelFilter::Debug
+            } else {
+                log::LevelFilter::Info
+            },
+        )
+        .level_for(
+            "vzdv_import",
+            if debug_logging {
+                log::LevelFilter::Debug
+            } else {
+                log::LevelFilter::Info
+            },
+        )
+        .chain(
+            Dispatch::new()
+                .format(move |out, message, record| {
+                    out.finish(format_args!(
+                        "[{} {} {}] {}",
+                        humantime::format_rfc3339_seconds(SystemTime::now()),
+                        colors_line.color(record.level()),
+                        record.target(),
+                        message,
+                    ))
+                })
+                .chain(std::io::stdout()),
+        )
+        .chain(
+            Dispatch::new()
+                .format(move |out, message, record| {
+                    out.finish(format_args!(
+                        "[{} {} {}] {}",
+                        humantime::format_rfc3339_seconds(SystemTime::now()),
+                        record.level(),
+                        record.target(),
+                        message,
+                    ))
+                })
+                .chain(
+                    fern::log_file(format!("{binary_name}.log")).expect("Could not open log file"),
+                ),
+        )
+        .apply()
+        .expect("Error configuring logging");
     debug!("Logging configured");
 
     let config_location = match config_path {
