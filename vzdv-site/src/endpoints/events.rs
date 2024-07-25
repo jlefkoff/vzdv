@@ -231,7 +231,10 @@ async fn event_positions_extra(
                         "{} {} ({})",
                         controller.first_name,
                         controller.last_name,
-                        controller.operating_initials.unwrap_or_default()
+                        match controller.operating_initials.as_ref() {
+                            Some(oi) => oi,
+                            None => "??",
+                        }
                     ),
                 });
                 continue;
@@ -289,7 +292,10 @@ async fn event_registrations_extra(
                 "{} {} ({}) - {}",
                 c.first_name,
                 c.last_name,
-                c.operating_initials.unwrap_or_default(),
+                match c.operating_initials.as_ref() {
+                    Some(oi) => oi,
+                    None => "??",
+                },
                 ControllerRating::try_from(c.rating)
                     .map(|r| r.as_str())
                     .unwrap_or(""),
