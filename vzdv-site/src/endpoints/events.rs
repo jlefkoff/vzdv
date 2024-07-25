@@ -5,7 +5,7 @@
 use crate::{
     flashed_messages,
     shared::{
-        is_user_member_of, js_timestamp_to_utc, reject_if_not_staff, AppError, AppState, UserInfo,
+        is_user_member_of, js_timestamp_to_utc, reject_if_not_in, AppError, AppState, UserInfo,
         SESSION_USER_INFO_KEY,
     },
 };
@@ -13,7 +13,7 @@ use axum::{
     extract::{Path, Query, State},
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
-    routing::get,
+    routing::{get, post},
     Form, Router,
 };
 use chrono::Utc;
@@ -141,11 +141,11 @@ async fn page_get_event(
         .await?;
     if let Some(event) = event {
         let not_staff_redirect =
-            reject_if_not_staff(&state, &user_info, PermissionsGroup::EventsTeam).await;
+            reject_if_not_in(&state, &user_info, PermissionsGroup::EventsTeam).await;
         if !event.published {
             // only event staff can see unpublished events
             if let Some(redirect) = not_staff_redirect {
-                return Ok(redirect);
+                return Ok(redirect.into_response());
             }
         }
         let positions_raw: Vec<EventPosition> = sqlx::query_as(sql::GET_EVENT_POSITIONS)
@@ -154,12 +154,42 @@ async fn page_get_event(
             .await?;
         let positions = event_positions_extra(&positions_raw, &state.db).await?;
         let registrations = event_registrations_extra(event.id, &positions_raw, &state.db).await?;
+        let all_controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS_ON_ROSTER)
+            .fetch_all(&state.db)
+            .await?;
+        let all_controller_names: Vec<String> = all_controllers
+            .iter()
+            .map(|controller| {
+                format!(
+                    "{} {} ({})",
+                    controller.first_name,
+                    controller.last_name,
+                    match controller.operating_initials.as_ref() {
+                        Some(oi) => oi,
+                        None => "??",
+                    }
+                )
+            })
+            .collect();
         let template = state.templates.get_template("events/event")?;
+        let self_register: Option<EventRegistration> = if let Some(user_info) = &user_info {
+            sqlx::query_as(sql::GET_EVENT_REGISTRATION_FOR)
+                .bind(id)
+                .bind(user_info.cid)
+                .fetch_optional(&state.db)
+                .await?
+        } else {
+            None
+        };
+
         let rendered = template.render(context! {
             user_info,
             event,
             positions,
+            positions_raw,
             registrations,
+            all_controller_names,
+            self_register,
             is_event_staff => not_staff_redirect.is_none()
         })?;
         Ok(Html(rendered).into_response())
@@ -375,6 +405,87 @@ async fn api_delete_event(
     }
 }
 
+#[derive(Deserialize)]
+struct RegisterForm {
+    choice_1: u32,
+    choice_2: u32,
+    choice_3: u32,
+    notes: String,
+}
+
+/// Submit a form to register for an event or update a registration.
+async fn post_register_for_event(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(id): Path<u32>,
+    Form(register_data): Form<RegisterForm>,
+) -> Result<Redirect, AppError> {
+    let event: Option<Event> = sqlx::query_as(sql::GET_EVENT)
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?;
+    if event.is_none() {
+        return Ok(Redirect::to("/events/"));
+    }
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let cid = if let Some(user_info) = user_info {
+        user_info.cid
+    } else {
+        return Ok(Redirect::to(&format!("/events/{id}")));
+    };
+
+    if [
+        &register_data.choice_1,
+        &register_data.choice_2,
+        &register_data.choice_3,
+    ]
+    .iter()
+    .all(|s| **s == 0)
+    {
+        // if existing registration, remove; else no-op
+        let existing_registration: Option<EventRegistration> =
+            sqlx::query_as(sql::GET_EVENT_REGISTRATION_FOR)
+                .bind(id)
+                .bind(cid)
+                .fetch_optional(&state.db)
+                .await?;
+        if let Some(existing) = existing_registration {
+            sqlx::query(sql::DELETE_EVENT_REGISTRATION)
+                .bind(existing.id)
+                .execute(&state.db)
+                .await?;
+        }
+    } else {
+        let c_1 = if register_data.choice_1 == 0u32 {
+            None
+        } else {
+            Some(register_data.choice_1)
+        };
+        let c_2 = if register_data.choice_2 == 0u32 {
+            None
+        } else {
+            Some(register_data.choice_2)
+        };
+        let c_3 = if register_data.choice_3 == 0u32 {
+            None
+        } else {
+            Some(register_data.choice_3)
+        };
+        // upsert the registration
+        sqlx::query(sql::UPSERT_EVENT_REGISTRATION)
+            .bind(id)
+            .bind(cid)
+            .bind(c_1)
+            .bind(c_2)
+            .bind(c_3)
+            .bind(&register_data.notes)
+            .execute(&state.db)
+            .await?;
+    }
+
+    Ok(Redirect::to(&format!("/events/{id}")))
+}
+
 /// This file's routes and templates.
 pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
     template
@@ -408,4 +519,5 @@ pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
                 .delete(api_delete_event)
                 .post(post_edit_event_form),
         )
+        .route("/events/:id/register", post(post_register_for_event))
 }

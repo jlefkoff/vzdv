@@ -16,7 +16,9 @@
     <div class="card shadow mb-2">
       <div class="card-header">Events</div>
       <div class="card-body">
-        <div id="events" hx-get="/events/upcoming" hx-trigger="load"></div>
+        <div id="events" hx-get="/events/upcoming" hx-trigger="load">
+          <p>Loading ...</p>
+        </div>
       </div>
     </div>
   </div>
@@ -27,12 +29,16 @@
           id="online"
           hx-get="/home/online/controllers"
           hx-trigger="load"
-        ></div>
+        >
+          <p>Loading ...</p>
+        </div>
       </div>
     </div>
     <div class="card shadow mt-2">
       <div class="card-body">
-        <div id="weather" hx-get="/home/weather" hx-trigger="load"></div>
+        <div id="weather" hx-get="/home/weather" hx-trigger="load">
+          <p>Loading ...</p>
+        </div>
       </div>
     </div>
     <div class="card shadow mt-2">
@@ -41,7 +47,9 @@
           id="flights"
           hx-get="/home/online/flights"
           hx-trigger="load"
-        ></div>
+        >
+          <p>Loading ...</p>
+        </div>
       </div>
     </div>
   </div>

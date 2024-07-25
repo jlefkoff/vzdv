@@ -20,27 +20,26 @@
 
 <div class="row">
   <div class="col" id="event-">
-    <h2>{{ event.name }}</h2>
+    <h2>
+      {{ event.name }}
+      {% if event.published %}{% else %}(unpublished){% endif %}
+    </h2>
     <h5 class="pt-3"><strong>Start:</strong> <span class="d-none event-time" updateTarget="editFormStart">{{ event.start }}</span></h5>
     <h5><strong>End:</strong> <span class="d-none event-time" updateTarget="editFormEnd">{{ event.end }}</span></h5>
 
     <p class="pt-3">{{ event.description }}</p>
 
-    <div class="d-flex justify-content-around">
+    <div class="d-flex justify-content-between">
       {% if user_info and user_info.cid %}
-        <button class="btn btn-primary" role="button">
+        <button role="button" class="btn btn-primary" onclick="modalRegisterForm.showModal()">
           <i class="bi bi-plus-circle"></i>
           Register
         </button>
       {% endif %}
       {% if is_event_staff %}
-        <button role="button" class="btn btn-warning" id="btn-modal-open">
+        <button role="button" class="btn btn-warning" onclick="modalEditForm.showModal()">
           <i class="bi bi-pencil"></i>
           Edit event
-        </button>
-        <button role="button" class="btn btn-warning">
-          <i class="bi bi-list"></i>
-          Edit positions
         </button>
         <button role="button" class="btn btn-danger" id="button-delete">
           <i class="bi bi-trash"></i>
@@ -151,7 +150,50 @@
           </div>
         </div>
         <div class="d-flex justify-content-between">
-          <button class="btn btn-warning" role="button" id="btn-modal-close">Close</button>
+          <button class="btn btn-warning" role="button" id="btn-modal-edit-close">Close</button>
+          <button class="btn btn-primary" role="button" type="submit">Save</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="modalRegisterForm">
+  <h2 class="pb-3">Register</h2>
+  <form action="/events/{{ event.id }}/register" method="POST">
+    <div class="row">
+      <div class="col">
+        <p>If you wish to remove yourself, set each option to "Empty" and save.</p>
+        <div class="mb-3">
+          <select class="form-select" name="choice_1">
+            <option value="0">~ Empty</option>
+            {% for position in positions_raw %}
+              <option value="{{ position.id }}" {% if self_register and self_register.choice_1 == position.id %}selected="selected"{% endif %}>{{ position.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <select class="form-select" name="choice_2">
+            <option value="0">~ Empty</option>
+            {% for position in positions_raw %}
+              <option value="{{ position.id }}" {% if self_register and self_register.choice_2 == position.id %}selected="selected"{% endif %}>{{ position.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <select class="form-select" name="choice_3">
+            <option value="0">~ Empty</option>
+            {% for position in positions_raw %}
+              <option value="{{ position.id }}" {% if self_register and self_register.choice_3 == position.id %}selected="selected"{% endif %}>{{ position.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="mb-3">
+          <label for="notes" class="form-label">Notes</label>
+          <textarea name="notes" class="form-control">{{ self_register.notes }}</textarea>
+        </div>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-warning" role="button" id="btn-modal-register-close">Close</button>
           <button class="btn btn-primary" role="button" type="submit">Save</button>
         </div>
       </div>
@@ -198,13 +240,14 @@
     }
   });
 
-  document.getElementById('btn-modal-open').addEventListener('click', (e) => {
-    e.preventDefault();
-    document.getElementById('modalEditForm').showModal();
-  });
-  document.getElementById('btn-modal-close').addEventListener('click', (e) => {
+  // have to do it this way so the forms don't submit
+  document.getElementById('btn-modal-edit-close').addEventListener('click', (e) => {
     e.preventDefault();
     document.getElementById('modalEditForm').close();
+  });
+  document.getElementById('btn-modal-register-close').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('modalRegisterForm').close();
   });
 </script>
 

@@ -2,7 +2,7 @@
 
 use crate::{
     flashed_messages,
-    shared::{reject_if_not_staff, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
+    shared::{reject_if_not_in, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 use axum::{
     extract::State,
@@ -28,8 +28,8 @@ async fn page_feedback(
     session: Session,
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) = reject_if_not_staff(&state, &user_info, PermissionsGroup::Admin).await {
-        return Ok(redirect);
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
+        return Ok(redirect.into_response());
     }
     let template = state.templates.get_template("admin/feedback")?;
     let pending_feedback: Vec<Feedback> = sqlx::query_as(sql::GET_ALL_PENDING_FEEDBACK)
@@ -58,9 +58,9 @@ async fn post_feedback_form_handle(
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     if let Some(redirect) =
-        reject_if_not_staff(&state, &user_info, PermissionsGroup::TrainingTeam).await
+        reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
     {
-        return Ok(redirect);
+        return Ok(redirect.into_response());
     }
     let db_feedback: Option<Feedback> = sqlx::query_as(sql::GET_FEEDBACK_BY_ID)
         .bind(feedback_form.id)

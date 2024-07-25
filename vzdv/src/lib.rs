@@ -321,7 +321,7 @@ pub async fn general_setup(
     if debug_logging {
         env::set_var("RUST_LOG", format!("info,tracing=warn,{binary_name}=debug"));
     } else {
-        env::set_var("RUST_LOG", "info");
+        env::set_var("RUST_LOG", "info,tracing=warn");
     }
     pretty_env_logger::init();
     debug!("Logging configured");

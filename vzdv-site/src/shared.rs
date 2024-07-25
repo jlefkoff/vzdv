@@ -108,15 +108,15 @@ pub struct UserInfo {
 ///
 /// So long as the permissions being checked against aren't `PermissionsGroup::Anon`,
 /// it's safe to assume that `user_info` is `Some<UserInfo>`.
-pub async fn reject_if_not_staff(
+pub async fn reject_if_not_in(
     state: &Arc<AppState>,
     user_info: &Option<UserInfo>,
     permissions: PermissionsGroup,
-) -> Option<Response> {
+) -> Option<Redirect> {
     if is_user_member_of(state, user_info, permissions).await {
         None
     } else {
-        Some(Redirect::to("/").into_response())
+        Some(Redirect::to("/"))
     }
 }
 

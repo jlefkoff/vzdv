@@ -202,11 +202,12 @@ CREATE TABLE event_registration (
     id INTEGER PRIMARY KEY NOT NULL,
     event_id INTEGER NOT NULL,
     cid INTEGER NOT NULL,
-    choice_1 INTEGER NOT NULL,
-    choice_2 INTEGER NOT NULL,
-    choice_3 INTEGER NOT NULL,
+    choice_1 INTEGER,
+    choice_2 INTEGER,
+    choice_3 INTEGER,
     notes TEXT,
 
+    UNIQUE(event_id, cid),
     FOREIGN KEY (event_id) REFERENCES event(id),
     FOREIGN KEY (cid) REFERENCES controller(cid),
     FOREIGN KEY (choice_1) REFERENCES event_position(id),
@@ -293,4 +294,17 @@ pub const UPDATE_EVENT: &str = "UPDATE event SET name=$2, published=$3, start=$4
 
 pub const GET_EVENT_POSITIONS: &str = "SELECT * FROM event_position WHERE event_id=$1";
 
+pub const GET_EVENT_REGISTRATION_FOR: &str =
+    "SELECT * FROM event_registration WHERE event_id=$1 AND cid=$2";
 pub const GET_EVENT_REGISTRATIONS: &str = "SELECT * FROM event_registration WHERE event_id=$1";
+pub const DELETE_EVENT_REGISTRATION: &str = "DELETE FROM event_registration WHERE id=$1";
+pub const UPSERT_EVENT_REGISTRATION: &str = "
+INSERT INTO event_registration
+    (event_id, cid, choice_1, choice_2, choice_3, notes)
+VALUES
+    ($1, $2, $3, $4, $5, $6)
+ON CONFLICT DO UPDATE SET
+    choice_1=$3,
+    choice_2=$4,
+    choice_3=$5,
+    notes=$6";

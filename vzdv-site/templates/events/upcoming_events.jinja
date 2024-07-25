@@ -33,9 +33,13 @@
 </div>
 
 {% if is_event_staff %}
-  <div id="events" hx-get="/events/upcoming?staff=true" hx-trigger="load"></div>
+  <div id="events" hx-get="/events/upcoming?staff=true" hx-trigger="load">
+    <p>Loading ...</p>
+  </div>
 {% else %}
-  <div id="events" hx-get="/events/upcoming" hx-trigger="load"></div>
+  <div id="events" hx-get="/events/upcoming" hx-trigger="load">
+    <p>Loading ...</p>
+  </div>
 {% endif %}
 
 <dialog id="modalNewForm">
