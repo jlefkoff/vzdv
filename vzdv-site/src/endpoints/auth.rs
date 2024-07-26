@@ -8,7 +8,7 @@ use axum::{
     routing::get,
     Router,
 };
-use log::debug;
+use log::{debug, info};
 use minijinja::{context, Environment};
 use std::sync::Arc;
 use tower_sessions::Session;
@@ -28,8 +28,8 @@ async fn page_auth_login(
 ) -> Result<Redirect, AppError> {
     // if already logged in, just redirect to homepage
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if user_info.is_some() {
-        debug!("Already logged-in user hit login page");
+    if let Some(user_info) = user_info {
+        debug!("Already logged-in user {} hit login page", user_info.cid);
         return Ok(Redirect::to("/"));
     }
     let redirect_url = oauth_redirect_start(&state.config);
@@ -60,7 +60,7 @@ async fn page_auth_callback(
         cid: session_user_info.data.cid.parse()?,
         first_name: session_user_info.data.personal.name_first,
         last_name: session_user_info.data.personal.name_last,
-        is_staff,
+        is_staff, // TODO this is likely insufficient
     };
     session
         .insert(SESSION_USER_INFO_KEY, to_session.clone())
@@ -73,7 +73,7 @@ async fn page_auth_callback(
         .execute(&state.db)
         .await?;
 
-    debug!("Completed log in for {}", session_user_info.data.cid);
+    info!("Completed log in for {}", session_user_info.data.cid);
     let template = state.templates.get_template("admin/login_complete")?;
     let rendered = template.render(context! { user_info => to_session })?;
     Ok(Html(rendered))

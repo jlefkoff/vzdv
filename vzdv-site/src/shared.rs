@@ -6,7 +6,7 @@ use axum::{
     response::{Html, IntoResponse, Redirect, Response},
 };
 use chrono::{NaiveDateTime, TimeZone};
-use log::error;
+use log::{error, info};
 use mini_moka::sync::Cache;
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
@@ -114,6 +114,10 @@ pub async fn reject_if_not_in(
     permissions: PermissionsGroup,
 ) -> Option<Redirect> {
     if is_user_member_of(state, user_info, permissions).await {
+        info!(
+            "Rejected access for {}",
+            user_info.as_ref().map(|ui| ui.cid).unwrap_or_default()
+        );
         None
     } else {
         Some(Redirect::to("/"))
@@ -143,10 +147,7 @@ pub async fn is_user_member_of(
     {
         Ok(c) => c,
         Err(e) => {
-            error!(
-                "Could not look up staff controller with CID {}: {e}",
-                user_info.cid
-            );
+            error!("Unknown controller with CID {}: {e}", user_info.cid);
             return false;
         }
     };

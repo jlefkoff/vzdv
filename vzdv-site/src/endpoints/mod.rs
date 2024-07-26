@@ -11,6 +11,7 @@ use axum::{
     routing::{get, post},
     Form, Router,
 };
+use log::info;
 use minijinja::{context, Environment};
 use serde::Deserialize;
 use std::sync::Arc;
@@ -70,14 +71,18 @@ async fn page_feedback_form_post(
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     if let Some(user_info) = user_info {
         sqlx::query(sql::INSERT_FEEDBACK)
-            .bind(feedback.controller)
-            .bind(feedback.position)
-            .bind(feedback.rating)
-            .bind(feedback.comments)
+            .bind(&feedback.controller)
+            .bind(&feedback.position)
+            .bind(&feedback.rating)
+            .bind(&feedback.comments)
             .bind(sqlx::types::chrono::Utc::now())
             .bind(user_info.cid)
             .execute(&state.db)
             .await?;
+        info!(
+            "{} submitted feedback for \"{}\"",
+            user_info.cid, feedback.controller
+        );
         flashed_messages::push_flashed_message(
             session,
             flashed_messages::FlashedMessageLevel::Success,

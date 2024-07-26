@@ -12,7 +12,7 @@ use axum::{
     Form, Router,
 };
 use itertools::Itertools;
-use log::warn;
+use log::{info, warn};
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -240,6 +240,7 @@ async fn page_staffing_request_post(
             }))
             .send()
             .await?;
+        info!("{} submitted a staffing request", user_info.cid);
         if resp.status().is_success() {
             flashed_messages::push_flashed_message(
                 session,
