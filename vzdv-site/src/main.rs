@@ -3,13 +3,12 @@
 #![deny(clippy::all)]
 #![deny(unsafe_code)]
 
-use anyhow::Result;
 use axum::{middleware as axum_middleware, response::Redirect, Router};
 use clap::Parser;
 use log::{debug, error, info, warn};
 use mini_moka::sync::Cache;
 use minijinja::Environment;
-use shared::AppState;
+use shared::{AppError, AppState};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -54,7 +53,7 @@ struct Cli {
 
 /// Load all template files into the binary via the stdlib `include_str!`
 /// macro and supply to the minijinja environment.
-fn load_templates() -> Result<Environment<'static>> {
+fn load_templates() -> Result<Environment<'static>, AppError> {
     let mut env = Environment::new();
     env.add_template("_layout", include_str!("../templates/_layout.jinja"))?;
     Ok(env)

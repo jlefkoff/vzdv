@@ -1,7 +1,6 @@
 //! Session-backed flashed messages to the user.
 
-use crate::shared::SESSION_FLASHED_MESSAGES_KEY;
-use anyhow::Result;
+use crate::shared::{AppError, SESSION_FLASHED_MESSAGES_KEY};
 use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 
@@ -59,7 +58,7 @@ pub async fn push_flashed_message(
     session: Session,
     level: FlashedMessageLevel,
     message: &str,
-) -> Result<()> {
+) -> Result<(), AppError> {
     let new_message = FlashedMessage::new(level, message);
     let messages = match session
         .get::<FlashedMessages>(SESSION_FLASHED_MESSAGES_KEY)
@@ -80,7 +79,7 @@ pub async fn push_flashed_message(
 /// Collect the flashed messages from the user's session and return them.
 ///
 /// The returned messages are removed from the users's session.
-pub async fn drain_flashed_messages(session: Session) -> Result<Vec<FlashedMessage>> {
+pub async fn drain_flashed_messages(session: Session) -> Result<Vec<FlashedMessage>, AppError> {
     if let Some(messages) = session
         .get::<FlashedMessages>(SESSION_FLASHED_MESSAGES_KEY)
         .await?

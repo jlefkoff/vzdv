@@ -4,7 +4,6 @@ use crate::{
     flashed_messages,
     shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
-use anyhow::Result;
 use axum::{
     extract::State,
     response::{Html, Redirect},

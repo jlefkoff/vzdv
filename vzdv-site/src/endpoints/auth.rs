@@ -1,7 +1,6 @@
 //! HTTP endpoints for logging in and out.
 
 use crate::shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY};
-use anyhow::Result;
 use axum::{
     extract::{Query, State},
     response::{Html, Redirect},
@@ -45,8 +44,12 @@ async fn page_auth_callback(
     State(state): State<Arc<AppState>>,
     session: Session,
 ) -> Result<Html<String>, AppError> {
-    let token_data = code_to_tokens(&query.code, &state.config).await?;
-    let session_user_info = get_user_info(&token_data.access_token, &state.config).await?;
+    let token_data = code_to_tokens(&query.code, &state.config)
+        .await
+        .map_err(|err| AppError::GenericFallback("getting auth token from code", err))?;
+    let session_user_info = get_user_info(&token_data.access_token, &state.config)
+        .await
+        .map_err(|err| AppError::GenericFallback("getting auth user info", err))?;
     let db_user_info: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
         .bind(&session_user_info.data.cid)
         .fetch_optional(&state.db)

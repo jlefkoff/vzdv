@@ -4,7 +4,6 @@ use crate::{
     flashed_messages,
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
 };
-use anyhow::{anyhow, Result};
 use axum::{extract::State, response::Html, routing::get, Router};
 use log::warn;
 use minijinja::{context, Environment};
@@ -40,7 +39,9 @@ async fn snippet_online_controllers(
         state.cache.invalidate(&cache_key);
     }
 
-    let online = get_online_facility_controllers(&state.db, &state.config).await?;
+    let online = get_online_facility_controllers(&state.db, &state.config)
+        .await
+        .map_err(|error| AppError::GenericFallback("getting online controllers", error))?;
     let template = state
         .templates
         .get_template("homepage/online_controllers")?;
@@ -70,7 +71,7 @@ async fn snippet_weather(State(state): State<Arc<AppState>>) -> Result<Html<Stri
         .send()
         .await?;
     if !resp.status().is_success() {
-        return Err(anyhow!("Got status {} from METAR API", resp.status().as_u16()).into());
+        return Err(AppError::HttpResponse("METAR API", resp.status().as_u16()));
     }
     let text = resp.text().await?;
     let weather: Vec<_> = text

@@ -4,7 +4,6 @@ use crate::{
     flashed_messages,
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
 };
-use anyhow::anyhow;
 use axum::{
     extract::State,
     response::{Html, Redirect},
@@ -132,7 +131,7 @@ async fn page_weather(
         .send()
         .await?;
     if !resp.status().is_success() {
-        return Err(anyhow!("Got status {} from METAR API", resp.status().as_u16()).into());
+        return Err(AppError::HttpResponse("METAR API", resp.status().as_u16()));
     }
     let text = resp.text().await?;
     let weather: Vec<_> = text

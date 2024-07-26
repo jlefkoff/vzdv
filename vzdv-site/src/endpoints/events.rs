@@ -16,6 +16,7 @@ use axum::{
     routing::{get, post},
     Form, Router,
 };
+use axum_extra::extract::WithRejection;
 use chrono::Utc;
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
@@ -94,7 +95,7 @@ struct CreateEventForm {
 async fn post_new_event_form(
     State(state): State<Arc<AppState>>,
     session: Session,
-    Form(create_new_form): Form<CreateEventForm>,
+    WithRejection(Form(create_new_form), _): WithRejection<Form<CreateEventForm>, AppError>,
 ) -> Result<Redirect, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let is_event_staff = is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await;
@@ -215,7 +216,7 @@ struct EventPositionDisplay {
 async fn event_positions_extra(
     positions: &[EventPosition],
     db: &Pool<Sqlite>,
-) -> anyhow::Result<Vec<EventPositionDisplay>> {
+) -> Result<Vec<EventPositionDisplay>, AppError> {
     let mut ret = Vec::with_capacity(positions.len());
     for position in positions {
         if let Some(pos_cid) = position.cid {
@@ -263,7 +264,7 @@ async fn event_registrations_extra(
     event_id: u32,
     positions: &[EventPosition],
     db: &Pool<Sqlite>,
-) -> anyhow::Result<Vec<EventRegistrationDisplay>> {
+) -> Result<Vec<EventRegistrationDisplay>, AppError> {
     let registrations: Vec<EventRegistration> = sqlx::query_as(sql::GET_EVENT_REGISTRATIONS)
         .bind(event_id)
         .fetch_all(db)

@@ -1,6 +1,6 @@
 //! Structs and data to be shared across multiple parts of the site.
 
-use anyhow::{anyhow, Result};
+use axum::extract::rejection::FormRejection;
 use axum::{
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
@@ -19,42 +19,82 @@ use vzdv::{
     PermissionsGroup,
 };
 
-/// Wrapper around `anyhow`'s `Error` type, which is itself a wrapper
-/// around the stdlib's `Error` type.
-pub struct AppError(anyhow::Error);
+/// Error handling for all possible issues.
+#[derive(Debug, thiserror::Error)]
+pub enum AppError {
+    #[error(transparent)]
+    Session(#[from] tower_sessions::session::Error),
+    #[error(transparent)]
+    Templates(#[from] minijinja::Error),
+    #[error(transparent)]
+    Database(#[from] sqlx::Error),
+    #[error(transparent)]
+    HttpCall(#[from] reqwest::Error),
+    #[error("remote site query of {0} returned status {1}")]
+    HttpResponse(&'static str, u16),
+    #[error(transparent)]
+    VatsimApi(#[from] vatsim_utils::errors::VatsimUtilError),
+    #[error(transparent)]
+    ChronoParse(#[from] chrono::ParseError),
+    #[error(transparent)]
+    ChronoTimezone(#[from] chrono_tz::ParseError),
+    #[error("other chrono error")]
+    ChronoOther(&'static str),
+    #[error(transparent)]
+    NumberParsing(#[from] std::num::ParseIntError),
+    #[error(transparent)]
+    FormExtractionRejection(#[from] FormRejection),
+    #[error("generic error {0}: {1}")]
+    GenericFallback(&'static str, anyhow::Error),
+}
+
+impl AppError {
+    fn friendly_message(&self) -> &'static str {
+        match self {
+            Self::Session(_) => "Issue accessing session data",
+            Self::Templates(_) => "Issue generating page",
+            Self::Database(_) => "Issue accessing database",
+            Self::HttpCall(_) => "Issue sending HTTP call",
+            Self::HttpResponse(_, _) => "Issue processing HTTP response",
+            Self::VatsimApi(_) => "Issue accessing VATSIM APIs",
+            Self::ChronoParse(_) => "Issue processing time data",
+            Self::ChronoTimezone(_) => "Issue processing timezone data",
+            Self::ChronoOther(_) => "Issue processing time",
+            Self::NumberParsing(_) => "Issue parsing numbers",
+            Self::FormExtractionRejection(_) => "Issue getting info from you",
+            Self::GenericFallback(_, _) => "Unknown error",
+        }
+    }
+}
 
 /// Try to construct the error page.
-fn try_build_error_page() -> Result<String> {
+fn try_build_error_page(error: AppError) -> Result<String, AppError> {
     let mut env = Environment::new();
     env.add_template("_layout", include_str!("../templates/_layout.jinja"))?;
     env.add_template("_error", include_str!("../templates/_error.jinja"))?;
     let template = env.get_template("_error")?;
-    let rendered = template.render(context! {})?;
+    let rendered = template.render(context! { error => error.friendly_message() })?;
     Ok(rendered)
 }
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        error!("Unhandled error: {}", self.0);
-        // attempt to construct the error page, falling back to plain text if anything failed
-        if let Ok(body) = try_build_error_page() {
-            (StatusCode::INTERNAL_SERVER_ERROR, Html(body)).into_response()
+        error!("Unhandled error: {}", self);
+        let status = match &self {
+            Self::FormExtractionRejection(e) => match e {
+                FormRejection::FailedToDeserializeForm(_)
+                | FormRejection::FailedToDeserializeFormBody(_) => StatusCode::BAD_REQUEST,
+                FormRejection::InvalidFormContentType(_) => StatusCode::UNSUPPORTED_MEDIA_TYPE,
+                _ => StatusCode::INTERNAL_SERVER_ERROR,
+            },
+            _ => StatusCode::INTERNAL_SERVER_ERROR,
+        };
+        // attempt to construct the error page, falling back to simple plain text if anything failed
+        if let Ok(body) = try_build_error_page(self) {
+            (status, Html(body)).into_response()
         } else {
-            (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Something went very wrong",
-            )
-                .into_response()
+            (status, "Something went very wrong").into_response()
         }
-    }
-}
-
-impl<E> From<E> for AppError
-where
-    E: Into<anyhow::Error>,
-{
-    fn from(err: E) -> Self {
-        Self(err.into())
     }
 }
 
@@ -157,13 +197,13 @@ pub async fn is_user_member_of(
 /// Convert an HTML `datetime-local` input and JS timezone name to a UTC timestamp.
 ///
 /// Kind of annoying.
-pub fn js_timestamp_to_utc(timestamp: &str, timezone: &str) -> Result<NaiveDateTime> {
+pub fn js_timestamp_to_utc(timestamp: &str, timezone: &str) -> Result<NaiveDateTime, AppError> {
     let tz: chrono_tz::Tz = timezone.parse()?;
     let original = NaiveDateTime::parse_from_str(timestamp, "%Y-%m-%dT%H:%M")?;
     let converted = tz
         .from_local_datetime(&original)
         .single()
-        .ok_or_else(|| anyhow!("Error parsing HTML datetime"))?
+        .ok_or_else(|| AppError::ChronoOther("Error parsing HTML datetime"))?
         .naive_utc();
     Ok(converted)
 }
