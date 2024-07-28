@@ -154,12 +154,12 @@ pub async fn reject_if_not_in(
     permissions: PermissionsGroup,
 ) -> Option<Redirect> {
     if is_user_member_of(state, user_info, permissions).await {
-        info!(
-            "Rejected access for {}",
-            user_info.as_ref().map(|ui| ui.cid).unwrap_or_default()
-        );
         None
     } else {
+        info!(
+            "Rejected access for {} to a resource",
+            user_info.as_ref().map(|ui| ui.cid).unwrap_or_default()
+        );
         Some(Redirect::to("/"))
     }
 }

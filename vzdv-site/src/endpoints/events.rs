@@ -101,12 +101,6 @@ async fn post_new_event_form(
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let is_event_staff = is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await;
     if !is_event_staff {
-        flashed_messages::push_flashed_message(
-            session,
-            flashed_messages::FlashedMessageLevel::Error,
-            "You are not a member of the events team",
-        )
-        .await?;
         return Ok(Redirect::to("/"));
     }
 
@@ -345,14 +339,9 @@ async fn post_edit_event_form(
     Form(details_form): Form<UpdateEventForm>,
 ) -> Result<Redirect, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if !is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await {
-        flashed_messages::push_flashed_message(
-            session,
-            flashed_messages::FlashedMessageLevel::Error,
-            "You are not a member of the events team",
-        )
-        .await?;
-        return Ok(Redirect::to("/"));
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::EventsTeam).await
+    {
+        return Ok(redirect);
     }
 
     let event: Option<Event> = sqlx::query_as(sql::GET_EVENT)
@@ -374,12 +363,6 @@ async fn post_edit_event_form(
             .await?;
         Ok(Redirect::to(&format!("/events/{id}")))
     } else {
-        flashed_messages::push_flashed_message(
-            session,
-            flashed_messages::FlashedMessageLevel::Error,
-            "You are not a member of the events team",
-        )
-        .await?;
         Ok(Redirect::to("/"))
     }
 }
@@ -512,14 +495,9 @@ async fn post_add_position(
     Form(new_position_data): Form<AddPositionForm>,
 ) -> Result<Redirect, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if !is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await {
-        flashed_messages::push_flashed_message(
-            session,
-            flashed_messages::FlashedMessageLevel::Error,
-            "You are not a member of the events team",
-        )
-        .await?;
-        return Ok(Redirect::to("/"));
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::EventsTeam).await
+    {
+        return Ok(redirect);
     }
 
     let event: Option<Event> = sqlx::query_as(sql::GET_EVENT)
@@ -535,12 +513,6 @@ async fn post_add_position(
             .await?;
         Ok(Redirect::to(&format!("/events/{id}")))
     } else {
-        flashed_messages::push_flashed_message(
-            session,
-            flashed_messages::FlashedMessageLevel::Error,
-            "You are not a member of the events team",
-        )
-        .await?;
         Ok(Redirect::to("/"))
     }
 }
@@ -552,14 +524,9 @@ async fn post_delete_position(
     Path((id, pos_id)): Path<(u32, u32)>,
 ) -> Result<Redirect, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if !is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await {
-        flashed_messages::push_flashed_message(
-            session,
-            flashed_messages::FlashedMessageLevel::Error,
-            "You are not a member of the events team",
-        )
-        .await?;
-        return Ok(Redirect::to("/"));
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::EventsTeam).await
+    {
+        return Ok(redirect);
     }
 
     let event: Option<Event> = sqlx::query_as(sql::GET_EVENT)
@@ -573,12 +540,6 @@ async fn post_delete_position(
             .await?;
         Ok(Redirect::to(&format!("/events/{id}")))
     } else {
-        flashed_messages::push_flashed_message(
-            session,
-            flashed_messages::FlashedMessageLevel::Error,
-            "You are not a member of the events team",
-        )
-        .await?;
         Ok(Redirect::to("/"))
     }
 }
