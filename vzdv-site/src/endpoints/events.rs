@@ -247,6 +247,7 @@ async fn event_positions_extra(
             controller: "unassigned".to_string(),
         });
     }
+    ret.sort_by(|a, b| a.name.cmp(&b.name));
     Ok(ret)
 }
 
