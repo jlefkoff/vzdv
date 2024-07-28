@@ -2,18 +2,20 @@
   No upcoming events
 {% else %}
   {% for event in events %}
-    <h4 class="mb-1">
-      <a href="/events/{{ event.id }}" class="icon-link icon-link-hover text-decoration-none">
-        {{ event.name }}
-        <i class="bi bi-arrow-right-short"></i>
+    <div class="pb-5">
+      <h4 class="mb-1">
+        <a href="/events/{{ event.id }}" class="icon-link icon-link-hover text-decoration-none">
+          {{ event.name }}
+          <i class="bi bi-arrow-right-short"></i>
+        </a>
+      </h4>
+      <p class="mb-1">
+        <span class="d-none event-time">{{ event.start }} -- {{ event.end }}</span>
+      </p>
+      <a href="/events/{{ event.id }}">
+        <img src="{{ event.image_url }}" alt="Event banner" class="img-fluid" />
       </a>
-    </h4>
-    <p class="mb-1">
-      <span class="d-none event-time">{{ event.start }} -- {{ event.end }}</span>
-    </p>
-    <a href="/events/{{ event.id }}">
-      <img src="{{ event.image_url }}" alt="Event banner" class="img-fluid" />
-    </a>
+    </div>
   {% endfor %}
 {% endif %}
 
