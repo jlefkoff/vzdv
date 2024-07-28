@@ -308,3 +308,7 @@ ON CONFLICT DO UPDATE SET
     choice_2=$4,
     choice_3=$5,
     notes=$6";
+
+pub const INSERT_EVENT_POSITION: &str =
+    "INSERT INTO event_position VALUES (NULL, $1, $2, $3, NULL);";
+pub const DELETE_EVENT_POSITION: &str = "DELETE FROM event_position WHERE id=$1";

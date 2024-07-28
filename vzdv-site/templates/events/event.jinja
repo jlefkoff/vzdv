@@ -41,17 +41,12 @@
           <i class="bi bi-pencil"></i>
           Edit event
         </button>
-        <button role="button" class="btn btn-warning">
-          <i class="bi bi-list"></i>
-          Edit positions
-        </button>
         <button role="button" class="btn btn-danger" id="button-delete">
           <i class="bi bi-trash"></i>
           Delete
         </button>
       {% endif %}
     </div>
-
   </div>
   <div class="col">
     <img src="{{ event.image_url }}" alt="Event banner" class="img-fluid" />
@@ -64,30 +59,54 @@
     <ul class="list-group">
       {% for position in positions %}
         {% if position.category == 'Enroute' %}
-          <li class="list-group-item">{{ position.name }} - {{ position.controller }}</li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>{{ position.name }} - {{ position.controller }}</span>
+            <form action="/events/{{ event.id }}/delete_position/{{ position.id }}" method="POST">
+              <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash"></i></button>
+            </form>
+          </li>
         {% endif %}
       {% endfor %}
     </ul>
+    {% if is_event_staff %}
+      <button class="btn btn-outline-warning btn-sm btn-position-add" style="width: 100%" category="Enroute">+ Add</button>
+    {% endif %}
   </div>
   <div class="col">
     <h4>TRACON Positions</h4>
     <ul class="list-group">
       {% for position in positions %}
         {% if position.category == 'TRACON' %}
-          <li class="list-group-item">{{ position.name }} - {{ position.controller }}</li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>{{ position.name }} - {{ position.controller }}</span>
+            <form action="/events/{{ event.id }}/delete_position/{{ position.id }}" method="POST">
+              <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash"></i></button>
+            </form>
+          </li>
         {% endif %}
       {% endfor %}
     </ul>
+    {% if is_event_staff %}
+      <button class="btn btn-outline-warning btn-sm btn-position-add" style="width: 100%" category="TRACON">+ Add</button>
+    {% endif %}
   </div>
   <div class="col">
     <h4>Local Positions</h4>
     <ul class="list-group">
       {% for position in positions %}
         {% if position.category == 'Local' %}
-          <li class="list-group-item">{{ position.name }} - {{ position.controller }}</li>
+          <li class="list-group-item d-flex justify-content-between">
+            <span>{{ position.name }} - {{ position.controller }}</span>
+            <form action="/events/{{ event.id }}/delete_position/{{ position.id }}" method="POST">
+              <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash"></i></button>
+            </form>
+          </li>
         {% endif %}
       {% endfor %}
     </ul>
+    {% if is_event_staff %}
+      <button class="btn btn-outline-warning btn-sm btn-position-add" style="width: 100%" category="Local">+ Add</button>
+    {% endif %}
   </div>
 </div>
 
@@ -205,6 +224,25 @@
   </form>
 </dialog>
 
+<dialog id="modalAddPosition">
+  <h2 class="pb-3">Add position</h2>
+  <form action="/events/{{ event.id }}/add_position" method="POST">
+    <div class="row">
+      <div class="col">
+        <input type="hidden" name="category" id="new-position-category">
+        <div class="mb-3">
+          <label for="name" class="form-label">Position</label>
+          <input type="text" class="form-control" name="name" style="text-transform: uppercase">
+        </div>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-warning" role="button" id="btn-modal-position-close">Close</button>
+          <button class="btn btn-primary" role="button" type="submit">Save</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</dialog>
+
 <script defer>
   document.querySelectorAll('.event-time').forEach((element) => {
     const date = new Date(element.innerText);
@@ -244,6 +282,13 @@
     }
   });
 
+  document.querySelectorAll('.btn-position-add').forEach((button) => {
+    button.addEventListener('click', () => {
+      document.getElementById('new-position-category').value = button.getAttribute('category');
+      document.getElementById('modalAddPosition').showModal();
+    });
+  })
+
   // have to do it this way so the forms don't submit
   document.getElementById('btn-modal-edit-close').addEventListener('click', (e) => {
     e.preventDefault();
@@ -252,6 +297,11 @@
   document.getElementById('btn-modal-register-close').addEventListener('click', (e) => {
     e.preventDefault();
     document.getElementById('modalRegisterForm').close();
+  });
+  document.getElementById('btn-modal-position-close').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('modalAddPosition').close();
+    document.getElementById('new-position-category').value = '';
   });
 </script>
 

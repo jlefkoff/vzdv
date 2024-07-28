@@ -208,6 +208,7 @@ async fn page_get_event(
 
 #[derive(Serialize)]
 struct EventPositionDisplay {
+    id: u32,
     name: String,
     category: String,
     controller: String,
@@ -227,6 +228,7 @@ async fn event_positions_extra(
                 .await?;
             if let Some(controller) = controller {
                 ret.push(EventPositionDisplay {
+                    id: position.id,
                     name: position.name.clone(),
                     category: position.category.clone(),
                     controller: format!(
@@ -243,6 +245,7 @@ async fn event_positions_extra(
             }
         }
         ret.push(EventPositionDisplay {
+            id: position.id,
             name: position.name.clone(),
             category: position.category.clone(),
             controller: "unassigned".to_string(),
@@ -495,6 +498,91 @@ async fn post_register_for_event(
     Ok(Redirect::to(&format!("/events/{id}")))
 }
 
+#[derive(Deserialize)]
+struct AddPositionForm {
+    name: String,
+    category: String,
+}
+
+/// Submit a form to add a new position to the event.
+async fn post_add_position(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(id): Path<u32>,
+    Form(new_position_data): Form<AddPositionForm>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if !is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Error,
+            "You are not a member of the events team",
+        )
+        .await?;
+        return Ok(Redirect::to("/"));
+    }
+
+    let event: Option<Event> = sqlx::query_as(sql::GET_EVENT)
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?;
+    if event.is_some() {
+        sqlx::query(sql::INSERT_EVENT_POSITION)
+            .bind(id)
+            .bind(new_position_data.name.to_uppercase())
+            .bind(&new_position_data.category)
+            .execute(&state.db)
+            .await?;
+        Ok(Redirect::to(&format!("/events/{id}")))
+    } else {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Error,
+            "You are not a member of the events team",
+        )
+        .await?;
+        Ok(Redirect::to("/"))
+    }
+}
+
+/// Delete a position from the event.
+async fn post_delete_position(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path((id, pos_id)): Path<(u32, u32)>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if !is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Error,
+            "You are not a member of the events team",
+        )
+        .await?;
+        return Ok(Redirect::to("/"));
+    }
+
+    let event: Option<Event> = sqlx::query_as(sql::GET_EVENT)
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?;
+    if event.is_some() {
+        sqlx::query(sql::DELETE_EVENT_POSITION)
+            .bind(pos_id)
+            .execute(&state.db)
+            .await?;
+        Ok(Redirect::to(&format!("/events/{id}")))
+    } else {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::FlashedMessageLevel::Error,
+            "You are not a member of the events team",
+        )
+        .await?;
+        Ok(Redirect::to("/"))
+    }
+}
+
 /// This file's routes and templates.
 pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
     template
@@ -529,4 +617,9 @@ pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
                 .post(post_edit_event_form),
         )
         .route("/events/:id/register", post(post_register_for_event))
+        .route("/events/:id/add_position", post(post_add_position))
+        .route(
+            "/events/:id/delete_position/:pos_id",
+            post(post_delete_position),
+        )
 }
