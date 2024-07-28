@@ -505,12 +505,23 @@ async fn post_add_position(
         .fetch_optional(&state.db)
         .await?;
     if event.is_some() {
-        sqlx::query(sql::INSERT_EVENT_POSITION)
+        let name = new_position_data.name.to_uppercase();
+
+        // don't allow position duplicates
+        let existing: Vec<EventPosition> = sqlx::query_as(sql::GET_EVENT_POSITIONS)
             .bind(id)
-            .bind(new_position_data.name.to_uppercase())
-            .bind(&new_position_data.category)
-            .execute(&state.db)
+            .fetch_all(&state.db)
             .await?;
+        if !existing.iter().any(|position| {
+            position.name == name && position.category == new_position_data.category
+        }) {
+            sqlx::query(sql::INSERT_EVENT_POSITION)
+                .bind(id)
+                .bind(new_position_data.name.to_uppercase())
+                .bind(&new_position_data.category)
+                .execute(&state.db)
+                .await?;
+        }
         Ok(Redirect::to(&format!("/events/{id}")))
     } else {
         Ok(Redirect::to("/"))

@@ -292,8 +292,6 @@ pub const DELETE_EVENT: &str = "DELETE FROM event WHERE id=$1";
 pub const CREATE_EVENT: &str = "INSERT INTO event VALUES (NULL, $1, FALSE, $2, $3, $4, $5, $6);";
 pub const UPDATE_EVENT: &str = "UPDATE event SET name=$2, published=$3, start=$4, end=$5, description=$6, image_url=$7 where id=$1";
 
-pub const GET_EVENT_POSITIONS: &str = "SELECT * FROM event_position WHERE event_id=$1";
-
 pub const GET_EVENT_REGISTRATION_FOR: &str =
     "SELECT * FROM event_registration WHERE event_id=$1 AND cid=$2";
 pub const GET_EVENT_REGISTRATIONS: &str = "SELECT * FROM event_registration WHERE event_id=$1";
@@ -309,6 +307,7 @@ ON CONFLICT DO UPDATE SET
     choice_3=$5,
     notes=$6";
 
+pub const GET_EVENT_POSITIONS: &str = "SELECT * FROM event_position WHERE event_id=$1";
 pub const INSERT_EVENT_POSITION: &str =
     "INSERT INTO event_position VALUES (NULL, $1, $2, $3, NULL);";
 pub const DELETE_EVENT_POSITION: &str = "DELETE FROM event_position WHERE id=$1";
