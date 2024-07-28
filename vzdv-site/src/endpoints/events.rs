@@ -28,6 +28,7 @@ use vzdv::{
     ControllerRating, PermissionsGroup,
 };
 
+/// Get a list of upcoming events optionally with unpublished events.
 async fn query_for_events(db: &Pool<Sqlite>, show_all: bool) -> sqlx::Result<Vec<Event>> {
     if show_all {
         sqlx::query_as(sql::GET_ALL_UPCOMING_EVENTS)
@@ -126,7 +127,7 @@ async fn post_new_event_form(
     )))
 }
 
-// TODO opportunity for some minor speed improvements here by not loading
+// NOTE: opportunity for some minor speed improvements here by not loading
 // controller records twice for each controller assigned to an event.
 
 /// Render the full page for a single event, including controls for signup.
