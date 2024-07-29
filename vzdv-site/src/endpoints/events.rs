@@ -18,6 +18,7 @@ use axum::{
 };
 use axum_extra::extract::WithRejection;
 use chrono::Utc;
+use log::info;
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Sqlite};
@@ -104,17 +105,24 @@ async fn post_new_event_form(
         return Ok(Redirect::to("/"));
     }
 
+    let cid = user_info.unwrap().cid;
     let start = js_timestamp_to_utc(&create_new_form.start, &create_new_form.timezone)?;
     let end = js_timestamp_to_utc(&create_new_form.end, &create_new_form.timezone)?;
     let result = sqlx::query(sql::CREATE_EVENT)
-        .bind(user_info.unwrap().cid)
-        .bind(create_new_form.name)
+        .bind(cid)
+        .bind(&create_new_form.name)
         .bind(start)
         .bind(end)
         .bind(create_new_form.description)
         .bind(create_new_form.banner)
         .execute(&state.db)
         .await?;
+    info!(
+        "{} created new event {}: \"{}\"",
+        cid,
+        result.last_insert_rowid(),
+        &create_new_form.name
+    );
     Ok(Redirect::to(&format!(
         "/events/{}",
         result.last_insert_rowid()
@@ -153,17 +161,26 @@ async fn page_get_event(
         let all_controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS_ON_ROSTER)
             .fetch_all(&state.db)
             .await?;
-        let all_controller_names: Vec<String> = all_controllers
+        let all_controllers: Vec<(u32, String)> = all_controllers
             .iter()
             .map(|controller| {
-                format!(
-                    "{} {} ({})",
-                    controller.first_name,
-                    controller.last_name,
-                    match controller.operating_initials.as_ref() {
-                        Some(oi) => oi,
-                        None => "??",
-                    }
+                (
+                    controller.cid,
+                    format!(
+                        "{} {} ({})",
+                        controller.first_name,
+                        controller.last_name,
+                        match controller.operating_initials.as_ref() {
+                            Some(oi) => {
+                                if oi.is_empty() {
+                                    "??"
+                                } else {
+                                    oi
+                                }
+                            }
+                            None => "??",
+                        }
+                    ),
                 )
             })
             .collect();
@@ -184,9 +201,10 @@ async fn page_get_event(
             positions,
             positions_raw,
             registrations,
-            all_controller_names,
+            all_controllers,
             self_register,
-            is_event_staff => not_staff_redirect.is_none()
+            is_event_staff => not_staff_redirect.is_none(),
+            event_not_over =>  Utc::now() < event.end
         })?;
         Ok(Html(rendered).into_response())
     } else {
@@ -361,6 +379,7 @@ async fn post_edit_event_form(
             .bind(details_form.banner)
             .execute(&state.db)
             .await?;
+        info!("{} edited event {id}", user_info.unwrap().cid);
         Ok(Redirect::to(&format!("/events/{id}")))
     } else {
         Ok(Redirect::to("/"))
@@ -384,16 +403,17 @@ async fn api_delete_event(
         .fetch_optional(&state.db)
         .await?;
     if event.is_some() {
+        sqlx::query(sql::DELETE_EVENT)
+            .bind(id)
+            .execute(&state.db)
+            .await?;
+        info!("{} deleted event {id}", user_info.unwrap().cid);
         flashed_messages::push_flashed_message(
             session,
             flashed_messages::FlashedMessageLevel::Info,
             "Event deleted",
         )
         .await?;
-        sqlx::query(sql::DELETE_EVENT)
-            .bind(id)
-            .execute(&state.db)
-            .await?;
         Ok(StatusCode::OK)
     } else {
         Ok(StatusCode::NOT_FOUND)
@@ -515,6 +535,12 @@ async fn post_add_position(
         if !existing.iter().any(|position| {
             position.name == name && position.category == new_position_data.category
         }) {
+            info!(
+                "{} adding {}/{} to event {id}",
+                user_info.unwrap().cid,
+                &new_position_data.category,
+                &name,
+            );
             sqlx::query(sql::INSERT_EVENT_POSITION)
                 .bind(id)
                 .bind(new_position_data.name.to_uppercase())
@@ -545,10 +571,60 @@ async fn post_delete_position(
         .fetch_optional(&state.db)
         .await?;
     if event.is_some() {
+        info!(
+            "{} removed position {pos_id} from {id}",
+            user_info.unwrap().cid,
+        );
         sqlx::query(sql::DELETE_EVENT_POSITION)
             .bind(pos_id)
             .execute(&state.db)
             .await?;
+        Ok(Redirect::to(&format!("/events/{id}")))
+    } else {
+        Ok(Redirect::to("/"))
+    }
+}
+
+#[derive(Deserialize)]
+struct SetPositionForm {
+    position_id: u32,
+    controller: u32,
+}
+
+/// Set a controller (or no-one) for a position.
+async fn post_set_position(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(id): Path<u32>,
+    Form(new_position_data): Form<SetPositionForm>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::EventsTeam).await
+    {
+        return Ok(redirect);
+    }
+
+    let event: Option<Event> = sqlx::query_as(sql::GET_EVENT)
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?;
+    if event.is_some() {
+        let cid = if new_position_data.controller != 0 {
+            Some(new_position_data.controller)
+        } else {
+            None
+        };
+        sqlx::query(sql::UPDATE_EVENT_POSITION_CONTROLLER)
+            .bind(new_position_data.position_id)
+            .bind(cid)
+            .execute(&state.db)
+            .await?;
+        info!(
+            "{} updated event {id} position {} to cid {}",
+            user_info.unwrap().cid,
+            new_position_data.position_id,
+            new_position_data.controller
+        );
         Ok(Redirect::to(&format!("/events/{id}")))
     } else {
         Ok(Redirect::to("/"))
@@ -594,4 +670,7 @@ pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
             "/events/:id/delete_position/:pos_id",
             post(post_delete_position),
         )
+        .route("/events/:id/set_position", post(post_set_position))
 }
+
+// TODO assign controller to a position

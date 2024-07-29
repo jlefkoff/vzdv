@@ -311,3 +311,4 @@ pub const GET_EVENT_POSITIONS: &str = "SELECT * FROM event_position WHERE event_
 pub const INSERT_EVENT_POSITION: &str =
     "INSERT INTO event_position VALUES (NULL, $1, $2, $3, NULL);";
 pub const DELETE_EVENT_POSITION: &str = "DELETE FROM event_position WHERE id=$1";
+pub const UPDATE_EVENT_POSITION_CONTROLLER: &str = "UPDATE event_position SET cid=$2 WHERE id=$1";
