@@ -63,12 +63,14 @@
         {% if position.category == 'Enroute' %}
           <li class="list-group-item d-flex justify-content-between">
             <span>{{ position.name }} - {{ position.controller }}</span>
-            <div class="d-flex">
-              <button class="btn btn-outline-warning btn-sm me-3 btn-position-set" position_id="{{ position.id }}" type="submit"><i class="bi bi-person"></i></button>
-              <form action="/events/{{ event.id }}/delete_position/{{ position.id }}" method="POST">
-                <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash"></i></button>
-              </form>
-            </div>
+            {% if is_event_staff and event_not_over %}
+              <div class="d-flex">
+                <button class="btn btn-outline-warning btn-sm me-3 btn-position-set" position_id="{{ position.id }}" type="submit"><i class="bi bi-person"></i></button>
+                <form action="/events/{{ event.id }}/delete_position/{{ position.id }}" method="POST">
+                  <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash"></i></button>
+                </form>
+              </div>
+            {% endif %}
           </li>
         {% endif %}
       {% endfor %}
@@ -84,12 +86,14 @@
         {% if position.category == 'TRACON' %}
           <li class="list-group-item d-flex justify-content-between">
             <span>{{ position.name }} - {{ position.controller }}</span>
-            <div class="d-flex">
-              <button class="btn btn-outline-warning btn-sm me-3 btn-position-set" position_id="{{ position.id }}" type="submit"><i class="bi bi-person"></i></button>
-              <form action="/events/{{ event.id }}/delete_position/{{ position.id }}" method="POST">
-                <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash"></i></button>
-              </form>
-            </div>
+            {% if is_event_staff and event_not_over %}
+              <div class="d-flex">
+                <button class="btn btn-outline-warning btn-sm me-3 btn-position-set" position_id="{{ position.id }}" type="submit"><i class="bi bi-person"></i></button>
+                <form action="/events/{{ event.id }}/delete_position/{{ position.id }}" method="POST">
+                  <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash"></i></button>
+                </form>
+              </div>
+            {% endif %}
           </li>
         {% endif %}
       {% endfor %}
@@ -105,12 +109,14 @@
         {% if position.category == 'Local' %}
           <li class="list-group-item d-flex justify-content-between">
             <span>{{ position.name }} - {{ position.controller }}</span>
-            <div class="d-flex">
-              <button class="btn btn-outline-warning btn-sm me-3 btn-position-set" position_id="{{ position.id }}" type="submit"><i class="bi bi-person"></i></button>
-              <form action="/events/{{ event.id }}/delete_position/{{ position.id }}" method="POST">
-                <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash"></i></button>
-              </form>
-            </div>
+            {% if is_event_staff and event_not_over %}
+              <div class="d-flex">
+                <button class="btn btn-outline-warning btn-sm me-3 btn-position-set" position_id="{{ position.id }}" type="submit"><i class="bi bi-person"></i></button>
+                <form action="/events/{{ event.id }}/delete_position/{{ position.id }}" method="POST">
+                  <button class="btn btn-outline-danger btn-sm" type="submit"><i class="bi bi-trash"></i></button>
+                </form>
+              </div>
+            {% endif %}
           </li>
         {% endif %}
       {% endfor %}
