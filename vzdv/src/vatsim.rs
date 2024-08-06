@@ -120,8 +120,8 @@ pub struct IdLongShort {
 
 #[derive(Debug, Deserialize)]
 pub struct IdName {
-    pub id: String,
-    pub name: String,
+    pub id: Option<String>,
+    pub name: Option<String>,
 }
 
 /// Build the URL to redirect users to in order to start
