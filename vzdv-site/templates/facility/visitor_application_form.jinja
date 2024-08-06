@@ -17,7 +17,15 @@
       <p style="font-size: 125%">
         VATUSA is reporting you as <strong>ineligible</strong> for visiting.
         <br><br>
-        For information why, please check the above documents.
+        {% if checklist.rating_90_days %}
+          You have not have your current rating for at least 90 days.
+        {% elif checklist.controlled_50_hrs %}
+          You have not controlled 50 hours in your current rating.
+        {% elif checklist.last_visit_60_days %}
+          You have visited another facility within the last 60 days.
+        {% else %}
+          For information why, please check the above documents.
+        {% endif %}
         <br>
         If you believe this is in error, you can reach out to the facility's ATM or DATM.
       </p>
