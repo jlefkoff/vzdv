@@ -49,7 +49,8 @@ async fn get_adh_data() -> Result<Vec<AdhController>> {
             response.status().as_u16()
         );
     }
-    let data = response.json().await?;
+    let data: Vec<AdhController> = response.json().await?;
+    info!("Got {} controllers from the ZDV roster", data.len());
     Ok(data)
 }
 
