@@ -1,0 +1,11 @@
+[Unit]
+Description=New VZDV site
+Requires=network.target
+
+[Service]
+WorkingDirectory=/srv/vzdv
+ExecStart=/srv/vzdv/vzdv-site -d --port 5001
+
+[Install]
+WantedBy=multi-user.target
+

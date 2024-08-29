@@ -1,0 +1,11 @@
+[Unit]
+Description=New VZDV site tasks
+Requires=network.target
+
+[Service]
+WorkingDirectory=/srv/vzdv
+ExecStart=/srv/vzdv/vzdv-tasks -d
+
+[Install]
+WantedBy=multi-user.target
+
