@@ -46,7 +46,7 @@
             {% endif %}
           {% endfor %}
         </td>
-        {% if user_info and user_info.is_staff %}
+        {% if user_info and user_info.roles|length > 0 %}
         <td class="col-1">
           <a href="/admin/roster/{{ controller.cid }}" class="text-decoration-none">Edit</a>
         </td>

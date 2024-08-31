@@ -138,7 +138,7 @@ pub struct UserInfo {
     pub cid: u32,
     pub first_name: String,
     pub last_name: String,
-    pub is_staff: bool, // TODO I'm not sure I like this here
+    pub roles: Vec<String>,
 }
 
 /// Returns a response to redirect to the homepage for non-staff users.

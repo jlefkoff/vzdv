@@ -54,16 +54,14 @@ async fn page_auth_callback(
         .bind(&session_user_info.data.cid)
         .fetch_optional(&state.db)
         .await?;
-    let is_staff = match db_user_info {
-        Some(controller) => !controller.roles.is_empty(),
-        None => false,
-    };
 
     let to_session = UserInfo {
         cid: session_user_info.data.cid.parse()?,
         first_name: session_user_info.data.personal.name_first,
         last_name: session_user_info.data.personal.name_last,
-        is_staff, // TODO this is likely insufficient
+        roles: db_user_info
+            .map(|ui| ui.roles.split(',').map(|s| s.to_owned()).collect())
+            .unwrap_or_default(),
     };
     session
         .insert(SESSION_USER_INFO_KEY, to_session.clone())

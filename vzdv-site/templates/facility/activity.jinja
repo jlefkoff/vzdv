@@ -38,7 +38,7 @@
     {% for row in activity_data %}
       <tr>
         <td>
-          {% if user_info and user_info.is_staff and row.rating > 1 and row.violation and not row.loa %}
+          {% if user_info and user_info.roles|length > 0 and row.rating > 1 and row.violation and not row.loa %}
             <span title="Potential activity violation"><i class="bi bi-calendar-x" style="color: yellow"></i></span>
           {% endif %}
           {{ row.name }} {% if row.ois %}({{ row.ois }}){% endif %}
