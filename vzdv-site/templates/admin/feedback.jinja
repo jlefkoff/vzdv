@@ -30,7 +30,7 @@
             <span class="col-3">
               <a href="https://stats.vatsim.net/stats/{{ feedback.submitter_cid }}" target="_blank">{{ feedback.submitter_cid }}</a>
             </span>
-            <span class="col-3">{{ feedback.controller }}</span>
+            <span class="col-3">{{ feedback.first_name }} {{ feedback.last_name }}</span>
             <span class="col-2">{{ feedback.position }}</span>
             <span class="col-2">{{ feedback.rating }}</span>
             <span class="col-2">{{ feedback.created_date|nice_date }}</span>

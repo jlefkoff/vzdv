@@ -10,13 +10,14 @@ use axum::{
     routing::{get, post},
     Form, Router,
 };
+use log::info;
 use minijinja::{context, Environment};
 use serde::Deserialize;
 use serde_json::json;
 use std::sync::Arc;
 use tower_sessions::Session;
 use vzdv::{
-    sql::{self, Feedback},
+    sql::{self, Controller, Feedback, FeedbackForReview},
     PermissionsGroup, GENERAL_HTTP_CLIENT,
 };
 
@@ -32,9 +33,10 @@ async fn page_feedback(
         return Ok(redirect.into_response());
     }
     let template = state.templates.get_template("admin/feedback")?;
-    let pending_feedback: Vec<Feedback> = sqlx::query_as(sql::GET_ALL_PENDING_FEEDBACK)
-        .fetch_all(&state.db)
-        .await?;
+    let pending_feedback: Vec<FeedbackForReview> =
+        sqlx::query_as(sql::GET_PENDING_FEEDBACK_FOR_REVIEW)
+            .fetch_all(&state.db)
+            .await?;
     let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
     let rendered = template.render(context! {
         user_info,
@@ -62,6 +64,7 @@ async fn post_feedback_form_handle(
     {
         return Ok(redirect.into_response());
     }
+    let user_info = user_info.unwrap();
     let db_feedback: Option<Feedback> = sqlx::query_as(sql::GET_FEEDBACK_BY_ID)
         .bind(feedback_form.id)
         .fetch_optional(&state.db)
@@ -69,12 +72,13 @@ async fn post_feedback_form_handle(
     if let Some(feedback) = db_feedback {
         if feedback_form.action == "Archive" {
             sqlx::query(sql::UPDATE_FEEDBACK_TAKE_ACTION)
-                .bind(user_info.unwrap().cid)
+                .bind(user_info.cid)
                 .bind("archive")
                 .bind(false)
                 .bind(feedback_form.id)
                 .execute(&state.db)
                 .await?;
+            info!("{} archived feedback {}", user_info.cid, feedback.id);
             flashed_messages::push_flashed_message(
                 session,
                 flashed_messages::FlashedMessageLevel::Success,
@@ -86,6 +90,14 @@ async fn post_feedback_form_handle(
                 .bind(feedback_form.id)
                 .execute(&state.db)
                 .await?;
+            info!(
+                "{} deleted {} feedback {} for {} by {}",
+                user_info.cid,
+                feedback.rating,
+                feedback.id,
+                feedback.controller,
+                feedback.submitter_cid
+            );
             flashed_messages::push_flashed_message(
                 session,
                 flashed_messages::FlashedMessageLevel::Success,
@@ -93,6 +105,10 @@ async fn post_feedback_form_handle(
             )
             .await?;
         } else if feedback_form.action == "Post to Discord" {
+            let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+                .bind(feedback.controller)
+                .fetch_optional(&state.db)
+                .await?;
             GENERAL_HTTP_CLIENT
                 .post(&state.config.discord.webhooks.feedback)
                 .json(&json!({
@@ -102,7 +118,7 @@ async fn post_feedback_form_handle(
                         "fields": [
                             {
                                 "name": "Controller",
-                                "value": feedback.controller
+                                "value": controller.map(|c| format!("{} {}", c.first_name, c.last_name)).unwrap_or_default()
                             },
                             {
                                 "name": "Position",
@@ -121,8 +137,12 @@ async fn post_feedback_form_handle(
                 }))
                 .send()
                 .await?;
+            info!(
+                "{} submitted feedback {} to Discord",
+                user_info.cid, feedback.id
+            );
             sqlx::query(sql::UPDATE_FEEDBACK_TAKE_ACTION)
-                .bind(user_info.unwrap().cid)
+                .bind(user_info.cid)
                 .bind("post")
                 .bind(true)
                 .bind(feedback_form.id)

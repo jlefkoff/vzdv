@@ -16,7 +16,7 @@ use serde::Deserialize;
 use std::sync::Arc;
 use tower_http::services::ServeDir;
 use tower_sessions::Session;
-use vzdv::sql;
+use vzdv::sql::{self, Controller};
 
 pub mod admin;
 pub mod airspace;
@@ -48,16 +48,27 @@ async fn page_feedback_form(
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
+    let mut all_controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS_ON_ROSTER)
+        .fetch_all(&state.db)
+        .await?;
+    all_controllers.sort_by_key(|c| format!("{} {}", c.first_name, c.last_name));
+    let all_controllers: Vec<(u32, String)> = all_controllers
+        .iter()
+        .map(|controller| {
+            (
+                controller.cid,
+                format!("{} {}", controller.first_name, controller.last_name,),
+            )
+        })
+        .collect();
     let template = state.templates.get_template("feedback")?;
-    let rendered = template.render(context! { user_info, flashed_messages })?;
+    let rendered = template.render(context! { user_info, flashed_messages, all_controllers })?;
     Ok(Html(rendered))
 }
 
-// TODO show a dropdown of all home controller names instead of free name string entry
-
 #[derive(Debug, Deserialize)]
 struct FeedbackForm {
-    controller: String,
+    controller: u32,
     position: String,
     rating: String,
     comments: String,
@@ -72,7 +83,7 @@ async fn page_feedback_form_post(
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     if let Some(user_info) = user_info {
         sqlx::query(sql::INSERT_FEEDBACK)
-            .bind(&feedback.controller)
+            .bind(feedback.controller)
             .bind(&feedback.position)
             .bind(&feedback.rating)
             .bind(&feedback.comments)
@@ -81,7 +92,7 @@ async fn page_feedback_form_post(
             .execute(&state.db)
             .await?;
         info!(
-            "{} submitted feedback for \"{}\"",
+            "{} submitted feedback for {}",
             user_info.cid, feedback.controller
         );
         flashed_messages::push_flashed_message(

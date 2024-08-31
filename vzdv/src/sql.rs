@@ -42,7 +42,7 @@ pub struct Activity {
 #[derive(Debug, FromRow, Serialize)]
 pub struct Feedback {
     pub id: u32,
-    pub controller: String,
+    pub controller: u32,
     pub position: String,
     pub rating: String,
     pub comments: String,
@@ -51,6 +51,19 @@ pub struct Feedback {
     pub reviewed_by_cid: u32,
     pub reviewer_action: String,
     pub posted_to_discord: bool,
+}
+
+#[derive(Debug, FromRow, Serialize)]
+pub struct FeedbackForReview {
+    pub id: u32,
+    pub first_name: String,
+    pub last_name: String,
+    pub position: String,
+    pub rating: String,
+    pub comments: String,
+    pub created_date: DateTime<Utc>,
+    pub submitter_cid: u32,
+    pub reviewer_action: String,
 }
 
 #[derive(Debug, FromRow, Serialize)]
@@ -135,7 +148,7 @@ CREATE TABLE certification (
 
 CREATE TABLE feedback (
     id INTEGER PRIMARY KEY NOT NULL,
-    controller TEXT NOT NULL,
+    controller INTEGER NOT NULL,
     position TEXT NOT NULL,
     rating TEXT NOT NULL,
     comments TEXT,
@@ -274,6 +287,8 @@ VALUES
 ";
 pub const GET_ALL_PENDING_FEEDBACK: &str =
     "SELECT * FROM feedback WHERE reviewed_by_cid IS NULL OR reviewer_action='archive'";
+pub const GET_PENDING_FEEDBACK_FOR_REVIEW: &str =
+    "SELECT feedback.*, controller.first_name, controller.last_name FROM feedback LEFT JOIN controller ON feedback.controller = controller.cid";
 pub const GET_FEEDBACK_BY_ID: &str = "SELECT * FROM feedback WHERE id=$1";
 pub const UPDATE_FEEDBACK_TAKE_ACTION: &str =
     "UPDATE feedback SET reviewed_by_cid=$1, reviewer_action=$2, posted_to_discord=$3 WHERE id=$4";
