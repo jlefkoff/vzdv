@@ -10,6 +10,7 @@ overrides = [
 ]
 
 [vatsim]
+# This data is for the _dev_ SSO site
 vatusa_api_key = ""
 oauth_url_base = "https://auth-dev.vatsim.net/"
 oauth_client_id = "225"
