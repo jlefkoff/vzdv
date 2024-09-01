@@ -31,10 +31,13 @@ pub struct Certification {
     pub set_by: u32,
 }
 
+/// Requires joining the `controller` column for the name.
 #[derive(Debug, FromRow, Serialize)]
 pub struct Activity {
     pub id: u32,
     pub cid: u32,
+    pub first_name: String,
+    pub last_name: String,
     pub month: String,
     pub minutes: u32,
 }
@@ -270,7 +273,10 @@ pub const GET_CONTROLLER_CIDS_AND_NAMES: &str = "SELECT cid, first_name, last_na
 
 pub const GET_ALL_CERTIFICATIONS: &str = "SELECT * FROM certification";
 
-pub const GET_ALL_ACTIVITY: &str = "SELECT * FROM activity";
+pub const GET_ALL_ACTIVITY: &str =
+    "SELECT * FROM activity LEFT JOIN controller ON activity.cid = controller.cid";
+pub const GET_ACTIVITY_IN_MONTH: &str =
+    "SELECT activity.*, controller.first_name, controller.last_name FROM activity LEFT JOIN controller ON activity.cid = controller.cid WHERE month=$1 ORDER BY minutes DESC";
 pub const DELETE_ACTIVITY_FOR_CID: &str = "DELETE FROM activity WHERE cid=$1";
 pub const INSERT_INTO_ACTIVITY: &str = "
 INSERT INTO activity

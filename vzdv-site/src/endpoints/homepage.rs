@@ -5,13 +5,19 @@ use crate::{
     shared::{AppError, AppState, CacheEntry, UserInfo, SESSION_USER_INFO_KEY},
 };
 use axum::{extract::State, response::Html, routing::get, Router};
+use chrono::Utc;
 use log::warn;
 use minijinja::{context, Environment};
 use serde::Serialize;
 use std::{sync::Arc, time::Instant};
 use tower_sessions::Session;
 use vatsim_utils::live_api::Vatsim;
-use vzdv::{aviation::parse_metar, vatsim::get_online_facility_controllers, GENERAL_HTTP_CLIENT};
+use vzdv::{
+    aviation::parse_metar,
+    sql::{self, Activity},
+    vatsim::get_online_facility_controllers,
+    GENERAL_HTTP_CLIENT,
+};
 
 /// Homepage.
 async fn page_home(
@@ -144,6 +150,47 @@ async fn snippet_flights(State(state): State<Arc<AppState>>) -> Result<Html<Stri
     Ok(Html(rendered))
 }
 
+async fn snippet_cotm(State(state): State<Arc<AppState>>) -> Result<Html<String>, AppError> {
+    // cache this endpoint's returned data for 1 minute
+    let cache_key = "COTM";
+    if let Some(cached) = state.cache.get(&cache_key) {
+        let elapsed = Instant::now() - cached.inserted;
+        if elapsed.as_secs() < 60 {
+            return Ok(Html(cached.data));
+        }
+        state.cache.invalidate(&cache_key);
+    }
+
+    #[derive(Serialize)]
+    struct CotmEntry {
+        name: String,
+        hours: u32,
+        minutes: u32,
+    }
+
+    let this_month = Utc::now().format("%Y-%m").to_string();
+    let activity: Vec<Activity> = sqlx::query_as(sql::GET_ACTIVITY_IN_MONTH)
+        .bind(this_month)
+        .fetch_all(&state.db)
+        .await?;
+    let cotm: Vec<_> = activity
+        .iter()
+        .take(3)
+        .map(|activity| CotmEntry {
+            name: format!("{} {}", activity.first_name, activity.last_name),
+            hours: activity.minutes / 60,
+            minutes: activity.minutes % 60,
+        })
+        .collect();
+
+    let template = state.templates.get_template("homepage/cotm")?;
+    let rendered = template.render(context! { cotm })?;
+    state
+        .cache
+        .insert(cache_key, CacheEntry::new(rendered.clone()));
+    Ok(Html(rendered))
+}
+
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
@@ -170,10 +217,17 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/homepage/flights.jinja"),
         )
         .unwrap();
+    templates
+        .add_template(
+            "homepage/cotm",
+            include_str!("../../templates/homepage/cotm.jinja"),
+        )
+        .unwrap();
 
     Router::new()
         .route("/", get(page_home))
         .route("/home/online/controllers", get(snippet_online_controllers))
         .route("/home/online/flights", get(snippet_flights))
         .route("/home/weather", get(snippet_weather))
+        .route("/home/cotm", get(snippet_cotm))
 }

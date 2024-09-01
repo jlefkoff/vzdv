@@ -1,0 +1,30 @@
+<h4>
+  <a href="/facility/activity" class="icon-link icon-link-hover text-decoration-none">
+    Activity
+    <i class="bi bi-arrow-right-short"></i>
+  </a>
+</h4>
+
+<style>
+  .rank-1 {
+    font-weight: bolder;
+    color: gold;
+  }
+  .rank-2 {
+    font-weight: bolder;
+    color: silver;
+  }
+  .rank-3 {
+    font-weight: bolder;
+    color: #8C7853;
+  }
+</style>
+
+<p class="ms-2">
+{% for entry in cotm %}
+  <span>
+    <i class="bi bi-trophy-fill rank-{{ loop.index }}"></i>
+    {{ entry.name }}: {{ entry.hours }}h {{ entry.minutes }}m
+  </span><br>
+{% endfor %}
+</p>
