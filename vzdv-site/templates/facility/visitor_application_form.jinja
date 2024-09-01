@@ -17,6 +17,9 @@
       <p style="font-size: 125%">
         VATUSA is reporting you as <strong>ineligible</strong> for visiting.
         <br><br>
+        {% if controller_info.rating < 4 %}
+          You must be rated at least at S3.<br>
+        {% endif %}
         {% if checklist.rating_90_days %}
           You have not have your current rating for at least 90 days.
         {% elif checklist.controlled_50_hrs %}
