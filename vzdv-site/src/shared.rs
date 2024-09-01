@@ -144,7 +144,11 @@ pub struct UserInfo {
     pub cid: u32,
     pub first_name: String,
     pub last_name: String,
-    pub roles: Vec<String>,
+
+    pub is_some_staff: bool,
+    pub is_training_staff: bool,
+    pub is_event_staff: bool,
+    pub is_admin: bool,
 }
 
 /// Returns a response to redirect to the homepage for non-staff users.

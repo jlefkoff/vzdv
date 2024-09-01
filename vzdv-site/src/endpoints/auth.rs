@@ -12,6 +12,7 @@ use minijinja::{context, Environment};
 use std::sync::Arc;
 use tower_sessions::Session;
 use vzdv::{
+    controller_can_see,
     sql::{self, Controller},
     vatsim::{code_to_tokens, get_user_info, oauth_redirect_start, AuthCallback},
 };
@@ -54,14 +55,19 @@ async fn page_auth_callback(
         .bind(&session_user_info.data.cid)
         .fetch_optional(&state.db)
         .await?;
+    let roles: Vec<_> = match &db_user_info {
+        Some(controller) => controller.roles.split(',').collect::<Vec<_>>(),
+        None => Vec::new(),
+    };
 
     let to_session = UserInfo {
         cid: session_user_info.data.cid.parse()?,
         first_name: session_user_info.data.personal.name_first,
         last_name: session_user_info.data.personal.name_last,
-        roles: db_user_info
-            .map(|ui| ui.roles.split(',').map(|s| s.to_owned()).collect())
-            .unwrap_or_default(),
+        is_some_staff: !roles.is_empty(),
+        is_training_staff: controller_can_see(&db_user_info, vzdv::PermissionsGroup::TrainingTeam),
+        is_event_staff: controller_can_see(&db_user_info, vzdv::PermissionsGroup::EventsTeam),
+        is_admin: controller_can_see(&db_user_info, vzdv::PermissionsGroup::Admin),
     };
     session
         .insert(SESSION_USER_INFO_KEY, to_session.clone())

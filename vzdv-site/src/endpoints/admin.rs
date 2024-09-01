@@ -197,7 +197,7 @@ async fn page_email_manual_send(
     let all_controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS)
         .fetch_all(&state.db)
         .await?;
-    let template = state.templates.get_template("admin/email_test")?;
+    let template = state.templates.get_template("admin/manual_email")?;
     let rendered = template.render(context! { all_controllers })?;
     Ok(Html(rendered).into_response())
 }
@@ -278,8 +278,8 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .unwrap();
     templates
         .add_template(
-            "admin/email_test",
-            include_str!("../../templates/admin/email_test.jinja"),
+            "admin/manual_email",
+            include_str!("../../templates/admin/manual_email.jinja"),
         )
         .unwrap();
     templates.add_filter("nice_date", |date: String| {

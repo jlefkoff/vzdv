@@ -1,10 +1,14 @@
 {% extends "_layout" %}
 
-{% block title %}Email test | {{ super() }}{% endblock %}
+{% block title %}Manual email | {{ super() }}{% endblock %}
 
 {% block body %}
 
-<h2 class="pb-3">Email test</h2>
+<h2 class="pb-3">Manual email</h2>
+<p>
+  This page can be used to manually send an email to a controller.<br>
+  Primarily intended for use in testing emails.
+</p>
 
 <form action="/admin/email/manual" method="POST">
   <div class="row mb-3">
