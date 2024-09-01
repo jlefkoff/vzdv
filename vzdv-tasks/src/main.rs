@@ -39,15 +39,15 @@ struct Cli {
 
 /// Update a single controller's stored data.
 async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) -> Result<()> {
-    let sr_staff_roles = &["ATM", "DATM", "TA"];
+    // VATUSA doesn't handle Jr staff roles well, so ignore them in the sync, but do keep Mentors
+    let roles_to_match = &["ATM", "DATM", "TA", "MTR"];
     let roles: Vec<_> = controller
         .roles
         .iter()
         .filter(|role| role.facility == "ZDV")
         .flat_map(|role| {
-            // VATUSA doesn't handle Jr staff roles well, so ignore them in the sync
             let n = &role.role;
-            if sr_staff_roles.contains(&n.as_str()) {
+            if roles_to_match.contains(&n.as_str()) {
                 Some(n.clone())
             } else {
                 None
