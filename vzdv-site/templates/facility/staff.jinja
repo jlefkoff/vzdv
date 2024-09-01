@@ -6,34 +6,44 @@
 
 <h2>Staff</h2>
 
+<h5 class="py-3">
+  These <span class="text-success-emphasis">VATSIM volunteers</span> are
+  <span class="text-success-emphasis">not affiliated with any governing agency</span>
+  in this role.
+</h5>
+
 <div class="d-flex flex-wrap justify-content-between">
   {% for position in staff %}
     {% if position.controllers|length > 0 %}
       <div class="card p-1 m-2" style="width: 30%">
         <div class="card-body">
-          <h5 class="card-title" title="{{ position.name }}">
-            {{ position.short }}
-          </h5>
-          <p class="card-text">
-            {% if position.controllers|length > 1 %}
-              <ul>
-                {% for controller in position.controllers %}
-                  <li>
-                    <span class="text-success-emphasis fw-bolder fs-6">{{ controller.first_name }} {{ controller.last_name }}</span>
-                  </li>
-                {% endfor %}
-              </ul>
-            {% else %}
-              {% for controller in position.controllers %}
-                <span class="text-success-emphasis fw-bolder fs-5">{{ controller.first_name }} {{ controller.last_name }}</span>
-              {% endfor %}
+          <div class="d-flex flex-column justify-content-between" style="height: 100%">
+            <div>
+              <h5 class="card-title fw-bold" title="{{ position.name }}">
+                {{ position.short }}
+              </h5>
+              <p class="card-text">
+                {% if position.controllers|length > 1 %}
+                  <ul class="mb-0">
+                    {% for controller in position.controllers %}
+                      <li>
+                        <span class="text-success-emphasis fw-bolder fs-6">{{ controller.first_name }} {{ controller.last_name }}</span>
+                      </li>
+                    {% endfor %}
+                  </ul>
+                {% else %}
+                  {% for controller in position.controllers %}
+                    <p class="text-success-emphasis fw-bolder fs-5">{{ controller.first_name }} {{ controller.last_name }}</p>
+                  {% endfor %}
+                {% endif %}
+                <br>
+                {{ position.description }}
+              </p>
+            </div>
+            {% if position.email %}
+              <a href="mailto:{{ position.email }}">Email</a>
             {% endif %}
-            <br>
-            {{ position.description }}
-          </p>
-          {% if position.email %}
-            <a href="mailto:{{ position.email }}">Email</a>
-          {% endif %}
+          </div>
         </div>
       </div>
     {% endif %}
