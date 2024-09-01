@@ -1,6 +1,7 @@
 //! Endpoints for editing and controlling aspects of the site.
 
 use crate::{
+    email::send_mail,
     flashed_messages,
     shared::{reject_if_not_in, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
@@ -18,7 +19,7 @@ use std::sync::Arc;
 use tower_sessions::Session;
 use vzdv::{
     sql::{self, Controller, Feedback, FeedbackForReview},
-    PermissionsGroup, GENERAL_HTTP_CLIENT,
+    vatusa, PermissionsGroup, GENERAL_HTTP_CLIENT,
 };
 
 /// Page for managing controller feedback.
@@ -184,12 +185,101 @@ async fn post_feedback_form_handle(
  *      meeting specified activity requirements
  */
 
+/// Admin page to manually send emails.
+async fn page_email_manual_send(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Response, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
+        return Ok(redirect.into_response());
+    }
+    let all_controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS)
+        .fetch_all(&state.db)
+        .await?;
+    let template = state.templates.get_template("admin/email_test")?;
+    let rendered = template.render(context! { all_controllers })?;
+    Ok(Html(rendered).into_response())
+}
+
+#[derive(Debug, Deserialize)]
+struct ManualEmailForm {
+    recipient: u32,
+    template: String,
+}
+
+async fn post_email_manual_send(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Form(manual_email_form): Form<ManualEmailForm>,
+) -> Result<Response, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
+        return Ok(redirect.into_response());
+    }
+    let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+        .bind(manual_email_form.recipient)
+        .fetch_optional(&state.db)
+        .await?;
+    let controller = match controller {
+        Some(c) => c,
+        None => {
+            flashed_messages::push_flashed_message(
+                session,
+                flashed_messages::FlashedMessageLevel::Error,
+                "Unknown controller",
+            )
+            .await?;
+            return Ok(Redirect::to("/admin/email/manual").into_response());
+        }
+    };
+    let controller_info = vatusa::get_controller_info(
+        manual_email_form.recipient,
+        Some(&state.config.vatsim.vatusa_api_key),
+    )
+    .await
+    .map_err(|err| AppError::GenericFallback("error getting controller info", err))?;
+    let email = match controller_info.email {
+        Some(e) => e,
+        None => {
+            flashed_messages::push_flashed_message(
+                session,
+                flashed_messages::FlashedMessageLevel::Error,
+                "Could not get controller's email from VATUSA",
+            )
+            .await?;
+            return Ok(Redirect::to("/admin/email/manual").into_response());
+        }
+    };
+    send_mail(
+        &state.config,
+        &state.db,
+        &format!("{} {}", controller.first_name, controller.last_name),
+        &email,
+        &manual_email_form.template,
+    )
+    .await?;
+    flashed_messages::push_flashed_message(
+        session,
+        flashed_messages::FlashedMessageLevel::Info,
+        "Email sent",
+    )
+    .await?;
+    Ok(Redirect::to("/admin/email/manual").into_response())
+}
+
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template(
             "admin/feedback",
             include_str!("../../templates/admin/feedback.jinja"),
+        )
+        .unwrap();
+    templates
+        .add_template(
+            "admin/email_test",
+            include_str!("../../templates/admin/email_test.jinja"),
         )
         .unwrap();
     templates.add_filter("nice_date", |date: String| {
@@ -202,5 +292,9 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     Router::new()
         .route("/admin/feedback", get(page_feedback))
         .route("/admin/feedback", post(post_feedback_form_handle))
+        .route(
+            "/admin/email/manual",
+            get(page_email_manual_send).post(post_email_manual_send),
+        )
     // .route("/admin/roster/:cid", get(page_controller))
 }

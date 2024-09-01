@@ -413,7 +413,7 @@ async fn page_visitor_application_form(
             .fetch_optional(&state.db)
             .await?;
     // check rating
-    let controller_info = match vatusa::get_controller_info(user_info.cid).await {
+    let controller_info = match vatusa::get_controller_info(user_info.cid, None).await {
         Ok(info) => Some(info),
         Err(e) => {
             warn!("{e}");

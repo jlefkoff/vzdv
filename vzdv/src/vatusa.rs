@@ -44,19 +44,21 @@ pub struct RosterMember {
     pub flag_broadcast_opted_in: Option<bool>,
     #[serde(rename = "flag_preventStaffAssign")]
     pub flag_prevent_staff_assign: Option<bool>,
+    pub discord_id: Option<u64>,
     pub last_cert_sync: String,
     #[serde(rename = "flag_nameprivacy")]
     pub flag_name_privacy: bool,
+    pub last_competency_date: Option<String>,
     pub promotion_eligible: Option<bool>,
-    // pub transfer_eligible: Option<serde_json::Value>,
+    pub transfer_eligible: Option<serde_json::Value>,
     pub roles: Vec<RosterMemberRole>,
     pub rating_short: String,
+    pub visiting_facilities: Vec<serde_json::Value>,
     #[serde(rename = "isMentor")]
     pub is_mentor: bool,
     #[serde(rename = "isSupIns")]
     pub is_sup_ins: bool,
     pub last_promotion: Option<String>,
-    pub membership: String,
 }
 
 /// Get the roster of a VATUSA facility.
@@ -72,7 +74,7 @@ pub async fn get_roster(facility: &str, membership: MembershipType) -> Result<Ve
         MembershipType::Both => "both",
     };
     let resp = GENERAL_HTTP_CLIENT
-        .get(format!("{BASE_URL}facility/{facility}/roster/{mem_str}"))
+        .get(format!("{BASE_URL}acility/{facility}/roster/{mem_str}"))
         .send()
         .await?;
     if !resp.status().is_success() {
@@ -138,7 +140,7 @@ pub async fn transfer_checklist(api_key: &str, cid: u32) -> Result<TransferCheck
     }
 
     let resp = GENERAL_HTTP_CLIENT
-        .get(format!("{BASE_URL}/v2/user/{cid}/transfer/checklist"))
+        .get(format!("{BASE_URL}v2/user/{cid}/transfer/checklist"))
         .query(&[("api_key", api_key)])
         .send()
         .await?;
@@ -154,21 +156,24 @@ pub async fn transfer_checklist(api_key: &str, cid: u32) -> Result<TransferCheck
 }
 
 /// Get the controller's public information.
-pub async fn get_controller_info(cid: u32) -> Result<RosterMember> {
+///
+/// Supply a VATUSA API key to get private information.
+pub async fn get_controller_info(cid: u32, api_key: Option<&str>) -> Result<RosterMember> {
     #[derive(Deserialize)]
     pub struct Wrapper {
         pub data: RosterMember,
     }
 
-    let resp = GENERAL_HTTP_CLIENT
-        .get(format!("{BASE_URL}/user/{cid}"))
-        .send()
-        .await?;
+    let mut req = GENERAL_HTTP_CLIENT.get(format!("{BASE_URL}user/{cid}"));
+    if let Some(key) = api_key {
+        req = req.query(&[("apikey", key)]);
+    }
+    let resp = req.send().await?;
     if !resp.status().is_success() {
         bail!(
-            "Got status {} from VATUSA controller API at {}",
-            resp.status().as_u16(),
-            resp.url()
+            // not including the URL since it may have the API key in it
+            "Got status {} from VATUSA controller info API",
+            resp.status().as_u16()
         );
     }
     let data: Wrapper = resp.json().await?;
@@ -183,7 +188,7 @@ pub async fn get_training_records(api_key: &str, cid: u32) -> Result<Vec<Trainin
     }
 
     let resp = GENERAL_HTTP_CLIENT
-        .get(format!("{BASE_URL}/user/{cid}/training/records"))
+        .get(format!("{BASE_URL}user/{cid}/training/records"))
         .query(&[("api_key", api_key)])
         .send()
         .await?;
