@@ -449,56 +449,67 @@ async fn post_register_for_event(
         return Ok(Redirect::to(&format!("/events/{id}")));
     };
 
-    if [
-        &register_data.choice_1,
-        &register_data.choice_2,
-        &register_data.choice_3,
-    ]
-    .iter()
-    .all(|s| **s == 0)
-    {
-        // if existing registration, remove; else no-op
-        let existing_registration: Option<EventRegistration> =
-            sqlx::query_as(sql::GET_EVENT_REGISTRATION_FOR)
-                .bind(id)
-                .bind(cid)
-                .fetch_optional(&state.db)
-                .await?;
-        if let Some(existing) = existing_registration {
-            sqlx::query(sql::DELETE_EVENT_REGISTRATION)
-                .bind(existing.id)
-                .execute(&state.db)
-                .await?;
-        }
+    let c_1 = if register_data.choice_1 == 0u32 {
+        None
     } else {
-        let c_1 = if register_data.choice_1 == 0u32 {
-            None
-        } else {
-            Some(register_data.choice_1)
-        };
-        let c_2 = if register_data.choice_2 == 0u32 {
-            None
-        } else {
-            Some(register_data.choice_2)
-        };
-        let c_3 = if register_data.choice_3 == 0u32 {
-            None
-        } else {
-            Some(register_data.choice_3)
-        };
-        // upsert the registration
-        sqlx::query(sql::UPSERT_EVENT_REGISTRATION)
+        Some(register_data.choice_1)
+    };
+    let c_2 = if register_data.choice_2 == 0u32 {
+        None
+    } else {
+        Some(register_data.choice_2)
+    };
+    let c_3 = if register_data.choice_3 == 0u32 {
+        None
+    } else {
+        Some(register_data.choice_3)
+    };
+    // upsert the registration
+    sqlx::query(sql::UPSERT_EVENT_REGISTRATION)
+        .bind(id)
+        .bind(cid)
+        .bind(c_1)
+        .bind(c_2)
+        .bind(c_3)
+        .bind(&register_data.notes)
+        .execute(&state.db)
+        .await?;
+    info!(
+        "{cid} registered for event {id}: {} {} {}",
+        c_1.unwrap_or_default(),
+        c_2.unwrap_or_default(),
+        c_3.unwrap_or_default()
+    );
+
+    Ok(Redirect::to(&format!("/events/{id}")))
+}
+
+/// Completely unregister a controller from an event.
+async fn api_register_unregister(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(id): Path<u32>,
+) -> Result<StatusCode, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let cid = if let Some(user_info) = user_info {
+        user_info.cid
+    } else {
+        return Ok(StatusCode::UNAUTHORIZED);
+    };
+    let existing_registration: Option<EventRegistration> =
+        sqlx::query_as(sql::GET_EVENT_REGISTRATION_FOR)
             .bind(id)
             .bind(cid)
-            .bind(c_1)
-            .bind(c_2)
-            .bind(c_3)
-            .bind(&register_data.notes)
+            .fetch_optional(&state.db)
+            .await?;
+    if let Some(existing) = existing_registration {
+        sqlx::query(sql::DELETE_EVENT_REGISTRATION)
+            .bind(existing.id)
             .execute(&state.db)
             .await?;
     }
-
-    Ok(Redirect::to(&format!("/events/{id}")))
+    info!("{cid} removed their registration to event {id}");
+    Ok(StatusCode::ACCEPTED)
 }
 
 #[derive(Deserialize)]
@@ -665,6 +676,7 @@ pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
                 .post(post_edit_event_form),
         )
         .route("/events/:id/register", post(post_register_for_event))
+        .route("/events/:id/unregister", post(api_register_unregister))
         .route("/events/:id/add_position", post(post_add_position))
         .route(
             "/events/:id/delete_position/:pos_id",
