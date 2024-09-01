@@ -44,6 +44,8 @@ pub enum AppError {
     NumberParsing(#[from] std::num::ParseIntError),
     #[error(transparent)]
     FormExtractionRejection(#[from] FormRejection),
+    #[error(transparent)]
+    EmailError(#[from] lettre::transport::smtp::Error),
     #[error("generic error {0}: {1}")]
     GenericFallback(&'static str, anyhow::Error),
 }
@@ -62,6 +64,7 @@ impl AppError {
             Self::ChronoOther(_) => "Issue processing time",
             Self::NumberParsing(_) => "Issue parsing numbers",
             Self::FormExtractionRejection(_) => "Issue getting info from you",
+            Self::EmailError(_) => "Issue sending an email",
             Self::GenericFallback(_, _) => "Unknown error",
         }
     }

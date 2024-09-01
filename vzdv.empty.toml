@@ -62,3 +62,11 @@ student_3 = ""
 student_2 = ""
 student_1 = ""
 observer = ""
+
+[email]
+host = ""
+port = 0
+user = ""
+password = ""
+from = ""
+reply_to = ""

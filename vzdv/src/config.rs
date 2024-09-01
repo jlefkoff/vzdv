@@ -14,6 +14,7 @@ pub struct Config {
     pub airports: ConfigAirports,
     pub stats: ConfigStats,
     pub discord: ConfigDiscord,
+    pub email: ConfigEmail,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -111,6 +112,16 @@ pub struct ConfigDiscordRoles {
     pub student_2: String,
     pub student_1: String,
     pub observer: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct ConfigEmail {
+    pub host: String,
+    pub port: u16,
+    pub user: String,
+    pub password: String,
+    pub from: String,
+    pub reply_to: String,
 }
 
 impl Config {
