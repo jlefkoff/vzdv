@@ -115,6 +115,12 @@ pub struct ConfigDiscordRoles {
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
+pub struct ConfigEmailTemplate {
+    pub subject: String,
+    pub body: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct ConfigEmail {
     pub host: String,
     pub port: u16,
@@ -122,6 +128,10 @@ pub struct ConfigEmail {
     pub password: String,
     pub from: String,
     pub reply_to: String,
+
+    pub visitor_accepted_template: ConfigEmailTemplate,
+    pub visitor_denied_template: ConfigEmailTemplate,
+    pub visitor_removed_template: ConfigEmailTemplate,
 }
 
 impl Config {

@@ -46,6 +46,8 @@ pub enum AppError {
     FormExtractionRejection(#[from] FormRejection),
     #[error(transparent)]
     EmailError(#[from] lettre::transport::smtp::Error),
+    #[error("unknown email template {0}")]
+    UnknownEmailTemplate(String),
     #[error("generic error {0}: {1}")]
     GenericFallback(&'static str, anyhow::Error),
 }
@@ -65,6 +67,7 @@ impl AppError {
             Self::NumberParsing(_) => "Issue parsing numbers",
             Self::FormExtractionRejection(_) => "Issue getting info from you",
             Self::EmailError(_) => "Issue sending an email",
+            Self::UnknownEmailTemplate(_) => "Unknown email template",
             Self::GenericFallback(_, _) => "Unknown error",
         }
     }
