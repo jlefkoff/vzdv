@@ -15,29 +15,46 @@ use vzdv::{
 };
 
 async fn create_message(config: &Arc<Config>, db: &Pool<Sqlite>) -> Result<Embed> {
-    // data.iter().fold(String::new(), |mut builder, controller| {
-    //     writeln!(
-    //         builder,
-    //         "{} - {} - {}",
-    //         controller.callsign, controller.name, controller.online_for
-    //     );
-    //     builder
-    // })
-
     let data = get_online_facility_controllers(db, config).await?;
-
-    let enroute: Vec<String> = Vec::new();
-    let tracon: Vec<String> = Vec::new();
-    let cab: Vec<String> = Vec::new();
+    let enroute = data
+        .iter()
+        .filter(|c| {
+            c.callsign.ends_with("_CTR")
+                || c.callsign.ends_with("_FSS")
+                || c.callsign.ends_with("_TMU")
+        })
+        .fold(String::new(), |mut acc, c| {
+            writeln!(acc, "{} - {} - {}", c.callsign, c.name, c.online_for);
+            acc
+        });
+    let tracon = data
+        .iter()
+        .filter(|c| c.callsign.ends_with("_APP") || c.callsign.ends_with("_DEP"))
+        .fold(String::new(), |mut acc, c| {
+            writeln!(acc, "{} - {} - {}", c.callsign, c.name, c.online_for);
+            acc
+        });
+    let cab = data
+        .iter()
+        .filter(|c| {
+            c.callsign.ends_with("_TWR")
+                || c.callsign.ends_with("_GND")
+                || c.callsign.ends_with("_DEL")
+        })
+        .fold(String::new(), |mut acc, c| {
+            writeln!(acc, "{} - {} - {}", c.callsign, c.name, c.online_for);
+            acc
+        });
 
     let embed = EmbedBuilder::new()
         .title("Online Controllers")
-        .field(EmbedFieldBuilder::new("Enroute", "No controllers"))
-        .field(EmbedFieldBuilder::new("TRACON", "No controllers"))
-        .field(EmbedFieldBuilder::new("CAB", "No controllers"))
-        .footer(EmbedFooterBuilder::new(
-            Utc::now().format("%H:%M:%S").to_string(),
-        ))
+        .field(EmbedFieldBuilder::new("Enroute", enroute))
+        .field(EmbedFieldBuilder::new("TRACON", tracon))
+        .field(EmbedFieldBuilder::new("CAB", cab))
+        .footer(EmbedFooterBuilder::new(format!(
+            "Last updated: {}",
+            Utc::now().format("%H:%M:%S")
+        )))
         .validate()?
         .build();
     Ok(embed)
@@ -62,9 +79,9 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
     Ok(())
 }
 
+// Processing loop.
 pub async fn process(config: Arc<Config>, db: Pool<Sqlite>, http: Arc<Client>) {
-    // sleep(Duration::from_secs(30)).await;
-    sleep(Duration::from_secs(5)).await;
+    sleep(Duration::from_secs(30)).await;
     debug!("Starting online processing");
 
     loop {

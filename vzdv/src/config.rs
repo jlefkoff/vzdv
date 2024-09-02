@@ -72,6 +72,7 @@ pub struct ConfigDiscord {
     pub guild_id: u64,
     pub online_channel: u64,
     pub online_message: Option<u64>,
+    pub off_roster_channel: u64,
     pub webhooks: ConfigDiscordWebhooks,
     pub roles: ConfigDiscordRoles,
 }
