@@ -162,6 +162,8 @@ position_suffixes = ["_RMP", "_DEL", "_GND", "_TWR", "_APP", "_DEP", "_CTR", "_R
 join_link = ""
 bot_token = ""
 guild_id = 0
+online_channel = 0
+# online_message = 0
 
 [discord.webhooks]
 staffing_request = ""

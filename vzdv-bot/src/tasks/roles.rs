@@ -21,6 +21,7 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
         .await?;
     for member in &members {
         debug!("Processing user {}", member.user.id);
+        let to_resolve: Vec<(&str, bool)> = Vec::new();
         let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_DISCORD_ID)
             .bind(member.user.id.get().to_string())
             .fetch_optional(db)

@@ -3283,6 +3283,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "twilight-util"
+version = "0.15.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fe3149347d8222e042a55deba80cd32f93f14770bbb845b8e4cfbd70a5062c56"
+dependencies = [
+ "twilight-model",
+ "twilight-validate",
+]
+
+[[package]]
 name = "twilight-validate"
 version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3451,6 +3461,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "base64 0.22.1",
+ "chrono",
  "clap",
  "log",
  "rand",
@@ -3459,6 +3470,8 @@ dependencies = [
  "twilight-gateway",
  "twilight-http",
  "twilight-model",
+ "twilight-util",
+ "vatsim_utils",
  "vzdv",
 ]
 

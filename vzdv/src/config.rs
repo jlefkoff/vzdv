@@ -70,6 +70,8 @@ pub struct ConfigDiscord {
     pub join_link: String,
     pub bot_token: String,
     pub guild_id: u64,
+    pub online_channel: u64,
+    pub online_message: Option<u64>,
     pub webhooks: ConfigDiscordWebhooks,
     pub roles: ConfigDiscordRoles,
 }
