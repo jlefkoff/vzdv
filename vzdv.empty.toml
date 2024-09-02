@@ -27,10 +27,12 @@ position_suffixes = []
 [discord]
 join_link = ""
 bot_token = ""
+guild_id = 0
 
 [discord.webhooks]
 staffing_request = ""
 feedback = ""
+new_visitor_app = ""
 
 [discord.roles]
 # role

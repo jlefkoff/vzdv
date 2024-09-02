@@ -330,6 +330,12 @@ pub async fn general_setup(
     Dispatch::new()
         .level(log::LevelFilter::Info)
         .level_for("tracing", log::LevelFilter::Warn)
+        .level_for("twilight_gateway_queue", log::LevelFilter::Warn)
+        .level_for("twilight_gateway::shard", log::LevelFilter::Warn)
+        .level_for(
+            "twilight_http_ratelimiting::in_memory::bucket",
+            log::LevelFilter::Warn,
+        )
         .level_for(
             "vzdv",
             if debug_logging {

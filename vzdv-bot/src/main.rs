@@ -55,7 +55,7 @@ async fn main() {
 
     let token = &config.discord.bot_token;
     let bot_id = bot_id_from_token(token);
-    let intents = Intents::GUILD_MESSAGES | Intents::MESSAGE_CONTENT;
+    let intents = Intents::GUILD_MEMBERS;
     let mut shard = Shard::new(ShardId::ONE, token.clone(), intents);
     let http = Arc::new(HttpClient::new(token.clone()));
 
@@ -111,6 +111,7 @@ async fn main() {
     }
 }
 
+/// Handle all events send through the Gateway connection.
 async fn handle_event(
     event: Event,
     http: Arc<HttpClient>,

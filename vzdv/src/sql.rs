@@ -271,6 +271,7 @@ pub const UPDATE_REMOVED_FROM_ROSTER: &str = "UPDATE controller SET is_on_roster
 pub const GET_CONTROLLER_BY_CID: &str = "SELECT * FROM controller WHERE cid=$1";
 pub const GET_CONTROLLER_CIDS_AND_NAMES: &str = "SELECT cid, first_name, last_name from controller";
 pub const GET_ATM_AND_DATM: &str = "SELECT * FROM controller WHERE roles LIKE '%ATM%'";
+pub const GET_CONTROLLER_BY_DISCORD_ID: &str = "SELECT * FROM controller WHERE discord_id=$1";
 
 pub const GET_ALL_CERTIFICATIONS: &str = "SELECT * FROM certification";
 

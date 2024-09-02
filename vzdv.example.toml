@@ -161,10 +161,12 @@ position_suffixes = ["_RMP", "_DEL", "_GND", "_TWR", "_APP", "_DEP", "_CTR", "_R
 [discord]
 join_link = ""
 bot_token = ""
+guild_id = 0
 
 [discord.webhooks]
 staffing_request = ""
 feedback = ""
+new_visitor_app = ""
 
 [discord.roles]
 # role
