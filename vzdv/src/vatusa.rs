@@ -53,7 +53,7 @@ pub struct RosterMember {
     pub transfer_eligible: Option<serde_json::Value>,
     pub roles: Vec<RosterMemberRole>,
     pub rating_short: String,
-    pub visiting_facilities: Vec<serde_json::Value>,
+    pub visiting_facilities: Option<Vec<serde_json::Value>>,
     #[serde(rename = "isMentor")]
     pub is_mentor: bool,
     #[serde(rename = "isSupIns")]
@@ -74,7 +74,7 @@ pub async fn get_roster(facility: &str, membership: MembershipType) -> Result<Ve
         MembershipType::Both => "both",
     };
     let resp = GENERAL_HTTP_CLIENT
-        .get(format!("{BASE_URL}acility/{facility}/roster/{mem_str}"))
+        .get(format!("{BASE_URL}facility/{facility}/roster/{mem_str}"))
         .send()
         .await?;
     if !resp.status().is_success() {
