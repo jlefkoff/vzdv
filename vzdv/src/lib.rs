@@ -147,6 +147,25 @@ impl ControllerRating {
             Self::ADM => "ADM",
         }
     }
+
+    pub fn as_id(&self) -> i8 {
+        match self {
+            Self::INA => -1,
+            Self::SUS => 0,
+            Self::OBS => 1,
+            Self::S1 => 2,
+            Self::S2 => 3,
+            Self::S3 => 4,
+            Self::C1 => 5,
+            Self::C2 => 6,
+            Self::C3 => 7,
+            Self::I1 => 8,
+            Self::I2 => 9,
+            Self::I3 => 10,
+            Self::SUP => 11,
+            Self::ADM => 12,
+        }
+    }
 }
 
 impl TryFrom<i8> for ControllerRating {
