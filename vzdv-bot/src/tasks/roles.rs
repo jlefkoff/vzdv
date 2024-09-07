@@ -1,10 +1,13 @@
 use anyhow::Result;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use sqlx::{Pool, Sqlite};
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
 use twilight_http::{request::guild, Client};
-use twilight_model::{guild::Member, id::Id};
+use twilight_model::{
+    guild::Member,
+    id::{marker::GuildMarker, Id},
+};
 use vzdv::{
     config::Config,
     sql::{self, Controller},
@@ -13,7 +16,7 @@ use vzdv::{
 
 /// Set the guild member's nickname if needed.
 async fn set_nickname(
-    guild_id: Id<twilight_model::id::marker::GuildMarker>,
+    guild_id: Id<GuildMarker>,
     member: &Member,
     controller: &Controller,
     http: &Arc<Client>,
@@ -68,9 +71,32 @@ async fn set_nickname(
 }
 
 /// Resolve the guild member's roles, adding and removing as necessary.
-async fn resolve_roles(user_id: u64, roles: &[(String, bool)], http: &Arc<Client>) -> Result<()> {
-    // TODO
-
+async fn resolve_roles(
+    guild_id: Id<GuildMarker>,
+    member: &Member,
+    roles: &[(u64, bool)],
+    http: &Arc<Client>,
+) -> Result<()> {
+    let existing: Vec<_> = member.roles.iter().map(|r| r.get()).collect();
+    for &(id, should_have) in roles {
+        if should_have && !existing.contains(&id) {
+            debug!(
+                "Adding {id} to {} ({})",
+                member.nick.as_ref().unwrap_or(&member.user.name),
+                member.user.id.get()
+            );
+            // http.add_guild_member_role(guild_id, member.user.id, Id::new(id))
+            //     .await?;
+        } else if !should_have && existing.contains(&id) {
+            debug!(
+                "Removing {id} from {} ({})",
+                member.nick.as_ref().unwrap_or(&member.user.name),
+                member.user.id.get()
+            );
+            // http.remove_guild_member_role(guild_id, member.user.id, Id::new(id))
+            //     .await?;
+        }
+    }
     Ok(())
 }
 
@@ -79,60 +105,60 @@ async fn get_correct_roles(
     config: &Arc<Config>,
     member: &Member,
     controller: &Controller,
-) -> Result<Vec<(String, bool)>> {
+) -> Result<Vec<(u64, bool)>> {
     debug!("Processing user {}", member.user.id);
     let mut to_resolve = Vec::with_capacity(15);
 
     // membership
     to_resolve.push((
-        config.discord.roles.home_controller.clone(),
+        config.discord.roles.home_controller,
         controller.home_facility == "ZDV",
     ));
     to_resolve.push((
-        config.discord.roles.visiting_controller.clone(),
+        config.discord.roles.visiting_controller,
         controller.is_on_roster && controller.home_facility != "ZDV",
     ));
-    to_resolve.push((config.discord.roles.guest.clone(), !controller.is_on_roster));
+    to_resolve.push((config.discord.roles.guest, !controller.is_on_roster));
 
     // network rating
     to_resolve.push((
-        config.discord.roles.administrator.clone(),
+        config.discord.roles.administrator,
         controller.rating == ControllerRating::ADM.as_id(),
     ));
     to_resolve.push((
-        config.discord.roles.supervisor.clone(),
+        config.discord.roles.supervisor,
         controller.rating == ControllerRating::SUP.as_id(),
     ));
     to_resolve.push((
-        config.discord.roles.instructor_3.clone(),
+        config.discord.roles.instructor_3,
         controller.rating == ControllerRating::I3.as_id(),
     ));
     to_resolve.push((
-        config.discord.roles.instructor_1.clone(),
+        config.discord.roles.instructor_1,
         controller.rating == ControllerRating::I1.as_id(),
     ));
     to_resolve.push((
-        config.discord.roles.controller_3.clone(),
+        config.discord.roles.controller_3,
         controller.rating == ControllerRating::C3.as_id(),
     ));
     to_resolve.push((
-        config.discord.roles.controller_1.clone(),
+        config.discord.roles.controller_1,
         controller.rating == ControllerRating::C1.as_id(),
     ));
     to_resolve.push((
-        config.discord.roles.student_3.clone(),
+        config.discord.roles.student_3,
         controller.rating == ControllerRating::S3.as_id(),
     ));
     to_resolve.push((
-        config.discord.roles.student_2.clone(),
+        config.discord.roles.student_2,
         controller.rating == ControllerRating::S2.as_id(),
     ));
     to_resolve.push((
-        config.discord.roles.student_1.clone(),
+        config.discord.roles.student_1,
         controller.rating == ControllerRating::S1.as_id(),
     ));
     to_resolve.push((
-        config.discord.roles.observer.clone(),
+        config.discord.roles.observer,
         controller.rating == ControllerRating::OBS.as_id(),
     ));
 
@@ -141,17 +167,17 @@ async fn get_correct_roles(
         .iter()
         .any(|role| controller.roles.contains(role))
     {
-        to_resolve.push((config.discord.roles.sr_staff.clone(), true));
-        to_resolve.push((config.discord.roles.jr_staff.clone(), false));
+        to_resolve.push((config.discord.roles.sr_staff, true));
+        to_resolve.push((config.discord.roles.jr_staff, false));
     } else if ["EC", "FE", "WM"]
         .iter()
         .any(|role| controller.roles.contains(role))
     {
-        to_resolve.push((config.discord.roles.sr_staff.clone(), false));
-        to_resolve.push((config.discord.roles.jr_staff.clone(), true));
+        to_resolve.push((config.discord.roles.sr_staff, false));
+        to_resolve.push((config.discord.roles.jr_staff, true));
     } else {
-        to_resolve.push((config.discord.roles.sr_staff.clone(), false));
-        to_resolve.push((config.discord.roles.jr_staff.clone(), false));
+        to_resolve.push((config.discord.roles.sr_staff, false));
+        to_resolve.push((config.discord.roles.jr_staff, false));
     }
     // Note: probably will let "staff teams" be manually assigned, same with VATUSA/VATGOV
 
@@ -169,6 +195,22 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
         .model()
         .await?;
     for member in &members {
+        if member.user.id.get() == config.discord.owner_id {
+            debug!(
+                "Skipping over guild owner {} ({})",
+                member.nick.as_ref().unwrap_or(&member.user.name),
+                member.user.id.get()
+            );
+            continue;
+        }
+        if member.user.bot {
+            debug!(
+                "Skipping over bot user {} ({})",
+                member.nick.as_ref().unwrap_or(&member.user.name),
+                member.user.id.get()
+            );
+            continue;
+        }
         debug!("Processing user {}", member.user.id);
         let mut to_resolve: Vec<(&str, bool)> = Vec::new();
         let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_DISCORD_ID)
@@ -185,25 +227,61 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
                     member.user.id.get()
                 );
                 for role in &member.roles {
-                    http.remove_guild_member_role(guild_id, member.user.id, *role)
-                        .await?;
+                    debug!(
+                        "Removing {role} from {} ({})",
+                        member.nick.as_ref().unwrap_or(&member.user.name),
+                        member.user.id.get()
+                    );
+                    if let Err(e) = http
+                        .remove_guild_member_role(guild_id, member.user.id, *role)
+                        .await
+                    {
+                        error!(
+                            "Could not remove role {role} from {} ({})",
+                            member.nick.as_ref().unwrap_or(&member.user.name),
+                            member.user.id.get()
+                        );
+                    }
                 }
-                return Ok(());
+                continue;
             }
         };
 
         // roles
-        let to_resolve = get_correct_roles(config, member, &controller).await?;
-        if let Err(e) = resolve_roles(member.user.id.get(), &to_resolve, http).await {
-            error!(
-                "Error resolving roles for {} ({}): {e}",
-                member.nick.as_ref().unwrap_or(&member.user.name),
-                member.user.id.get()
-            );
+        debug!(
+            "Determining roles to resolve for {} ({})",
+            member.nick.as_ref().unwrap_or(&member.user.name),
+            member.user.id.get()
+        );
+
+        // determine the roles the guild member should have and update accordingly
+        match get_correct_roles(config, member, &controller).await {
+            Ok(to_resolve) => {
+                if let Err(e) = resolve_roles(guild_id, member, &to_resolve, http).await {
+                    error!(
+                        "Error resolving roles for {} ({}): {e}",
+                        member.nick.as_ref().unwrap_or(&member.user.name),
+                        member.user.id.get()
+                    );
+                }
+            }
+            Err(e) => {
+                error!(
+                    "Error determining roles for {} ({})",
+                    member.nick.as_ref().unwrap_or(&member.user.name),
+                    member.user.id.get()
+                );
+            }
         }
 
         // nickname
-        set_nickname(guild_id, member, &controller, http).await?;
+        if let Err(e) = set_nickname(guild_id, member, &controller, http).await {
+            error!(
+                "Error setting nickname of {} ({})",
+                member.nick.as_ref().unwrap_or(&member.user.name),
+                member.user.id.get()
+            );
+        };
     }
 
     Ok(())

@@ -88,7 +88,7 @@ async fn main() {
         });
     };
 
-    info!("Waiting for events");
+    info!("Connected to Gateway");
     loop {
         let event = match shard.next_event().await {
             Ok(event) => event,

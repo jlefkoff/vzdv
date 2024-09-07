@@ -165,6 +165,7 @@ guild_id = 0
 online_channel = 0
 # online_message = 0
 off_roster_channel = 0
+owner_id = 0
 
 [discord.webhooks]
 staffing_request = ""
@@ -173,34 +174,34 @@ new_visitor_app = ""
 
 [discord.roles]
 # role
-guest = ""
-controller_otm = ""
-visiting_controller = ""
-neighboring_controller = ""
+guest = 0
+controller_otm = 0
+visiting_controller = 0
+neighboring_controller = 0
 
 # staff
-sr_staff = ""
-jr_staff = ""
-vatusa_vatgov_staff = ""
+sr_staff = 0
+jr_staff = 0
+vatusa_vatgov_staff = 0
 
 # staff teams
-training_staff = ""
-event_team = ""
-fe_team = ""
-web_team = ""
-ace_team = ""
+training_staff = 0
+event_team = 0
+fe_team = 0
+web_team = 0
+ace_team = 0
 
 # ratings
-administrator = ""
-supervisor = ""
-instructor_3 = ""
-instructor_1 = ""
-controller_3 = ""
-controller_1 = ""
-student_3 = ""
-student_2 = ""
-student_1 = ""
-observer = ""
+administrator = 0
+supervisor = 0
+instructor_3 = 0
+instructor_1 = 0
+controller_3 = 0
+controller_1 = 0
+student_3 = 0
+student_2 = 0
+student_1 = 0
+observer = 0
 
 [email]
 host = "smtp.gmail.com"

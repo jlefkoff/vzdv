@@ -75,6 +75,7 @@ pub struct ConfigDiscord {
     pub off_roster_channel: u64,
     pub webhooks: ConfigDiscordWebhooks,
     pub roles: ConfigDiscordRoles,
+    pub owner_id: u64,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
@@ -87,36 +88,36 @@ pub struct ConfigDiscordWebhooks {
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct ConfigDiscordRoles {
     // status
-    pub guest: String,
-    pub controller_otm: String,
-    pub home_controller: String,
-    pub visiting_controller: String,
-    pub neighboring_controller: String,
-    pub event_controller: String,
+    pub guest: u64,
+    pub controller_otm: u64,
+    pub home_controller: u64,
+    pub visiting_controller: u64,
+    pub neighboring_controller: u64,
+    pub event_controller: u64,
 
     // staff
-    pub sr_staff: String,
-    pub jr_staff: String,
-    pub vatusa_vatgov_staff: String,
+    pub sr_staff: u64,
+    pub jr_staff: u64,
+    pub vatusa_vatgov_staff: u64,
 
     // staff teams
-    pub training_staff: String,
-    pub event_team: String,
-    pub fe_team: String,
-    pub web_team: String,
-    pub ace_team: String,
+    pub training_staff: u64,
+    pub event_team: u64,
+    pub fe_team: u64,
+    pub web_team: u64,
+    pub ace_team: u64,
 
     // ratings
-    pub administrator: String,
-    pub supervisor: String,
-    pub instructor_3: String,
-    pub instructor_1: String,
-    pub controller_3: String,
-    pub controller_1: String,
-    pub student_3: String,
-    pub student_2: String,
-    pub student_1: String,
-    pub observer: String,
+    pub administrator: u64,
+    pub supervisor: u64,
+    pub instructor_3: u64,
+    pub instructor_1: u64,
+    pub controller_3: u64,
+    pub controller_1: u64,
+    pub student_3: u64,
+    pub student_2: u64,
+    pub student_1: u64,
+    pub observer: u64,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
