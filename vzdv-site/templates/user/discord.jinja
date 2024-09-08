@@ -6,12 +6,33 @@
 
 <h2>Discord</h2>
 
-<!-- TODO synching capabilities -->
-
-<p>
-  Discord is a primary method of communication in the ARTCC.
-  <br>
-  <a href="{{ join_link }}" class="text-decoration-none" target="_blank">Click here</a> to join the Discord server.
-</p>
+<div class="row pt-5">
+  <div class="col">
+    <div class="card" style="height: 15rem">
+      <div class="card-body d-flex flex-column justify-content-between">
+        <h5 class="card-title">Join the server</h5>
+        <p class="card-text py-2">Discord is a primary method of communication in the ARTCC.</p>
+        <div class="d-flex justify-content-center">
+          <a href="{{ join_link }}" class="btn btn-primary" style="width: 50%" target="_blank">Click to join</a>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="card" style="height: 15rem">
+      <div class="card-body d-flex flex-column justify-content-between">
+        <h5 class="card-title">Link your account</h5>
+        <p class="card-text">You must link your Discord account with this site to get the proper roles there.</p>
+        {% if discord_id %}
+          <p>Thank you for linking your Discord account.</p>
+        {% else %}
+          <div class="d-flex justify-content-center">
+            <a href="{{ oauth_link }}" class="btn btn-primary" style="width: 50%">Click to link</a>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}

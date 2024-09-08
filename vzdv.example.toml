@@ -167,6 +167,11 @@ online_channel = 0
 off_roster_channel = 0
 owner_id = 0
 
+[discord.auth]
+client_id = ""
+client_secret = ""
+redirect_uri = ""
+
 [discord.webhooks]
 staffing_request = ""
 feedback = ""

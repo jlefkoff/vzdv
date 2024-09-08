@@ -69,6 +69,7 @@ pub struct ConfigStats {
 pub struct ConfigDiscord {
     pub join_link: String,
     pub bot_token: String,
+    pub auth: ConfigDiscordAuth,
     pub guild_id: u64,
     pub online_channel: u64,
     pub online_message: Option<u64>,
@@ -76,6 +77,13 @@ pub struct ConfigDiscord {
     pub webhooks: ConfigDiscordWebhooks,
     pub roles: ConfigDiscordRoles,
     pub owner_id: u64,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct ConfigDiscordAuth {
+    pub client_id: String,
+    pub client_secret: String,
+    pub redirect_uri: String,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]

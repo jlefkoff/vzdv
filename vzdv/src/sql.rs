@@ -4,6 +4,8 @@ use sqlx::{
     types::chrono::{DateTime, Utc},
 };
 
+// Note: SQLite doesn't support u64.
+
 #[derive(Debug, FromRow, Serialize, Clone, Default)]
 pub struct Controller {
     pub id: u32,
@@ -272,6 +274,8 @@ pub const GET_CONTROLLER_BY_CID: &str = "SELECT * FROM controller WHERE cid=$1";
 pub const GET_CONTROLLER_CIDS_AND_NAMES: &str = "SELECT cid, first_name, last_name from controller";
 pub const GET_ATM_AND_DATM: &str = "SELECT * FROM controller WHERE roles LIKE '%ATM%'";
 pub const GET_CONTROLLER_BY_DISCORD_ID: &str = "SELECT * FROM controller WHERE discord_id=$1";
+pub const SET_CONTROLLER_DISCORD_ID: &str =
+    "UPDATE controller SET discord_id=$1 WHERE cid=$2 LIMIT 1";
 
 pub const GET_ALL_CERTIFICATIONS: &str = "SELECT * FROM certification";
 

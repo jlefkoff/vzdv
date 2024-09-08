@@ -23,6 +23,7 @@ use tower_sessions::SessionManagerLayer;
 use tower_sessions_sqlx_store::SqliteStore;
 use vzdv::general_setup;
 
+mod discord;
 mod email;
 mod endpoints;
 mod flashed_messages;
