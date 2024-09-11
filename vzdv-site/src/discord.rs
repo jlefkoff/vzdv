@@ -29,8 +29,8 @@ struct DiscordUserInfoUser {
 /// Generate the URL to navigate users to in order to start the Discord OAuth flow.
 pub fn get_oauth_link(config: &Config) -> String {
     format!("https://discord.com/oauth2/authorize?client_id={}&response_type=code&redirect_uri={}&scope=identify",
-        config.discord.auth.client_id,
-        urlencoding::encode(&config.discord.auth.redirect_uri)
+        &config.discord.auth.client_id,
+        &config.discord.auth.redirect_uri,
     )
 }
 
