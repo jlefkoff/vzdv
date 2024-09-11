@@ -122,7 +122,9 @@ async fn main() {
         error!("Could not create table for sessions: {e}");
         return;
     }
-    let session_layer = SessionManagerLayer::new(sessions);
+    // "lax" seems to be needed for the Discord OAuth login, but is there a concern about security?
+    let session_layer =
+        SessionManagerLayer::new(sessions).with_same_site(tower_sessions::cookie::SameSite::Lax);
     let mut templates = match load_templates() {
         Ok(t) => t,
         Err(e) => {
