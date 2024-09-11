@@ -78,16 +78,6 @@ async fn page_discord_callback(
     let user_info = match user_info {
         Some(info) => info,
         None => {
-            /*
-             * TODO
-             *
-             * When the user is redirected back to the site, the session is gone and they
-             * aren't logged in, so this block triggers.
-             *
-             * Also flashing messages still doesn't work for the next request when
-             * using redirects for some stupid reason.
-             */
-
             warn!("Unknown user hit Discord link callback page");
             flashed_messages::push_flashed_message(
                 session,
