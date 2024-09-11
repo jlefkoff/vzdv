@@ -32,15 +32,7 @@
   {% endif %}
 </div>
 
-{% if is_event_staff %}
-  <div id="events" hx-get="/events/upcoming?staff=true" hx-trigger="load">
-    <p>Loading ...</p>
-  </div>
-{% else %}
-  <div id="events" hx-get="/events/upcoming" hx-trigger="load">
-    <p>Loading ...</p>
-  </div>
-{% endif %}
+{% include 'events/upcoming_events_snippet' %}
 
 <dialog id="modalNewForm">
   <h2 class="pb-3">Create new event</h2>

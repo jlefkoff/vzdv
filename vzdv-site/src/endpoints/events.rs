@@ -51,14 +51,9 @@ async fn query_for_events(db: &Pool<Sqlite>, show_all: bool) -> sqlx::Result<Vec
 async fn snippet_get_upcoming_events(
     State(state): State<Arc<AppState>>,
     session: Session,
-    Query(params): Query<HashMap<String, String>>,
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    let show_all = if let Some(val) = params.get("staff") {
-        val == "true" && is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await
-    } else {
-        false
-    };
+    let show_all = is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await;
     let events = query_for_events(&state.db, show_all).await?;
     let template = state
         .templates
@@ -73,11 +68,18 @@ async fn snippet_get_upcoming_events(
 async fn get_upcoming_events(
     State(state): State<Arc<AppState>>,
     session: Session,
+    Query(params): Query<HashMap<String, String>>,
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let show_all = if let Some(val) = params.get("staff") {
+        val == "true" && is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await
+    } else {
+        false
+    };
+    let events = query_for_events(&state.db, show_all).await?;
     let is_event_staff = is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await;
     let template = state.templates.get_template("events/upcoming_events")?;
-    let rendered = template.render(context! { user_info, is_event_staff })?;
+    let rendered = template.render(context! { user_info, is_event_staff, events })?;
     Ok(Html(rendered))
 }
 
