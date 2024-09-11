@@ -4,14 +4,6 @@ use crate::shared::{AppError, SESSION_FLASHED_MESSAGES_KEY};
 use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 
-/**
- * TODO
- *
- * Flashed messages don't show on redirects until the user navigates to another
- * page and renders that. Is there some weird lagging session update somewhere?
- * I tried explicitly adding a `.save` call, but that doesn't seem to have fixed it.
- */
-
 /// Stored in the session. Contains pending flashed messages, if any.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct FlashedMessages(Vec<FlashedMessage>);

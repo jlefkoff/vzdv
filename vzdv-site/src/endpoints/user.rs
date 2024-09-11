@@ -59,11 +59,13 @@ async fn page_discord(
         .fetch_one(&state.db)
         .await?;
     let template = state.templates.get_template("user/discord")?;
+    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
     let rendered: String = template.render(context! {
         user_info,
         oauth_link => discord::get_oauth_link(&state.config),
         join_link => &state.config.discord.join_link,
-        discord_id => controller.discord_id
+        discord_id => controller.discord_id,
+        flashed_messages
     })?;
     Ok(Html(rendered).into_response())
 }
