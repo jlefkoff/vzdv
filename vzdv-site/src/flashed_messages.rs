@@ -81,7 +81,7 @@ pub async fn push_flashed_message(
     session
         .insert(SESSION_FLASHED_MESSAGES_KEY, messages)
         .await?;
-    session.save().await.unwrap();
+    session.save().await?;
     Ok(())
 }
 
