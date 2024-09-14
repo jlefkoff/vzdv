@@ -83,7 +83,7 @@ async fn page_discord_callback(
             warn!("Unknown user hit Discord link callback page");
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::FlashedMessageLevel::Error,
+                flashed_messages::MessageLevel::Error,
                 "Not logged in",
             )
             .await?;
@@ -101,7 +101,7 @@ async fn page_discord_callback(
             .await?;
         flashed_messages::push_flashed_message(
             session,
-            flashed_messages::FlashedMessageLevel::Info,
+            flashed_messages::MessageLevel::Info,
             "Discord account linked",
         )
         .await?;
@@ -116,7 +116,7 @@ async fn page_discord_callback(
         );
         flashed_messages::push_flashed_message(
             session,
-            flashed_messages::FlashedMessageLevel::Error,
+            flashed_messages::MessageLevel::Error,
             "Could not link your Discord account - not enough info provided",
         )
         .await?;

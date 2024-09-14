@@ -82,7 +82,7 @@ async fn post_feedback_form_handle(
             info!("{} archived feedback {}", user_info.cid, feedback.id);
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::FlashedMessageLevel::Success,
+                flashed_messages::MessageLevel::Success,
                 "Feedback archived",
             )
             .await?;
@@ -101,7 +101,7 @@ async fn post_feedback_form_handle(
             );
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::FlashedMessageLevel::Success,
+                flashed_messages::MessageLevel::Success,
                 "Feedback deleted",
             )
             .await?;
@@ -151,7 +151,7 @@ async fn post_feedback_form_handle(
                 .await?;
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::FlashedMessageLevel::Success,
+                flashed_messages::MessageLevel::Success,
                 "Feedback shared",
             )
             .await?;
@@ -159,7 +159,7 @@ async fn post_feedback_form_handle(
     } else {
         flashed_messages::push_flashed_message(
             session,
-            flashed_messages::FlashedMessageLevel::Error,
+            flashed_messages::MessageLevel::Error,
             "Feedback not found",
         )
         .await?;
@@ -226,7 +226,7 @@ async fn post_email_manual_send(
         None => {
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::FlashedMessageLevel::Error,
+                flashed_messages::MessageLevel::Error,
                 "Unknown controller",
             )
             .await?;
@@ -244,7 +244,7 @@ async fn post_email_manual_send(
         None => {
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::FlashedMessageLevel::Error,
+                flashed_messages::MessageLevel::Error,
                 "Could not get controller's email from VATUSA",
             )
             .await?;
@@ -261,7 +261,7 @@ async fn post_email_manual_send(
     .await?;
     flashed_messages::push_flashed_message(
         session,
-        flashed_messages::FlashedMessageLevel::Info,
+        flashed_messages::MessageLevel::Info,
         "Email sent",
     )
     .await?;

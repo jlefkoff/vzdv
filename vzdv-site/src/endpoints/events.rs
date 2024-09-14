@@ -212,7 +212,7 @@ async fn page_get_event(
     } else {
         flashed_messages::push_flashed_message(
             session,
-            flashed_messages::FlashedMessageLevel::Error,
+            flashed_messages::MessageLevel::Error,
             "Event not found",
         )
         .await?;
@@ -412,7 +412,7 @@ async fn api_delete_event(
         info!("{} deleted event {id}", user_info.unwrap().cid);
         flashed_messages::push_flashed_message(
             session,
-            flashed_messages::FlashedMessageLevel::Info,
+            flashed_messages::MessageLevel::Info,
             "Event deleted",
         )
         .await?;

@@ -10,19 +10,19 @@ pub struct FlashedMessages(Vec<FlashedMessage>);
 
 /// Message significance. Dictates the CSS classes used to render the alert.
 #[derive(Debug, Serialize, Deserialize)]
-pub enum FlashedMessageLevel {
+pub enum MessageLevel {
     Info,
     Success,
     Error,
 }
 
-impl FlashedMessageLevel {
+impl MessageLevel {
     /// String representation, suitable for use in templates.
     pub fn as_str(&self) -> &'static str {
         match self {
-            FlashedMessageLevel::Info => "info",
-            FlashedMessageLevel::Success => "success",
-            FlashedMessageLevel::Error => "danger",
+            MessageLevel::Info => "info",
+            MessageLevel::Success => "success",
+            MessageLevel::Error => "danger",
         }
     }
 }
@@ -30,14 +30,14 @@ impl FlashedMessageLevel {
 /// A single message to show to the user.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FlashedMessage {
-    pub level: FlashedMessageLevel,
+    pub level: MessageLevel,
     pub message: String,
     pub class: String,
 }
 
 impl FlashedMessage {
     /// Create a new message to be shown to the user.
-    pub fn new(level: FlashedMessageLevel, message: &str) -> Self {
+    pub fn new(level: MessageLevel, message: &str) -> Self {
         let class = format!("alert alert-{}", level.as_str());
         Self {
             level,
@@ -56,7 +56,7 @@ impl FlashedMessage {
 /// Push a session message to be flashed to the user.
 pub async fn push_flashed_message(
     session: Session,
-    level: FlashedMessageLevel,
+    level: MessageLevel,
     message: &str,
 ) -> Result<(), AppError> {
     let new_message = FlashedMessage::new(level, message);

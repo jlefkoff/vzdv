@@ -467,14 +467,14 @@ async fn page_visitor_application_form_submit(
             .await?;
         flashed_messages::push_flashed_message(
             session,
-            flashed_messages::FlashedMessageLevel::Success,
+            flashed_messages::MessageLevel::Success,
             "Request submitted, thank you!",
         )
         .await?;
     } else {
         flashed_messages::push_flashed_message(
             session,
-            flashed_messages::FlashedMessageLevel::Error,
+            flashed_messages::MessageLevel::Error,
             "You must be logged in to submit a visitor request.",
         )
         .await?;

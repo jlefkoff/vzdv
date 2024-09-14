@@ -243,14 +243,14 @@ async fn page_staffing_request_post(
         if resp.status().is_success() {
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::FlashedMessageLevel::Success,
+                flashed_messages::MessageLevel::Success,
                 "Request submitted",
             )
             .await?;
         } else {
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::FlashedMessageLevel::Error,
+                flashed_messages::MessageLevel::Error,
                 "The message could not be processed. You may want to contact the EC (or WM).",
             )
             .await?;
@@ -258,7 +258,7 @@ async fn page_staffing_request_post(
     } else {
         flashed_messages::push_flashed_message(
             session,
-            flashed_messages::FlashedMessageLevel::Error,
+            flashed_messages::MessageLevel::Error,
             "You must be logged in to submit a request",
         )
         .await?;
