@@ -8,7 +8,7 @@ use clap::Parser;
 use log::{debug, error, info, warn};
 use mini_moka::sync::Cache;
 use minijinja::Environment;
-use shared::{AppError, AppState};
+use shared::{AppError, AppState, ERROR_WEBHOOK};
 use std::{
     fs,
     path::{Path, PathBuf},
@@ -116,6 +116,9 @@ async fn shutdown_signal() {
 async fn main() {
     let cli = Cli::parse();
     let (config, db) = general_setup(cli.debug, "vzdv_site", cli.config).await;
+    ERROR_WEBHOOK
+        .set(config.discord.webhooks.errors.clone())
+        .expect("Could not set global error webhook");
 
     let sessions = SqliteStore::new(db.clone());
     if let Err(e) = sessions.migrate().await {

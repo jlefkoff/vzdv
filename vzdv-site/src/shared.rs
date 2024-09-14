@@ -10,14 +10,23 @@ use log::{error, info};
 use mini_moka::sync::Cache;
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
+use std::sync::OnceLock;
 use std::{sync::Arc, time::Instant};
 use tower_sessions_sqlx_store::sqlx::SqlitePool;
+use vzdv::GENERAL_HTTP_CLIENT;
 use vzdv::{
     config::Config,
     controller_can_see,
     sql::{self, Controller},
     PermissionsGroup,
 };
+
+/// Discord webhook for reporting errors.
+///
+/// Here as a global since the error handling functions don't
+/// otherwise have access to the loaded config struct.
+pub static ERROR_WEBHOOK: OnceLock<String> = OnceLock::new();
 
 /// Error handling for all possible issues.
 #[derive(Debug, thiserror::Error)]
@@ -85,7 +94,8 @@ fn try_build_error_page(error: AppError) -> Result<String, AppError> {
 
 impl IntoResponse for AppError {
     fn into_response(self) -> Response {
-        error!("Unhandled error: {}", self);
+        let error_msg = format!("{self}");
+        error!("Unhandled error: {error_msg}");
         let status = match &self {
             Self::FormExtractionRejection(e) => match e {
                 FormRejection::FailedToDeserializeForm(_)
@@ -95,6 +105,23 @@ impl IntoResponse for AppError {
             },
             _ => StatusCode::INTERNAL_SERVER_ERROR,
         };
+
+        // report errors to Discord webhook
+        tokio::spawn(async move {
+            if let Some(url) = ERROR_WEBHOOK.get() {
+                let res = GENERAL_HTTP_CLIENT
+                    .post(url)
+                    .json(&json!({
+                        "content": format!("Error occurred, returning status {status}: {error_msg}")
+                    }))
+                    .send()
+                    .await;
+                if let Err(e) = res {
+                    error!("Could not send error to Discord webhook: {e}");
+                }
+            }
+        });
+
         // attempt to construct the error page, falling back to simple plain text if anything failed
         if let Ok(body) = try_build_error_page(self) {
             (status, Html(body)).into_response()

@@ -42,6 +42,7 @@ redirect_uri = ""
 staffing_request = ""
 feedback = ""
 new_visitor_app = ""
+errors = ""
 
 [discord.roles]
 # role
