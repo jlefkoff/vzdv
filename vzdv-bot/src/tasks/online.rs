@@ -75,7 +75,6 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
                 .await?;
         }
     }
-
     Ok(())
 }
 
