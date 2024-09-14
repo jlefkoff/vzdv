@@ -3,7 +3,7 @@
 #![deny(clippy::all)]
 #![deny(unsafe_code)]
 
-use axum::{middleware as axum_middleware, response::Redirect, Router};
+use axum::{middleware as axum_middleware, Router};
 use clap::Parser;
 use log::{debug, error, info, warn};
 use mini_moka::sync::Cache;
@@ -67,21 +67,21 @@ fn load_router(
     env: &mut Environment,
 ) -> Router<Arc<AppState>> {
     Router::new()
-        .merge(crate::endpoints::router(env))
-        .merge(crate::endpoints::homepage::router(env))
-        .merge(crate::endpoints::user::router(env))
-        .merge(crate::endpoints::auth::router(env))
-        .merge(crate::endpoints::airspace::router(env))
-        .merge(crate::endpoints::facility::router(env))
-        .merge(crate::endpoints::admin::router(env))
-        .merge(crate::endpoints::events::router(env))
+        .merge(endpoints::router(env))
+        .merge(endpoints::homepage::router(env))
+        .merge(endpoints::user::router(env))
+        .merge(endpoints::auth::router(env))
+        .merge(endpoints::airspace::router(env))
+        .merge(endpoints::facility::router(env))
+        .merge(endpoints::admin::router(env))
+        .merge(endpoints::events::router(env))
         .layer(
             ServiceBuilder::new()
                 .layer(TimeoutLayer::new(Duration::from_secs(30)))
-                .layer(axum_middleware::from_fn(crate::middleware::logging))
+                .layer(axum_middleware::from_fn(middleware::logging))
                 .layer(sessions_layer),
         )
-        .fallback(|| async { Redirect::to("/404") })
+        .fallback(endpoints::page_404)
 }
 
 // https://github.com/tokio-rs/axum/blob/main/examples/graceful-shutdown/src/main.rs

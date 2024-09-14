@@ -37,120 +37,92 @@
           <span class="navbar-toggler-icon"></span>
         </button>
         <div class="collapse navbar-collapse" id="navbarSupportedContent">
-          <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-            <li class="nav-item">
-              <a class="nav-link" href="/events/">Events</a>
-            </li>
-            <li class="nav-item">
-              <a class="nav-link" href="/feedback">Feedback</a>
-            </li>
-            <li class="nav-item dropdown">
-              <a
-                class="nav-link dropdown-toggle"
-                href="#"
-                role="button"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-              >
-                Airspace
-              </a>
-              <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="/airspace/airports">Airports</a></li>
-                <li><a class="dropdown-item" href="/airspace/flights">Flights</a></li>
-                <li><a class="dropdown-item" href="/airspace/weather">Weather</a></li>
-                <li><a class="dropdown-item" href="/airspace/staffing_request">Staffing Request</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li>
-                  <a
-                    href="https://www.simbrief.com"
-                    class="dropdown-item"
-                    target="_blank"
-                  >
-                    SimBrief
-                  </a>
-                </li>
-                <li>
-                  <a
-                    class="dropdown-item"
-                    href="https://skyvector.com/"
-                    target="_blank"
-                  >
-                    SkyVector
-                  </a>
-                </li>
-                <li>
-                  <a
-                    class="dropdown-item"
-                    href="https://www.flightaware.com/statistics/ifr-route/"
-                    target="_blank"
-                  >
-                    IFR Routing
-                  </a>
-                </li>
-                <li>
-                  <a
-                    class="dropdown-item"
-                    href="https://vatsim-radar.com/"
-                    target="_blank"
-                  >
-                    VATSIM Radar
-                  </a>
-                </li>
-              </ul>
-            </li>
-            <li class="nav-item dropdown">
-              <a
-                class="nav-link dropdown-toggle"
-                href="#"
-                role="button"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-              >
-                Facility
-              </a>
-              <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="/facility/staff">Staff</a></li>
-                <li><a class="dropdown-item" href="/facility/roster">Roster</a></li>
-                <li><a class="dropdown-item" href="/facility/activity">Activity</a></li>
-                <li><a class="dropdown-item" href="/facility/resources">Resources</a></li>
-                <li><a class="dropdown-item" href="/facility/visitor_application">Visitor Application</a></li>
-              </ul>
-            </li>
-            {% if user_info and user_info.is_some_staff %}
+          {% if not no_links %}
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+              <li class="nav-item">
+                <a class="nav-link" href="/events/">Events</a>
+              </li>
+              <li class="nav-item">
+                <a class="nav-link" href="/feedback">Feedback</a>
+              </li>
               <li class="nav-item dropdown">
-                <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin</a>
+                <a
+                  class="nav-link dropdown-toggle"
+                  href="#"
+                  role="button"
+                  data-bs-toggle="dropdown"
+                  aria-expanded="false"
+                >
+                  Airspace
+                </a>
                 <ul class="dropdown-menu">
-                  {% if user_info.is_admin %}
-                    <li><a href="/admin/feedback" class="dropdown-item">Manage feedback</a></li>
-                    <li><a href="/admin/email/manual" class="dropdown-item">Send emails</a></li>
-                  {% endif %}
+                  <li><a class="dropdown-item" href="/airspace/airports">Airports</a></li>
+                  <li><a class="dropdown-item" href="/airspace/flights">Flights</a></li>
+                  <li><a class="dropdown-item" href="/airspace/weather">Weather</a></li>
+                  <li><a class="dropdown-item" href="/airspace/staffing_request">Staffing Request</a></li>
+                  <li><hr class="dropdown-divider"></li>
+                  <li>
+                    <a href="https://www.simbrief.com" class="dropdown-item" target="_blank">SimBrief</a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="https://skyvector.com/" target="_blank">SkyVector</a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="https://www.flightaware.com/statistics/ifr-route/" target="_blank">IFR Routing</a>
+                  </li>
+                  <li>
+                    <a class="dropdown-item" href="https://vatsim-radar.com/" target="_blank">VATSIM Radar</a>
+                  </li>
                 </ul>
               </li>
-            {% endif %}
-            {% if user_info and user_info.cid %}
-            <li class="nav-item dropdown">
-              <a
-                class="nav-link dropdown-toggle"
-                href="#"
-                role="button"
-                data-bs-toggle="dropdown"
-                aria-expanded="false"
-              >
-                {{ user_info.first_name }} {{ user_info.last_name }}
-              </a>
-              <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="/user/discord">Discord</a></li>
-                <li><a class="dropdown-item" href="/user/training_notes">My Training Notes</a></li>
-                <li><a class="dropdown-item" href="https://training.zdvartcc.org" target="_blank">Schedule Training</a></li>
-                <li><a class="dropdown-item" href="/auth/logout">Log out</a></li>
-              </ul>
-            </li>
-            {% else %}
-            <li class="nav-item">
-              <a class="nav-link" href="/auth/log_in">Log in</a>
-            </li>
-            {% endif %}
-          </ul>
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                  Facility
+                </a>
+                <ul class="dropdown-menu">
+                  <li><a class="dropdown-item" href="/facility/staff">Staff</a></li>
+                  <li><a class="dropdown-item" href="/facility/roster">Roster</a></li>
+                  <li><a class="dropdown-item" href="/facility/activity">Activity</a></li>
+                  <li><a class="dropdown-item" href="/facility/resources">Resources</a></li>
+                  <li><a class="dropdown-item" href="/facility/visitor_application">Visitor Application</a></li>
+                </ul>
+              </li>
+              {% if user_info and user_info.is_some_staff %}
+                <li class="nav-item dropdown">
+                  <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin</a>
+                  <ul class="dropdown-menu">
+                    {% if user_info.is_admin %}
+                      <li><a href="/admin/feedback" class="dropdown-item">Manage feedback</a></li>
+                      <li><a href="/admin/email/manual" class="dropdown-item">Send emails</a></li>
+                    {% endif %}
+                  </ul>
+                </li>
+              {% endif %}
+              {% if user_info and user_info.cid %}
+                <li class="nav-item dropdown">
+                  <a
+                    class="nav-link dropdown-toggle"
+                    href="#"
+                    role="button"
+                    data-bs-toggle="dropdown"
+                    aria-expanded="false"
+                  >
+                    {{ user_info.first_name }} {{ user_info.last_name }}
+                  </a>
+                  <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="/user/discord">Discord</a></li>
+                    <li><a class="dropdown-item" href="/user/training_notes">My Training Notes</a></li>
+                    <li><a class="dropdown-item" href="https://training.zdvartcc.org" target="_blank">Schedule Training</a></li>
+                    <li><a class="dropdown-item" href="/auth/logout">Log out</a></li>
+                  </ul>
+                </li>
+              {% else %}
+                <li class="nav-item">
+                  <a class="nav-link" href="/auth/log_in">Log in</a>
+                </li>
+              {% endif %}
+            </ul>
+          {% endif %}
         </div>
       </div>
     </nav>
