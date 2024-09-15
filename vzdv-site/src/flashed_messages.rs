@@ -4,6 +4,12 @@ use crate::shared::{AppError, SESSION_FLASHED_MESSAGES_KEY};
 use serde::{Deserialize, Serialize};
 use tower_sessions::Session;
 
+// TODO maybe it'd be better to push flashed messages in the in-memory cache
+// that I use for caching heavier compute rendered templates? Like either top-level
+// or in a HashMap of user CID to flashed message(s)? I think the cache requires
+// specifying the number of keys, and I don't really want to specify the entirety
+// of controllers in the database as keys, plus a buffer, plus the endpoints.
+
 /// Stored in the session. Contains pending flashed messages, if any.
 #[derive(Debug, Serialize, Deserialize, Default)]
 pub struct FlashedMessages(Vec<FlashedMessage>);

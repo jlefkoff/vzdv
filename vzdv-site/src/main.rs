@@ -135,7 +135,6 @@ async fn main() {
             return;
         }
     };
-    let cache = Cache::new(10);
     debug!("Loaded");
 
     debug!("Setting up app");
@@ -144,7 +143,7 @@ async fn main() {
         config,
         db: db.clone(),
         templates,
-        cache,
+        cache: Cache::new(10),
     });
     let app = router.with_state(app_state);
     let assets_dir = Path::new("./assets");

@@ -156,7 +156,7 @@ pub struct AppState {
     pub db: SqlitePool,
     /// Loaded templates
     pub templates: Environment<'static>,
-    /// Server-side cache
+    /// Server-side cache for heavier-compute rendered templates
     pub cache: Cache<&'static str, CacheEntry>,
 }
 
