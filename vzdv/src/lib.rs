@@ -11,13 +11,13 @@ use fern::{
     Dispatch,
 };
 use log::{debug, error};
-use once_cell::sync::Lazy;
 use reqwest::ClientBuilder;
 use sql::Controller;
 use sqlx::{sqlite::SqliteRow, Pool, Row, Sqlite};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
+    sync::LazyLock,
     time::SystemTime,
 };
 
@@ -34,7 +34,7 @@ const IGNORE_MISSING_STAFF_POSITIONS_FOR: [&str; 1] = ["FACCBT"];
 /// HTTP client for making external requests.
 ///
 /// Include an HTTP user agent of the project's repo for contact.
-pub static GENERAL_HTTP_CLIENT: Lazy<reqwest::Client> = Lazy::new(|| {
+pub static GENERAL_HTTP_CLIENT: LazyLock<reqwest::Client> = LazyLock::new(|| {
     ClientBuilder::new()
         .user_agent("github.com/celeo/vzdv")
         .build()

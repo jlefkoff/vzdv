@@ -2,10 +2,9 @@
 
 use axum::{extract::Request, middleware::Next, response::Response};
 use log::{debug, warn};
-use once_cell::sync::Lazy;
-use std::collections::HashSet;
+use std::{collections::HashSet, sync::LazyLock};
 
-static IGNORE_PATHS: Lazy<HashSet<&str>> = Lazy::new(|| HashSet::from(["/favicon.ico"]));
+static IGNORE_PATHS: LazyLock<HashSet<&str>> = LazyLock::new(|| HashSet::from(["/favicon.ico"]));
 
 /// Simple logging middleware.
 ///
