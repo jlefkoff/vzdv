@@ -88,7 +88,10 @@ fn try_build_error_page(error: AppError) -> Result<String, AppError> {
     env.add_template("_layout", include_str!("../templates/_layout.jinja"))?;
     env.add_template("_error", include_str!("../templates/_error.jinja"))?;
     let template = env.get_template("_error")?;
-    let rendered = template.render(context! { error => error.friendly_message() })?;
+    let rendered = template.render(context! {
+        error => error.friendly_message(),
+        no_links => true,
+    })?;
     Ok(rendered)
 }
 
