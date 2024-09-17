@@ -4,7 +4,7 @@
 #![deny(unsafe_code)]
 
 use anyhow::{Context, Result};
-use chrono::Months;
+use chrono::{DateTime, Months};
 use clap::Parser;
 use log::{debug, error, info};
 use sqlx::{sqlite::SqliteRow, Row, SqlitePool};
@@ -80,6 +80,7 @@ async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) ->
         }
     };
 
+    let facility_join = DateTime::parse_from_rfc3339(&controller.facility_join)?;
     // update record
     sqlx::query(sql::UPSERT_USER_TASK)
         .bind(controller.cid)
@@ -90,6 +91,7 @@ async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) ->
         .bind(&controller.facility)
         // controller will be on the roster since that's what the VATSIM API is showing
         .bind(true)
+        .bind(facility_join)
         .bind(roles.join(","))
         .execute(db)
         .await?;
