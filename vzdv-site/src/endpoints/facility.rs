@@ -191,10 +191,12 @@ async fn page_roster(
         .sorted_by(|a, b| Ord::cmp(&a.cid, &b.cid))
         .collect();
 
+    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
     let template = state.templates.get_template("facility/roster")?;
     let rendered = template.render(context! {
        user_info,
-       controllers => controllers_with_certs
+       controllers => controllers_with_certs,
+       flashed_messages
     })?;
     Ok(Html(rendered))
 }

@@ -5,7 +5,7 @@ use crate::{
     shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::get,
     Router,
@@ -124,6 +124,36 @@ async fn page_discord_callback(
     Ok(Redirect::to("/user/discord"))
 }
 
+async fn page_user(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(cid): Path<u32>,
+) -> Result<Response, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+        .bind(cid)
+        .fetch_optional(&state.db)
+        .await?;
+    let controller = match controller {
+        Some(c) => c,
+        None => {
+            flashed_messages::push_flashed_message(
+                session,
+                flashed_messages::MessageLevel::Error,
+                "Controller not found",
+            )
+            .await?;
+            return Ok(Redirect::to("/facility/roster").into_response());
+        }
+    };
+    let template = state.templates.get_template("user/overview")?;
+    let rendered: String = template.render(context! {
+        user_info,
+        controller
+    })?;
+    Ok(Html(rendered).into_response())
+}
+
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template(
@@ -137,9 +167,16 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/user/discord.jinja"),
         )
         .unwrap();
+    templates
+        .add_template(
+            "user/overview",
+            include_str!("../../templates/user/overview.jinja"),
+        )
+        .unwrap();
 
     Router::new()
         .route("/user/training_notes", get(page_training_notes))
         .route("/user/discord", get(page_discord))
         .route("/user/discord/callback", get(page_discord_callback))
+        .route("/user/:cid", get(page_user))
 }
