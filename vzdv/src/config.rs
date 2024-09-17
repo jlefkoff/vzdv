@@ -11,6 +11,7 @@ pub struct Config {
     pub database: ConfigDatabase,
     pub staff: ConfigStaff,
     pub vatsim: ConfigVatsim,
+    pub training: ConfigTraining,
     pub airports: ConfigAirports,
     pub stats: ConfigStats,
     pub discord: ConfigDiscord,
@@ -42,6 +43,11 @@ pub struct ConfigVatsim {
     pub oauth_client_secret: String,
     pub oauth_client_callback_url: String,
     pub vatusa_api_key: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct ConfigTraining {
+    pub certifications: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]

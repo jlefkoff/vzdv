@@ -12,11 +12,12 @@ use axum::{
 };
 use log::{debug, info, warn};
 use minijinja::{context, Environment};
+use serde::Serialize;
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 use vzdv::{
-    sql::{self, Controller},
-    vatusa,
+    sql::{self, Certification, Controller},
+    vatusa, ControllerRating,
 };
 
 /// Retrieve and show the user their training records from VATUSA.
@@ -132,6 +133,12 @@ async fn page_user(
     session: Session,
     Path(cid): Path<u32>,
 ) -> Result<Response, AppError> {
+    #[derive(Serialize)]
+    struct CertNameValue<'a> {
+        name: &'a str,
+        value: &'a str,
+    }
+
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
         .bind(cid)
@@ -149,10 +156,34 @@ async fn page_user(
             return Ok(Redirect::to("/facility/roster").into_response());
         }
     };
+    let rating_str = ControllerRating::try_from(controller.rating)
+        .map_err(|err| AppError::GenericFallback("unknown controller rating", err))?
+        .as_str();
+
+    let db_certs: Vec<Certification> = sqlx::query_as(sql::GET_ALL_CERTIFICATIONS_FOR)
+        .bind(cid)
+        .fetch_all(&state.db)
+        .await?;
+    let mut certifications: Vec<CertNameValue> =
+        Vec::with_capacity(state.config.training.certifications.len());
+    let none = String::from("None");
+    for name in &state.config.training.certifications {
+        let db_match = db_certs.iter().find(|cert| &cert.name == name);
+        let value: &str = match db_match {
+            Some(row) => &row.value,
+            None => &none,
+        };
+        certifications.push(CertNameValue { name, value });
+    }
+
+    dbg!(&controller.discord_id);
+
     let template = state.templates.get_template("user/overview")?;
     let rendered: String = template.render(context! {
         user_info,
-        controller
+        controller,
+        rating_str,
+        certifications
     })?;
     Ok(Html(rendered).into_response())
 }

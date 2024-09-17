@@ -169,7 +169,7 @@ impl ControllerRating {
 }
 
 impl TryFrom<i8> for ControllerRating {
-    type Error = &'static str;
+    type Error = anyhow::Error;
 
     fn try_from(value: i8) -> std::result::Result<Self, Self::Error> {
         match value {
@@ -187,7 +187,7 @@ impl TryFrom<i8> for ControllerRating {
             10 => Ok(Self::I3),
             11 => Ok(Self::SUP),
             12 => Ok(Self::ADM),
-            _ => Err("Unknown controller rating"),
+            _ => Err(anyhow::anyhow!("Unknown controller rating")),
         }
     }
 }

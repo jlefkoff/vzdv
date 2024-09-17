@@ -281,6 +281,7 @@ pub const GET_CONTROLLER_BY_DISCORD_ID: &str = "SELECT * FROM controller WHERE d
 pub const SET_CONTROLLER_DISCORD_ID: &str = "UPDATE controller SET discord_id=$1 WHERE cid=$2";
 
 pub const GET_ALL_CERTIFICATIONS: &str = "SELECT * FROM certification";
+pub const GET_ALL_CERTIFICATIONS_FOR: &str = "SELECT * FROM certification WHERE cid=$1";
 
 pub const GET_ALL_ACTIVITY: &str =
     "SELECT * FROM activity LEFT JOIN controller ON activity.cid = controller.cid";

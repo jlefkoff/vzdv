@@ -4,8 +4,64 @@
 
 {% block body %}
 
-<h2>{{ controller.first_name }} {{ controller.last_name }}</h2>
+<h2 class="pb-3">{{ controller.first_name }} {{ controller.last_name }}</h2>
 
-<!-- TODO -->
+<div class="row">
+  <div class="col-4">
+    <div class="card">
+      <div class="card-body p-5">
+        <h3 class="card-title">Overview</h3>
+        <p class="card-text">
+          <strong>CID:</strong> {{ controller.cid }}
+          <br>
+          <strong>Rating:</strong> {{ rating_str }}
+          <br>
+          <strong>Type:</strong> {% if not controller.is_on_roster %}Guest{% elif not controller.home_facility == 'ZDV' %}Visiting{% else %}Home{% endif %}
+          <br>
+          <strong>Joined:</strong> {{ controller.join_date }}
+          {% if user_info and user_info.is_some_staff %}
+            <br>
+            <strong>Discord user ID:</strong> {{ controller.discord_id }}
+          {% endif %}
+        </p>
+      </div>
+    </div>
+  </div>
+  <div class="col-8">
+    <div class="card">
+      <div class="card-body p-5">
+        <h3 class="card-title">Certifications</h3>
+        <div class="card-text">
+          <table class="table table-striped table-hover">
+            <thead>
+              <tr>
+                <th>Cert</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for cert in certifications %}
+                <tr>
+                  <td><strong>{{ cert.name }}</strong></td>
+                  <td>
+                    {% if cert.value == 'certified' %}
+                      <span class="text-success">Certified</span>
+                    {% elif cert.value == 'training' %}
+                    <span class="text-warning">Training</span>
+                    {% elif cert.value == 'solo' %}
+                      <span class="text-info">Solo</span>
+                    {% else %}
+                      <span>None</span>
+                    {% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 {% endblock %}
