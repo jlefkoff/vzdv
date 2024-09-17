@@ -124,6 +124,9 @@ async fn page_discord_callback(
     Ok(Redirect::to("/user/discord"))
 }
 
+/// Overview page for a user.
+///
+/// Shows additional information and controls for training staff.
 async fn page_user(
     State(state): State<Arc<AppState>>,
     session: Session,
