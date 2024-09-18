@@ -133,7 +133,7 @@ async fn page_user(
     session: Session,
     Path(cid): Path<u32>,
 ) -> Result<Response, AppError> {
-    #[derive(Serialize)]
+    #[derive(Debug, Serialize)]
     struct CertNameValue<'a> {
         name: &'a str,
         value: &'a str,
@@ -160,23 +160,21 @@ async fn page_user(
         .map_err(|err| AppError::GenericFallback("unknown controller rating", err))?
         .as_str();
 
-    let certifications = {
-        let db_certs: Vec<Certification> = sqlx::query_as(sql::GET_ALL_CERTIFICATIONS_FOR)
-            .bind(cid)
-            .fetch_all(&state.db)
-            .await?;
-        let mut certifications: Vec<CertNameValue> =
-            Vec::with_capacity(state.config.training.certifications.len());
-        let none = String::from("None");
-        for name in &state.config.training.certifications {
-            let db_match = db_certs.iter().find(|cert| &cert.name == name);
-            let value: &str = match db_match {
-                Some(row) => &row.value,
-                None => &none,
-            };
-            certifications.push(CertNameValue { name, value });
-        }
-    };
+    let db_certs: Vec<Certification> = sqlx::query_as(sql::GET_ALL_CERTIFICATIONS_FOR)
+        .bind(cid)
+        .fetch_all(&state.db)
+        .await?;
+    let mut certifications: Vec<CertNameValue> =
+        Vec::with_capacity(state.config.training.certifications.len());
+    let none = String::from("None");
+    for name in &state.config.training.certifications {
+        let db_match = db_certs.iter().find(|cert| &cert.name == name);
+        let value: &str = match db_match {
+            Some(row) => &row.value,
+            None => &none,
+        };
+        certifications.push(CertNameValue { name, value });
+    }
 
     let template = state.templates.get_template("user/overview")?;
     let rendered: String = template.render(context! {
