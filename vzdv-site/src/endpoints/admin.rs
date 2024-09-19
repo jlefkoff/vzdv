@@ -6,16 +6,17 @@ use crate::{
     shared::{reject_if_not_in, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 use axum::{
-    extract::State,
+    extract::{Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Form, Router,
 };
-use log::info;
+use log::{info, warn};
 use minijinja::{context, Environment};
+use rev_buf_reader::RevBufReader;
 use serde::Deserialize;
 use serde_json::json;
-use std::sync::Arc;
+use std::{collections::HashMap, io::BufRead, sync::Arc};
 use tower_sessions::Session;
 use vzdv::{
     sql::{self, Controller, Feedback, FeedbackForReview},
@@ -268,6 +269,52 @@ async fn post_email_manual_send(
     Ok(Redirect::to("/admin/email/manual").into_response())
 }
 
+/// Read the last hundred lines from each of the log files
+/// and show them in the page.
+async fn page_logs(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Response, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
+        return Ok(redirect.into_response());
+    }
+    let line_count: u64 = match params.get("lines") {
+        Some(n) => match n.parse() {
+            Ok(n) => n,
+            Err(_) => {
+                warn!("Error parsing 'lines' query param on logs page");
+                100
+            }
+        },
+        None => 100,
+    };
+
+    let file_names = ["vzdv_site.log", "vzdv_tasks.log", "vzdv_bot.log"];
+    let mut logs: HashMap<&str, String> = HashMap::new();
+    for name in file_names {
+        let mut buffer = Vec::new();
+        let file = std::fs::File::open(name).unwrap();
+        let reader = RevBufReader::new(file);
+        let mut by_line = reader.lines();
+        for _ in 0..line_count {
+            if let Some(line) = by_line.next() {
+                let line = line.unwrap();
+                buffer.push(line);
+            } else {
+                break;
+            }
+        }
+        buffer.reverse();
+        logs.insert(name, buffer.join("<br>"));
+    }
+
+    let template = state.templates.get_template("admin/logs")?;
+    let rendered = template.render(context! { user_info, logs, line_count })?;
+    Ok(Html(rendered).into_response())
+}
+
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
@@ -280,6 +327,12 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .add_template(
             "admin/manual_email",
             include_str!("../../templates/admin/manual_email.jinja"),
+        )
+        .unwrap();
+    templates
+        .add_template(
+            "admin/logs",
+            include_str!("../../templates/admin/logs.jinja"),
         )
         .unwrap();
     templates.add_filter("nice_date", |date: String| {
@@ -296,5 +349,6 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             "/admin/email/manual",
             get(page_email_manual_send).post(post_email_manual_send),
         )
+        .route("/admin/logs", get(page_logs))
     // .route("/admin/roster/:cid", get(page_controller))
 }

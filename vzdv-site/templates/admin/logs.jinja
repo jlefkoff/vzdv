@@ -1,0 +1,69 @@
+{% extends "_layout" %}
+
+{% block title %}Logs | {{ super() }}{% endblock %}
+
+{% block body %}
+
+<h2 class="pb-3">Logs</h2>
+
+<h5 class="pb-3">Showing last {{ line_count }} lines of each file</h5>
+
+<ul class="nav nav-tabs" role="tablist">
+  <li class="nav-item" role="presentation">
+    <button
+      class="nav-link active"
+      id="site-tab"
+      data-bs-toggle="tab"
+      data-bs-target="#site-tab-pane"
+      type="button"
+      role="tab"
+      aria-controls="site-tab-pane"
+      aria-selected="true">
+      Site
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button
+      class="nav-link"
+      data-bs-toggle="tab"
+      data-bs-target="#tasks-tab-pane"
+      role="tab"
+      type="button"
+      aria-controls="tasks-tab-pane"
+      aria-selected="false">
+      Tasks
+    </button>
+  </li>
+  <li class="nav-item" role="presentation">
+    <button
+      class="nav-link"
+      data-bs-toggle="tab"
+      data-bs-target="#bot-tab-pane"
+      role="tab"
+      type="button"
+      aria-controls="bot-tab-pane"
+      aria-selected="false">
+      Bot
+    </button>
+  </li>
+</ul>
+
+<div class="tab-content pt-2">
+  <div class="tab-pane show active" id="site-tab-pane" role="tabpanel" aria-labelledby="site-tab" tabindex="0">
+    <p>
+      {{ logs['vzdv_site.log'] }}
+    </p>
+  </div>
+  <div class="tab-pane" id="tasks-tab-pane" role="tabpanel" aria-labelledby="tasks-tab" tabindex="0">
+    <p>
+      {{ logs['vzdv_tasks.log'] }}
+    </p>
+  </div>
+  <div class="tab-pane" id="bot-tab-pane" role="tabpanel" aria-labelledby="bot-tab" tabindex="0">
+    <p>
+      {{ logs['vzdv_bot.log'] }}
+    </p>
+  </div>
+</div>
+
+{% endblock %}
