@@ -124,6 +124,14 @@ pub struct EventRegistration {
     pub notes: Option<String>,
 }
 
+#[derive(Debug, FromRow, Serialize)]
+pub struct StaffNote {
+    pub id: u32,
+    pub cid: u32,
+    pub by: u32,
+    pub created_date: DateTime<Utc>,
+}
+
 /// Statements to create tables. Only ran when the DB file does not exist,
 /// so no migration or "IF NOT EXISTS" conditions need to be added.
 pub const CREATE_TABLES: &str = r#"
@@ -233,6 +241,16 @@ CREATE TABLE event_registration (
     FOREIGN KEY (choice_1) REFERENCES event_position(id),
     FOREIGN KEY (choice_2) REFERENCES event_position(id),
     FOREIGN KEY (choice_3) REFERENCES event_position(id)
+) STRICT;
+
+CREATE TABLE staff_note (
+    id INTEGER PRIMARY KEY NOT NULL,
+    cid INTEGER NOT NULL,
+    by INTEGER NOT NULL,
+    created_date TEXT NOT NULL,
+
+    FOREIGN KEY (cid) REFERENCES controller(cid),
+    FOREIGN KEY (by) REFERENCES controller(cid)
 ) STRICT;
 "#;
 
