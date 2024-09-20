@@ -273,7 +273,9 @@ pub const GET_ALL_CONTROLLER_CIDS: &str = "SELECT cid FROM controller";
 pub const GET_ALL_ROSTER_CONTROLLER_CIDS: &str =
     "SELECT cid FROM controller WHERE is_on_roster=TRUE";
 pub const UPDATE_REMOVED_FROM_ROSTER: &str =
-    "UPDATE controller SET is_on_roster=0, home_facility='', join_date=NULL WHERE cid=$1";
+    "UPDATE controller SET is_on_roster=0, home_facility='', join_date=NULL, operating_initials=NULL WHERE cid=$1";
+pub const UPDATE_CONTROLLER_OIS: &str = "UPDATE controller SET operating_initials=$2 WHERE cid=$1";
+pub const GET_ALL_OIS: &str = "SELECT operating_initials FROM controller";
 pub const GET_CONTROLLER_BY_CID: &str = "SELECT * FROM controller WHERE cid=$1";
 pub const GET_CONTROLLER_CIDS_AND_NAMES: &str = "SELECT cid, first_name, last_name from controller";
 pub const GET_ATM_AND_DATM: &str = "SELECT * FROM controller WHERE roles LIKE '%ATM%'";

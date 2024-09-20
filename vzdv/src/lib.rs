@@ -3,7 +3,7 @@
 #![deny(clippy::all)]
 #![deny(unsafe_code)]
 
-use anyhow::Result;
+use anyhow::{anyhow, bail, Result};
 use config::Config;
 use db::load_db;
 use fern::{
@@ -187,7 +187,7 @@ impl TryFrom<i8> for ControllerRating {
             10 => Ok(Self::I3),
             11 => Ok(Self::SUP),
             12 => Ok(Self::ADM),
-            _ => Err(anyhow::anyhow!("Unknown controller rating")),
+            _ => Err(anyhow!("Unknown controller rating")),
         }
     }
 }
@@ -451,6 +451,77 @@ pub async fn general_setup(
     (config, db)
 }
 
+/// Retrieve all OIs that are currently in use.
+pub async fn retrieve_all_in_use_ois(db: &Pool<Sqlite>) -> Result<Vec<String>> {
+    let in_use: Vec<String> = sqlx::query(sql::GET_ALL_OIS)
+        .fetch_all(db)
+        .await?
+        .iter()
+        .map(|row| {
+            row.try_get("operating_initials")
+                .expect("Could not get 'operating_initials' column from DB")
+        })
+        .collect();
+    Ok(in_use)
+}
+
+/// Generate new unique OIs for the controller.
+pub fn generate_operating_initials_for(
+    in_use: &[String],
+    first_name: &str,
+    last_name: &str,
+) -> Result<String> {
+    let first_first = first_name
+        .chars()
+        .next()
+        .ok_or(anyhow!("Empty first name?"))?
+        .to_uppercase()
+        .next()
+        .ok_or(anyhow!("Weird first name first char?"))?;
+    let last_first = last_name
+        .chars()
+        .next()
+        .ok_or(anyhow!("Empty last name?"))?
+        .to_uppercase()
+        .next()
+        .ok_or(anyhow!("Weird last name first char?"))?;
+
+    // first try their actual initials
+    let direct_from_name = format!("{first_first}{last_first}");
+    if !in_use.contains(&direct_from_name) {
+        return Ok(direct_from_name);
+    }
+
+    // attempt first initial with the next available second char
+    let last_first_digit = {
+        let digit: u32 = last_first.into();
+        let digit = digit - 65;
+        digit as u8
+    };
+    for i in last_first_digit..25 {
+        let c: char = (i + 65).into();
+        let attempt = format!("{first_first}{c}");
+        if !in_use.contains(&attempt) {
+            return Ok(attempt);
+        }
+    }
+
+    // attempt first global alphabetical pairing
+    for a in 0..25 {
+        for b in 0..25 {
+            let c: char = (a + 65).into();
+            let d: char = (b + 65).into();
+            let attempt = format!("{c}{d}");
+            if !in_use.contains(&attempt) {
+                return Ok(attempt);
+            }
+        }
+    }
+
+    // should never hit this
+    bail!("Apparently there are no OIs available")
+}
+
 #[cfg(test)]
 pub mod tests {
     use super::{
@@ -459,6 +530,7 @@ pub mod tests {
     };
     use crate::{
         config::{Config, ConfigStaffOverride},
+        generate_operating_initials_for,
         sql::Controller,
         vatsim::parse_vatsim_timestamp,
     };
@@ -647,5 +719,28 @@ pub mod tests {
             &Some(controller.clone()),
             PermissionsGroup::Admin
         ));
+    }
+
+    #[test]
+    fn test_generate_operating_initials_for() {
+        let in_use = &[
+            String::from("AA"),
+            String::from("AE"),
+            String::from("BC"),
+            String::from("RY"),
+            String::from("RZ"),
+        ];
+
+        // normal
+        let result = generate_operating_initials_for(in_use, "John", "Smith").unwrap();
+        assert_eq!(&result, "JS");
+
+        // next is available
+        let result = generate_operating_initials_for(in_use, "aaron", "Edwards").unwrap();
+        assert_eq!(&result, "AF");
+
+        // wrap around
+        let result = generate_operating_initials_for(in_use, "Ron", "Yo").unwrap();
+        assert_eq!(&result, "AB");
     }
 }

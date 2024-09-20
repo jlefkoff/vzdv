@@ -17,7 +17,8 @@ use tokio::time;
 use vatsim_utils::rest_api;
 use vzdv::{
     config::Config,
-    general_setup, position_in_facility_airspace,
+    general_setup, generate_operating_initials_for, position_in_facility_airspace,
+    retrieve_all_in_use_ois,
     sql::{self, Controller},
     vatusa::{get_roster, MembershipType, RosterMember},
 };
@@ -57,15 +58,16 @@ async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) ->
         .filter(|role| role != "INS")
         .collect();
 
+    let controller_record: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+        .bind(controller.cid)
+        .fetch_optional(db)
+        .await?;
+
     // merge any new roles with any existing roles
     let roles = if roles.is_empty() {
         roles
     } else {
-        let controller_record: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
-            .bind(controller.cid)
-            .fetch_optional(db)
-            .await?;
-        match controller_record {
+        match &controller_record {
             Some(cr) => {
                 let mut all_roles = HashSet::new();
                 cr.roles.split(',').for_each(|r| {
@@ -81,7 +83,7 @@ async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) ->
     };
 
     let facility_join = DateTime::parse_from_rfc3339(&controller.facility_join)?;
-    // update record
+    // update main record
     sqlx::query(sql::UPSERT_USER_TASK)
         .bind(controller.cid)
         .bind(&controller.first_name)
@@ -95,10 +97,29 @@ async fn update_controller_record(db: &SqlitePool, controller: &RosterMember) ->
         .bind(roles.join(","))
         .execute(db)
         .await?;
-    debug!(
-        "{} {} ({}) updated in DB",
-        &controller.first_name, &controller.last_name, controller.cid
-    );
+    // for controllers new to the ARTCC, also set their default OIs
+    if controller_record.is_none() {
+        let in_use = retrieve_all_in_use_ois(db).await?;
+        let new_ois = generate_operating_initials_for(
+            &in_use,
+            &controller.first_name,
+            &controller.last_name,
+        )?;
+        sqlx::query(sql::UPDATE_CONTROLLER_OIS)
+            .bind(controller.cid)
+            .bind(&new_ois)
+            .execute(db)
+            .await?;
+        info!(
+            "{} {} ({}) added to DB with OIs {new_ois}",
+            &controller.first_name, &controller.last_name, controller.cid
+        );
+    } else {
+        debug!(
+            "{} {} ({}) updated in DB",
+            &controller.first_name, &controller.last_name, controller.cid
+        );
+    }
     Ok(())
 }
 
@@ -127,7 +148,7 @@ async fn update_roster(db: &SqlitePool) -> Result<()> {
     for row in db_controllers {
         let cid: u32 = row.try_get("cid")?;
         if !current_controllers.contains(&cid) {
-            debug!("Controller {cid} is not on the roster");
+            debug!("Controller {cid} is no longer on the roster");
             if let Err(e) = sqlx::query(sql::UPDATE_REMOVED_FROM_ROSTER)
                 .bind(cid)
                 .execute(db)
