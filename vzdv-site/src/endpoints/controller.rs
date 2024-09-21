@@ -10,10 +10,11 @@ use axum::{
     routing::{get, post},
     Form, Router,
 };
+use chrono::Utc;
 use log::info;
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 use vzdv::{
     retrieve_all_in_use_ois,
@@ -159,6 +160,60 @@ async fn post_change_ois(
     Ok(Redirect::to(&format!("/controller/{cid}")))
 }
 
+/// Form submission to set the controller's certifications.
+///
+/// Not used to set their network rating; that process is handled
+/// through VATUSA/VATSIM.
+async fn post_change_certs(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(cid): Path<u32>,
+    Form(certs_form): Form<HashMap<String, String>>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) =
+        reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
+    {
+        return Ok(redirect);
+    }
+
+    let by_cid = user_info.unwrap().cid;
+    let db_certs: Vec<Certification> = sqlx::query_as(sql::GET_ALL_CERTIFICATIONS_FOR)
+        .bind(cid)
+        .fetch_all(&state.db)
+        .await?;
+    for (key, value) in &certs_form {
+        let existing = db_certs.iter().find(|c| &c.name == key);
+        match existing {
+            Some(existing) => {
+                sqlx::query(sql::UPDATE_CERTIFICATION)
+                    .bind(existing.id)
+                    .bind(value)
+                    .bind(Utc::now())
+                    .bind(by_cid)
+                    .execute(&state.db)
+                    .await?;
+                info!("{by_cid} updated cert for {cid} of {key} -> {value}");
+            }
+            None => {
+                sqlx::query(sql::CREATE_CERTIFICATION)
+                    .bind(cid)
+                    .bind(key)
+                    .bind(value)
+                    .bind(Utc::now())
+                    .bind(by_cid)
+                    .execute(&state.db)
+                    .await?;
+                info!("{by_cid} created new cert for {cid} of {key} -> {value}");
+            }
+        }
+    }
+
+    flashed_messages::push_flashed_message(session, MessageLevel::Info, "Updated certifications")
+        .await?;
+    Ok(Redirect::to(&format!("/controller/{cid}")))
+}
+
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template(
@@ -171,4 +226,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .route("/controller/:cid", get(page_controller))
         .route("/controller/:cid/discord/unlink", post(api_unlink_discord))
         .route("/controller/:cid/ois", post(post_change_ois))
+        .route("/controller/:cid/certs", post(post_change_certs))
 }
