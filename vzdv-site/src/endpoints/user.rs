@@ -1,13 +1,14 @@
 //! HTTP endpoints for user-specific pages.
 
 use crate::{
-    discord, flashed_messages,
-    shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
+    discord,
+    flashed_messages::{self, MessageLevel},
+    shared::{reject_if_not_in, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 use axum::{
     extract::{Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
-    routing::get,
+    routing::{get, post},
     Router,
 };
 use log::{debug, info, warn};
@@ -17,7 +18,7 @@ use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 use vzdv::{
     sql::{self, Certification, Controller},
-    vatusa, ControllerRating,
+    vatusa, ControllerRating, PermissionsGroup,
 };
 
 /// Retrieve and show the user their training records from VATUSA.
@@ -96,8 +97,8 @@ async fn page_discord_callback(
         let access_token = discord::code_to_token(code, &state.config).await?;
         let discord_user_id = discord::get_token_user_id(&access_token).await?;
         sqlx::query(sql::SET_CONTROLLER_DISCORD_ID)
-            .bind(&discord_user_id)
             .bind(user_info.cid)
+            .bind(&discord_user_id)
             .execute(&state.db)
             .await?;
         flashed_messages::push_flashed_message(
@@ -176,14 +177,34 @@ async fn page_user(
         certifications.push(CertNameValue { name, value });
     }
 
+    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
     let template = state.templates.get_template("user/overview")?;
     let rendered: String = template.render(context! {
         user_info,
         controller,
         rating_str,
-        certifications
+        certifications,
+        flashed_messages
     })?;
     Ok(Html(rendered).into_response())
+}
+
+/// API endpoint to unlink a controller's Discord account.
+async fn api_unlink_discord(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(cid): Path<u32>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
+        return Ok(redirect);
+    }
+    sqlx::query(sql::UNSET_CONTROLLER_DISCORD_ID)
+        .bind(cid)
+        .execute(&state.db)
+        .await?;
+    flashed_messages::push_flashed_message(session, MessageLevel::Info, "Discord unlinked").await?;
+    Ok(Redirect::to(&format!("/users/{cid}/")))
 }
 
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
@@ -211,4 +232,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .route("/user/discord", get(page_discord))
         .route("/user/discord/callback", get(page_discord_callback))
         .route("/user/:cid", get(page_user))
+        .route("/user/:cid/discord/unlink", post(api_unlink_discord))
 }
