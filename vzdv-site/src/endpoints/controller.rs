@@ -163,7 +163,8 @@ async fn post_change_ois(
 /// Form submission to set the controller's certifications.
 ///
 /// Not used to set their network rating; that process is handled
-/// through VATUSA/VATSIM.
+/// through VATUSA/VATSIM. Also does not handle communicating solo
+/// certs to any other site.
 async fn post_change_certs(
     State(state): State<Arc<AppState>>,
     session: Session,
