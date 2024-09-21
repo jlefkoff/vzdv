@@ -8,13 +8,15 @@ use axum::{
     extract::{Path, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
-    Router,
+    Form, Router,
 };
+use log::info;
 use minijinja::{context, Environment};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tower_sessions::Session;
 use vzdv::{
+    retrieve_all_in_use_ois,
     sql::{self, Certification, Controller},
     ControllerRating, PermissionsGroup,
 };
@@ -97,7 +99,64 @@ async fn api_unlink_discord(
         .execute(&state.db)
         .await?;
     flashed_messages::push_flashed_message(session, MessageLevel::Info, "Discord unlinked").await?;
-    Ok(Redirect::to(&format!("/users/{cid}/")))
+    info!(
+        "{} unlinked Discord account from {cid}",
+        user_info.unwrap().cid
+    );
+    Ok(Redirect::to(&format!("/controllers/{cid}")))
+}
+
+#[derive(Deserialize)]
+struct ChangeInitialsForm {
+    initials: String,
+}
+
+/// Form submission to set a controller's operating initials.
+async fn post_change_ois(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(cid): Path<u32>,
+    Form(initials_form): Form<ChangeInitialsForm>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
+        return Ok(redirect);
+    }
+    let initials = initials_form.initials.to_uppercase();
+
+    // assert unique
+    if !initials.is_empty() {
+        let in_use = retrieve_all_in_use_ois(&state.db).await.map_err(|err| {
+            AppError::GenericFallback("Error accessing DB to get existing OIs", err)
+        })?;
+        if in_use.contains(&initials) {
+            flashed_messages::push_flashed_message(
+                session,
+                MessageLevel::Error,
+                "Those OIs are already in use",
+            )
+            .await?;
+            return Ok(Redirect::to(&format!("/controller/{cid}")));
+        }
+    }
+
+    // update
+    sqlx::query(sql::UPDATE_CONTROLLER_OIS)
+        .bind(cid)
+        .bind(&initials)
+        .execute(&state.db)
+        .await?;
+    flashed_messages::push_flashed_message(
+        session,
+        MessageLevel::Info,
+        "Operating initials updated",
+    )
+    .await?;
+    info!(
+        "{} updated OIs for {cid} to: '{initials}'",
+        user_info.unwrap().cid,
+    );
+    Ok(Redirect::to(&format!("/controller/{cid}")))
 }
 
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
@@ -111,4 +170,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     Router::new()
         .route("/controller/:cid", get(page_controller))
         .route("/controller/:cid/discord/unlink", post(api_unlink_discord))
+        .route("/controller/:cid/ois", post(post_change_ois))
 }

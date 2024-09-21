@@ -2,22 +2,39 @@
 
 {% block title %}User | {{ super() }}{% endblock %}
 
+{% block head_extra %}
+<style>
+  dialog::backdrop {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+  dialog {
+    background-color: var(--bs-body-bg);
+    width: 30%;
+    border: none;
+    border-radius: 1.5rem;
+  }
+</style>
+{% endblock %}
+
 {% block body %}
 
-<h2 class="pb-3">{{ controller.first_name }} {{ controller.last_name }}</h2>
+<h2 class="pb-3">
+  {{ controller.first_name }} {{ controller.last_name }}
+  {% if controller.operating_initials %} - {{ controller.operating_initials }}{% endif %}
+  {% if user_info and user_info.is_admin %}
+    <button class="ms-2 btn btn-sm btn-warning" onclick="modalChangeOI.showModal()">
+      <i class="bi bi-pencil"></i>
+      Edit OIs
+    </button>
+  {% endif %}
+</h2>
 
 <div class="row">
   <div class="col-4">
     <div class="card">
       <div class="card-body p-3">
-        <div class="card-title clearfix">
-          <h3 class="float-start">Overview</h3>
-          {% if user_info and user_info.is_admin %}
-            <button class="float-end btn btn-sm btn-warning">
-              <i class="bi bi-pencil"></i>
-              Edit
-            </button>
-          {% endif %}
+        <div class="card-title">
+          <h3>Overview</h3>
         </div>
         <p class="card-text">
           <strong>CID:</strong> {{ controller.cid }}
@@ -134,8 +151,32 @@
   </div>
 {% endif %}
 
+<dialog id="modalChangeOI">
+  <h2 class="pb-3">Change OIs</h2>
+  <form action="/controller/{{ controller.cid }}/ois" method="POST">
+    <div class="row">
+      <div class="col">
+        <div class="mb-3">
+          <label for="oi" class="form-label">Operating Initials</label>
+          <input
+            type="text"
+            class="form-control"
+            name="initials"
+            style="text-transform: uppercase"
+            value="{{ controller.operating_initials }}"
+            maxlength="2">
+        </div>
+        <div class="d-flex justify-content-between">
+          <button class="btn btn-warning" role="button" id="btn-modal-set-ois-close">Close</button>
+          <button class="btn btn-primary" role="button" type="submit">Set</button>
+        </div>
+      </div>
+    </div>
+  </form>
+</dialog>
+
 <script>
-  document.getElementById('button-unlink-discord').addEventListener('click', (e) => {
+  document.getElementById('button-unlink-discord')?.addEventListener('click', (e) => {
     e.preventDefault();
     const result = window.confirm("Are you sure you want to unlink this controller's Discord account?");
     if (result) {
@@ -148,6 +189,10 @@
           window.alert(`Something went wrong: ${error}`);
         })
     }
+  });
+  document.getElementById('btn-modal-set-ois-close').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('modalChangeOI').close();
   });
 </script>
 
