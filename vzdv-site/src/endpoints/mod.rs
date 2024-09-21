@@ -21,6 +21,7 @@ use vzdv::sql::{self, Controller};
 pub mod admin;
 pub mod airspace;
 pub mod auth;
+pub mod controller;
 pub mod events;
 pub mod facility;
 pub mod homepage;
