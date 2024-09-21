@@ -256,13 +256,14 @@ CREATE TABLE staff_note (
 
 pub const UPSERT_USER_LOGIN: &str = "
 INSERT INTO controller
-    (id, cid, first_name, last_name, email, is_on_roster)
+    (id, cid, first_name, last_name, email, rating, is_on_roster)
 VALUES
-    (NULL, $1, $2, $3, $4, FALSE)
+    (NULL, $1, $2, $3, $4, $5, FALSE)
 ON CONFLICT(cid) DO UPDATE SET
     first_name=excluded.first_name,
     last_name=excluded.last_name,
-    email=excluded.email
+    email=excluded.email,
+    rating=excluded.rating
 WHERE
     cid=excluded.cid
 ";

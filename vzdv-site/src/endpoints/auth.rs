@@ -77,6 +77,7 @@ async fn page_auth_callback(
         .bind(&to_session.first_name)
         .bind(&to_session.last_name)
         .bind(&session_user_info.data.personal.email)
+        .bind(session_user_info.data.vatsim.rating.id)
         .execute(&state.db)
         .await?;
 
@@ -92,8 +93,6 @@ async fn page_auth_logout(session: Session) -> Result<Redirect, AppError> {
     session.delete().await?;
     Ok(Redirect::to("/"))
 }
-
-// TODO present a page to view the training notes, ordered by date, most recent at top
 
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
