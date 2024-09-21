@@ -147,6 +147,7 @@ async fn post_change_ois(
         .bind(&initials)
         .execute(&state.db)
         .await?;
+
     flashed_messages::push_flashed_message(
         session,
         MessageLevel::Info,

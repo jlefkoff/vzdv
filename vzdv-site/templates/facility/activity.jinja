@@ -43,6 +43,9 @@
           {% endif %}
           {{ row.name }} {% if row.ois %}({{ row.ois }}){% endif %}
           {% if row.loa_until %}<span class="text-info" title="{{ row.loa_until }}">(LOA)</span>{% endif %}
+          <a href="/controller/{{ row.cid }}" class="icon-link icon-link-hover text-decoration-none">
+            <i class="bi bi-arrow-right-short"></i>
+          </a>
         </td>
         {% for month in row.months %}
           <td>
