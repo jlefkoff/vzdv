@@ -109,7 +109,6 @@ pub fn determine_staff_positions(controller: &Controller, config: &Config) -> Ve
     ret_roles
 }
 
-#[allow(clippy::upper_case_acronyms)]
 pub enum ControllerRating {
     INA,
     SUS,
