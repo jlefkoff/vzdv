@@ -390,11 +390,26 @@ async fn page_visitor_application(
     session: Session,
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let controller: Option<Controller> = match user_info {
+        Some(ref info) => {
+            let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+                .bind(info.cid)
+                .fetch_optional(&state.db)
+                .await?;
+            controller
+        }
+        None => None,
+    };
+    let is_visiting = controller
+        .as_ref()
+        .map(|c| c.is_on_roster)
+        .unwrap_or_default();
     let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
     let template = state
         .templates
         .get_template("facility/visitor_application")?;
-    let rendered = template.render(context! { user_info, flashed_messages })?;
+    let rendered =
+        template.render(context! { user_info, flashed_messages, controller, is_visiting })?;
     Ok(Html(rendered))
 }
 
