@@ -313,7 +313,7 @@
       fetch('/events/{{ event.id }}', { method: 'DELETE' })
         .then((response) => {
           if (response.status === 200 ) {
-            window.location = '/events/';
+            window.location = '/events';
           } else {
             console.error(response);
             window.alert(`Something went wrong; got status ${response.status}`);

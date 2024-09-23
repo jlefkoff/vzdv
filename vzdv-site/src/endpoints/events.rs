@@ -10,7 +10,7 @@ use crate::{
     },
 };
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Path, State},
     http::StatusCode,
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
@@ -22,7 +22,7 @@ use log::info;
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
 use sqlx::{Pool, Sqlite};
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 use tower_sessions::Session;
 use vzdv::{
     sql::{self, Controller, Event, EventPosition, EventRegistration},
@@ -68,14 +68,9 @@ async fn snippet_get_upcoming_events(
 async fn get_upcoming_events(
     State(state): State<Arc<AppState>>,
     session: Session,
-    Query(params): Query<HashMap<String, String>>,
 ) -> Result<Html<String>, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    let show_all = if let Some(val) = params.get("staff") {
-        val == "true" && is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await
-    } else {
-        false
-    };
+    let show_all = is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await;
     let events = query_for_events(&state.db, show_all).await?;
     let is_event_staff = is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await;
     let template = state.templates.get_template("events/upcoming_events")?;
@@ -442,7 +437,7 @@ async fn post_register_for_event(
         .fetch_optional(&state.db)
         .await?;
     if event.is_none() {
-        return Ok(Redirect::to("/events/"));
+        return Ok(Redirect::to("/events"));
     }
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     let cid = if let Some(user_info) = user_info {
@@ -668,7 +663,7 @@ pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
     Router::new()
         .route("/events/upcoming", get(snippet_get_upcoming_events))
         .route(
-            "/events/",
+            "/events",
             get(get_upcoming_events).post(post_new_event_form),
         )
         .route(
