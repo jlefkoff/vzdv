@@ -253,7 +253,7 @@
         <input type="hidden" name="category" id="new-position-category">
         <div class="mb-3">
           <label for="name" class="form-label">Position</label>
-          <input type="text" class="form-control" name="name" style="text-transform: uppercase" required>
+          <input type="text" class="form-control" name="name" style="text-transform: uppercase">
         </div>
         <div class="d-flex justify-content-between">
           <button class="btn btn-warning" role="button" id="btn-modal-add-position-close">Close</button>
@@ -342,7 +342,7 @@
 
 
   // can't nest forms in HTML
-  document.getElementById('btn-modal-register-unregister').addEventListener('click', (e) => {
+  document.getElementById('btn-modal-register-unregister')?.addEventListener('click', (e) => {
     e.preventDefault();
     const result = window.confirm('Are you sure you want to remove yourself from this event?');
     if (result) {
@@ -353,7 +353,7 @@
         .catch((error) => {
           console.error(error);
           window.alert(`Something went wrong: ${error}`);
-        })
+        });
     }
   });
 
@@ -376,6 +376,15 @@
     document.getElementById('modalSetPosition').close();
     document.getElementById('set-position-id').value = '';
   });
+
+  document.getElementById('modalAddPosition').querySelectorAll('input[type="text"]').forEach((input) => {
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        document.getElementById('modalAddPosition').querySelector('form').submit();
+      }
+    });
+  })
 </script>
 
 {% endblock %}

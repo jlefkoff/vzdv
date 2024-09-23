@@ -192,6 +192,7 @@ async fn page_get_event(
             None
         };
 
+        let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
         let rendered = template.render(context! {
             user_info,
             event,
@@ -200,6 +201,7 @@ async fn page_get_event(
             registrations,
             all_controllers,
             self_register,
+            flashed_messages,
             is_event_staff => not_staff_redirect.is_none(),
             event_not_over =>  Utc::now() < event.end
         })?;
@@ -526,6 +528,15 @@ async fn post_add_position(
     if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::EventsTeam).await
     {
         return Ok(redirect);
+    }
+    if new_position_data.name.is_empty() {
+        flashed_messages::push_flashed_message(
+            session,
+            flashed_messages::MessageLevel::Error,
+            "Must specify a value",
+        )
+        .await?;
+        return Ok(Redirect::to(&format!("/events/{id}")));
     }
 
     let event: Option<Event> = sqlx::query_as(sql::GET_EVENT)
