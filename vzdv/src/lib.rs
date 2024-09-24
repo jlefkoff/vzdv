@@ -260,6 +260,7 @@ impl From<&str> for StaffPosition {
 pub enum PermissionsGroup {
     Anon,
     LoggedIn,
+    SomeStaff,
     EventsTeam,
     TrainingTeam,
     Admin,
@@ -296,6 +297,23 @@ pub fn controller_can_see(controller: &Option<Controller>, team: PermissionsGrou
     match team {
         PermissionsGroup::Anon => true,
         PermissionsGroup::LoggedIn => true,
+        PermissionsGroup::SomeStaff => {
+            return [
+                StaffPosition::ATM,
+                StaffPosition::DATM,
+                StaffPosition::TA,
+                StaffPosition::FE,
+                StaffPosition::EC,
+                StaffPosition::WM,
+                StaffPosition::AFE,
+                StaffPosition::AEC,
+                StaffPosition::AWM,
+                StaffPosition::INS,
+                StaffPosition::MTR,
+            ]
+            .iter()
+            .any(|r| roles.contains(r))
+        }
         PermissionsGroup::EventsTeam => {
             return [
                 StaffPosition::EC,

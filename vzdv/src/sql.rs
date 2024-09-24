@@ -129,7 +129,8 @@ pub struct StaffNote {
     pub id: u32,
     pub cid: u32,
     pub by: u32,
-    pub created_date: DateTime<Utc>,
+    pub date: DateTime<Utc>,
+    pub comment: String,
 }
 
 /// Statements to create tables. Only ran when the DB file does not exist,
@@ -247,7 +248,8 @@ CREATE TABLE staff_note (
     id INTEGER PRIMARY KEY NOT NULL,
     cid INTEGER NOT NULL,
     by INTEGER NOT NULL,
-    created_date TEXT NOT NULL,
+    date TEXT NOT NULL,
+    comment TEXT NOT NULL,
 
     FOREIGN KEY (cid) REFERENCES controller(cid),
     FOREIGN KEY (by) REFERENCES controller(cid)
@@ -370,3 +372,8 @@ pub const INSERT_EVENT_POSITION: &str =
     "INSERT INTO event_position VALUES (NULL, $1, $2, $3, NULL);";
 pub const DELETE_EVENT_POSITION: &str = "DELETE FROM event_position WHERE id=$1";
 pub const UPDATE_EVENT_POSITION_CONTROLLER: &str = "UPDATE event_position SET cid=$2 WHERE id=$1";
+
+pub const GET_STAFF_NOTES_FOR: &str = "SELECT * FROM staff_note WHERE cid=$1";
+pub const GET_STAFF_NOTE: &str = "SELECT * FROM staff_note WHERE id=$1";
+pub const DELETE_STAFF_NOTE: &str = "DELETE FROM staff_note WHERE id=$1";
+pub const CREATE_STAFF_NOTE: &str = "INSERT INTO staff_note VALUES (NULL, $1, $2, $3, $4);";

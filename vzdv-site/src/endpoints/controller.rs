@@ -9,18 +9,18 @@ use crate::{
 use axum::{
     extract::{Path, State},
     response::{Html, IntoResponse, Redirect, Response},
-    routing::{get, post},
+    routing::{delete, get, post},
     Form, Router,
 };
-use chrono::Utc;
+use chrono::{DateTime, Utc};
 use log::info;
 use minijinja::{context, Environment};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 use vzdv::{
-    retrieve_all_in_use_ois,
-    sql::{self, Certification, Controller, Feedback},
+    get_controller_cids_and_names, retrieve_all_in_use_ois,
+    sql::{self, Certification, Controller, Feedback, StaffNote},
     ControllerRating, PermissionsGroup,
 };
 
@@ -32,10 +32,19 @@ async fn page_controller(
     session: Session,
     Path(cid): Path<u32>,
 ) -> Result<Response, AppError> {
-    #[derive(Debug, Serialize)]
+    #[derive(Serialize)]
     struct CertNameValue<'a> {
         name: &'a str,
         value: &'a str,
+    }
+
+    #[derive(Serialize)]
+    struct StaffNoteDisplay {
+        id: u32,
+        by: String,
+        by_cid: u32,
+        date: DateTime<Utc>,
+        comment: String,
     }
 
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
@@ -75,15 +84,40 @@ async fn page_controller(
         certifications.push(CertNameValue { name, value });
     }
 
-    let feedback: Vec<Feedback> =
-        if is_user_member_of(&state, &user_info, PermissionsGroup::Admin).await {
-            sqlx::query_as(sql::GET_ALL_FEEDBACK_FOR)
-                .bind(cid)
-                .fetch_all(&state.db)
-                .await?
-        } else {
-            Vec::new()
-        };
+    let is_admin = is_user_member_of(&state, &user_info, PermissionsGroup::Admin).await;
+    let feedback: Vec<Feedback> = if is_admin {
+        sqlx::query_as(sql::GET_ALL_FEEDBACK_FOR)
+            .bind(cid)
+            .fetch_all(&state.db)
+            .await?
+    } else {
+        Vec::new()
+    };
+    let staff_notes: Vec<StaffNoteDisplay> = if is_admin {
+        let notes: Vec<StaffNote> = sqlx::query_as(sql::GET_STAFF_NOTES_FOR)
+            .bind(cid)
+            .fetch_all(&state.db)
+            .await?;
+        let controllers = get_controller_cids_and_names(&state.db)
+            .await
+            .map_err(|e| AppError::GenericFallback("getting names and CIDs from DB", e))?;
+        notes
+            .iter()
+            .map(|note| StaffNoteDisplay {
+                id: note.id,
+                by: controllers
+                    .iter()
+                    .find(|c| *c.0 == note.by)
+                    .map(|c| format!("{} {} ({})", c.1 .0, c.1 .1, c.0))
+                    .unwrap_or_else(|| format!("{}?", note.cid)),
+                by_cid: note.by,
+                date: note.date,
+                comment: note.comment.clone(),
+            })
+            .collect()
+    } else {
+        Vec::new()
+    };
 
     let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
     let template = state.templates.get_template("controller/controller")?;
@@ -93,6 +127,7 @@ async fn page_controller(
         rating_str,
         certifications,
         feedback,
+        staff_notes,
         flashed_messages
     })?;
     Ok(Html(rendered).into_response())
@@ -229,6 +264,64 @@ async fn post_change_certs(
     Ok(Redirect::to(&format!("/controller/{cid}")))
 }
 
+#[derive(Deserialize)]
+struct NewNoteForm {
+    note: String,
+}
+
+/// Post a new staff note to the controller.
+async fn post_new_staff_note(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(cid): Path<u32>,
+    Form(note_form): Form<NewNoteForm>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::SomeStaff).await
+    {
+        return Ok(redirect);
+    }
+    let user_info = user_info.unwrap();
+    info!("{} added staff note to {cid}", user_info.cid);
+    sqlx::query(sql::CREATE_STAFF_NOTE)
+        .bind(cid)
+        .bind(user_info.cid)
+        .bind(Utc::now())
+        .bind(note_form.note)
+        .execute(&state.db)
+        .await?;
+    flashed_messages::push_flashed_message(session, MessageLevel::Info, "Message saved").await?;
+    Ok(Redirect::to(&format!("/controller/{cid}")))
+}
+
+/// Delete a staff note. The user performing the deletion must be the user who left the note.
+async fn api_delete_staff_note(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path((cid, note_id)): Path<(u32, u32)>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::SomeStaff).await
+    {
+        return Ok(redirect);
+    }
+    let user_info = user_info.unwrap();
+    let note: Option<StaffNote> = sqlx::query_as(sql::GET_STAFF_NOTE)
+        .bind(note_id)
+        .fetch_optional(&state.db)
+        .await?;
+    if let Some(note) = note {
+        if note.by == user_info.cid {
+            sqlx::query(sql::DELETE_STAFF_NOTE)
+                .bind(note_id)
+                .execute(&state.db)
+                .await?;
+            info!("{} removed their note #{}", user_info.cid, note_id);
+        }
+    }
+    Ok(Redirect::to(&format!("/controller/{cid}")))
+}
+
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template(
@@ -242,4 +335,9 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .route("/controller/:cid/discord/unlink", post(api_unlink_discord))
         .route("/controller/:cid/ois", post(post_change_ois))
         .route("/controller/:cid/certs", post(post_change_certs))
+        .route("/controller/:cid/note", post(post_new_staff_note))
+        .route(
+            "/controller/:cid/note/:note_id",
+            delete(api_delete_staff_note),
+        )
 }
