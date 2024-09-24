@@ -199,7 +199,7 @@ async fn page_email_manual_send(
         .fetch_all(&state.db)
         .await?;
     let template = state.templates.get_template("admin/manual_email")?;
-    let rendered = template.render(context! { all_controllers })?;
+    let rendered = template.render(context! { user_info, all_controllers })?;
     Ok(Html(rendered).into_response())
 }
 
