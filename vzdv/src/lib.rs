@@ -63,8 +63,8 @@ pub fn position_in_facility_airspace(config: &Config, position: &str) -> bool {
 /// Retrieve a mapping of controller CID to first and last names.
 pub async fn get_controller_cids_and_names(
     db: &Pool<Sqlite>,
-) -> Result<HashMap<u64, (String, String)>> {
-    let mut cid_name_map: HashMap<u64, (String, String)> = HashMap::new();
+) -> Result<HashMap<u32, (String, String)>> {
+    let mut cid_name_map = HashMap::new();
     let rows: Vec<SqliteRow> = sqlx::query(sql::GET_CONTROLLER_CIDS_AND_NAMES)
         .fetch_all(db)
         .await?;
@@ -72,7 +72,7 @@ pub async fn get_controller_cids_and_names(
         let cid: u32 = row.try_get("cid").unwrap();
         let first_name: String = row.try_get("first_name").unwrap();
         let last_name: String = row.try_get("last_name").unwrap();
-        cid_name_map.insert(cid as u64, (first_name, last_name));
+        cid_name_map.insert(cid, (first_name, last_name));
     });
     Ok(cid_name_map)
 }

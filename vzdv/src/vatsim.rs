@@ -23,7 +23,7 @@ pub fn parse_vatsim_timestamp(stamp: &str) -> Result<DateTime<Utc>> {
 
 #[derive(Debug, Serialize)]
 pub struct OnlineController {
-    pub cid: u64,
+    pub cid: u32,
     pub callsign: String,
     pub name: String,
     pub online_for: String,
@@ -53,10 +53,10 @@ pub async fn get_online_facility_controllers(
                 .expect("Could not parse VATSIM timestamp");
             let seconds = (now - logon).num_seconds() as u32;
             OnlineController {
-                cid: controller.cid,
+                cid: controller.cid as u32,
                 callsign: controller.callsign.clone(),
                 name: cid_name_map
-                    .get(&controller.cid)
+                    .get(&(controller.cid as u32))
                     .map(|s| format!("{} {}", s.0, s.1))
                     .unwrap_or(String::from("?")),
                 online_for: format!("{}h{}m", seconds / 3600, (seconds / 60) % 60),
