@@ -144,7 +144,28 @@
       <div class="card-body p-3">
         <h3 class="card-title">Feedback</h3>
         <div class="card-text">
-          TODO
+          <div class="tab-pane fade show active" id="nav-pending" role="tabpanel" aria-labelledby="nav-pending-tab" tabindex="0">
+            <div class="d-flex pb-3">
+              <span class="col fw-bold text-decoration-underline">Submitter CID</span>
+              <span class="col fw-bold text-decoration-underline">Position</span>
+              <span class="col fw-bold text-decoration-underline">Rating</span>
+              <span class="col fw-bold text-decoration-underline">Date</span>
+            </div>
+            {% for row in feedback %}
+              <div class="d-flex flex-wrap">
+                <span class="col">
+                  <a href="https://stats.vatsim.net/stats/{{ row.submitter_cid }}" target="_blank">{{ row.submitter_cid }}</a>
+                </span>
+                <span class="col">{{ row.position }}</span>
+                <span class="col">{{ row.rating }}</span>
+                <span class="col">{{ row.created_date|nice_date }}</span>
+                <span class="col-12 pt-2">
+                  <span class="fw-bold me-3">Comments:</span> {{ row.comments }}
+                </span>
+              </div>
+              <hr>
+            {% endfor %}
+          </div>
         </div>
       </div>
     </div>

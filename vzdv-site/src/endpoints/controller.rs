@@ -2,7 +2,9 @@
 
 use crate::{
     flashed_messages::{self, MessageLevel},
-    shared::{reject_if_not_in, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
+    shared::{
+        is_user_member_of, reject_if_not_in, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
+    },
 };
 use axum::{
     extract::{Path, State},
@@ -18,7 +20,7 @@ use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 use vzdv::{
     retrieve_all_in_use_ois,
-    sql::{self, Certification, Controller},
+    sql::{self, Certification, Controller, Feedback},
     ControllerRating, PermissionsGroup,
 };
 
@@ -73,6 +75,16 @@ async fn page_controller(
         certifications.push(CertNameValue { name, value });
     }
 
+    let feedback: Vec<Feedback> =
+        if is_user_member_of(&state, &user_info, PermissionsGroup::Admin).await {
+            sqlx::query_as(sql::GET_ALL_FEEDBACK_FOR)
+                .bind(cid)
+                .fetch_all(&state.db)
+                .await?
+        } else {
+            Vec::new()
+        };
+
     let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
     let template = state.templates.get_template("controller/controller")?;
     let rendered: String = template.render(context! {
@@ -80,6 +92,7 @@ async fn page_controller(
         controller,
         rating_str,
         certifications,
+        feedback,
         flashed_messages
     })?;
     Ok(Html(rendered).into_response())

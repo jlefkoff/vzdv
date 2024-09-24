@@ -335,6 +335,7 @@ pub const GET_FEEDBACK_BY_ID: &str = "SELECT * FROM feedback WHERE id=$1";
 pub const UPDATE_FEEDBACK_TAKE_ACTION: &str =
     "UPDATE feedback SET reviewed_by_cid=$1, reviewer_action=$2, posted_to_discord=$3 WHERE id=$4";
 pub const DELETE_FROM_FEEDBACK: &str = "DELETE FROM feedback WHERE id=$1";
+pub const GET_ALL_FEEDBACK_FOR: &str = "SELECT * FROM feedback WHERE controller=$1";
 
 pub const GET_ALL_RESOURCES: &str = "SELECT * FROM resource";
 
