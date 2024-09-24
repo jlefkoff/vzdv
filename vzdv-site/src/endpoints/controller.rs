@@ -56,7 +56,7 @@ async fn page_controller(
         }
     };
     let rating_str = ControllerRating::try_from(controller.rating)
-        .map_err(|err| AppError::GenericFallback("unknown controller rating", err))?
+        .map_err(|err| AppError::GenericFallback("parsing unknown controller rating", err))?
         .as_str();
 
     let db_certs: Vec<Certification> = sqlx::query_as(sql::GET_ALL_CERTIFICATIONS_FOR)
@@ -140,9 +140,9 @@ async fn post_change_ois(
 
     // assert unique
     if !initials.is_empty() {
-        let in_use = retrieve_all_in_use_ois(&state.db).await.map_err(|err| {
-            AppError::GenericFallback("Error accessing DB to get existing OIs", err)
-        })?;
+        let in_use = retrieve_all_in_use_ois(&state.db)
+            .await
+            .map_err(|err| AppError::GenericFallback("accessing DB to get existing OIs", err))?;
         if in_use.contains(&initials) {
             flashed_messages::push_flashed_message(
                 session,

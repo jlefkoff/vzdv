@@ -239,7 +239,7 @@ async fn post_email_manual_send(
         Some(&state.config.vatsim.vatusa_api_key),
     )
     .await
-    .map_err(|err| AppError::GenericFallback("error getting controller info", err))?;
+    .map_err(|err| AppError::GenericFallback("getting controller info", err))?;
     let email = match controller_info.email {
         Some(e) => e,
         None => {
