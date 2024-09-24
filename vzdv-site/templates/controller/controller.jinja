@@ -226,6 +226,12 @@
     e.preventDefault();
     document.getElementById('modalCertifications').close();
   });
+  document.getElementById('modalChangeOI').querySelector('input[type="text"]').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      document.getElementById('modalChangeOI').querySelector('form').submit();
+    }
+  });
 </script>
 
 {% endblock %}
