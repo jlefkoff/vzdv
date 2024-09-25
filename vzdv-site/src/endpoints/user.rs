@@ -34,7 +34,7 @@ async fn page_training_notes(
     let mut training_records =
         vatusa::get_training_records(&state.config.vatsim.vatusa_api_key, user_info.cid)
             .await
-            .map_err(|error| AppError::GenericFallback("getting training records", error))?;
+            .map_err(|e| AppError::GenericFallback("getting VATUSA training records", e))?;
     for record in &mut training_records {
         record.notes = record.notes._strip_tags();
     }
