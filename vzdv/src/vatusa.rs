@@ -1,6 +1,10 @@
+use std::time::Duration;
+
 use crate::GENERAL_HTTP_CLIENT;
 use anyhow::{bail, Result};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 
 const BASE_URL: &str = "https://api.vatusa.net/";
 
@@ -120,18 +124,6 @@ pub struct TransferChecklist {
     pub overall: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
-pub struct TrainingRecord {
-    pub id: u32,
-    pub student_id: u32,
-    pub instructor_id: u32,
-    pub session_date: String,
-    pub facility_id: String,
-    pub position: String,
-    pub duration: String,
-    pub notes: String,
-}
-
 /// Get the controller's transfer checklist information.
 pub async fn transfer_checklist(api_key: &str, cid: u32) -> Result<TransferChecklist> {
     #[derive(Deserialize)]
@@ -141,7 +133,7 @@ pub async fn transfer_checklist(api_key: &str, cid: u32) -> Result<TransferCheck
 
     let resp = GENERAL_HTTP_CLIENT
         .get(format!("{BASE_URL}v2/user/{cid}/transfer/checklist"))
-        .query(&[("api_key", api_key)])
+        .query(&[("apikey", api_key)])
         .send()
         .await?;
     if !resp.status().is_success() {
@@ -180,6 +172,18 @@ pub async fn get_controller_info(cid: u32, api_key: Option<&str>) -> Result<Rost
     Ok(data.data)
 }
 
+#[derive(Debug, Deserialize, Serialize)]
+pub struct TrainingRecord {
+    pub id: u32,
+    pub student_id: u32,
+    pub instructor_id: u32,
+    pub session_date: String,
+    pub facility_id: String,
+    pub position: String,
+    pub duration: String,
+    pub notes: String,
+}
+
 /// Get the controller's training records.
 pub async fn get_training_records(api_key: &str, cid: u32) -> Result<Vec<TrainingRecord>> {
     #[derive(Deserialize)]
@@ -188,8 +192,8 @@ pub async fn get_training_records(api_key: &str, cid: u32) -> Result<Vec<Trainin
     }
 
     let resp = GENERAL_HTTP_CLIENT
-        .get(format!("{BASE_URL}user/{cid}/training/records"))
-        .query(&[("api_key", api_key)])
+        .get(format!("{BASE_URL}v2/user/{cid}/training/records"))
+        .query(&[("apikey", api_key)])
         .send()
         .await?;
     if !resp.status().is_success() {
@@ -201,4 +205,73 @@ pub async fn get_training_records(api_key: &str, cid: u32) -> Result<Vec<Trainin
     }
     let data: Wrapper = resp.json().await?;
     Ok(data.data)
+}
+
+/// VATUSA training record "location" values.
+pub mod training_record_location {
+    pub const CLASSROOM: u8 = 0;
+    pub const LIVE: u8 = 0;
+    pub const SIMULATION: u8 = 2;
+    pub const LIVE_OTS: u8 = 1;
+    pub const SIMULATION_OTS: u8 = 2;
+    pub const NO_SHOW: u8 = 0;
+    pub const OTHER: u8 = 0;
+}
+
+/// Data required for creating a new VATUSA training record.
+///
+/// The CID must also be supplied.
+#[derive(Debug, Deserialize, Serialize)]
+pub struct NewTrainingRecord {
+    pub instructor_id: String,
+    pub date: DateTime<Utc>,
+    pub position: String,
+    pub duration: Duration,
+    pub location: u8,
+    pub notes: String,
+}
+
+fn duration_to_vatusa_record(duration: &Duration) -> String {
+    let m = duration.as_secs() / 60 % 60;
+    let h = duration.as_secs() / 60 / 60;
+    format!("{:0>2}:{:0>2}", h, m)
+}
+
+/// Add a new training record to the controller's VATUSA record.
+pub async fn save_training_record(api_key: &str, cid: u32, data: &NewTrainingRecord) -> Result<()> {
+    let resp = GENERAL_HTTP_CLIENT
+        .post(format!("{BASE_URL}/user/{cid}/training/record"))
+        .query(&[("apikey", api_key)])
+        .json(&json!({
+            "instructor_id": data.instructor_id,
+            "session_date": data.date.format("%Y-%m-%d %H:%M").to_string(),
+            "position": data.position,
+            "duration": duration_to_vatusa_record(&data.duration),
+            "location": data.location,
+            "notes": data.notes
+        }))
+        .send()
+        .await?;
+    if !resp.status().is_success() {
+        // not including the URL since it'll have the API key in it
+        bail!(
+            "Got status {} from VATUSA training record submit API",
+            resp.status().as_u16()
+        );
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use std::time::Duration;
+
+    use crate::vatusa::duration_to_vatusa_record;
+
+    #[test]
+    fn test_duration_to_vatusa_record() {
+        let d = Duration::from_secs((2 * 60 * 60) + (30 * 60));
+        let s = duration_to_vatusa_record(&d);
+        assert_eq!(s, "02:30");
+    }
 }

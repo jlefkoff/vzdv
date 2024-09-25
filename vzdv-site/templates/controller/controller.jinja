@@ -108,14 +108,10 @@
   <div class="row pt-3">
     <div class="card">
       <div class="card-body p-3">
-        <h3 class="card-title">Training Notes</h3>
+        <h3 class="card-title">Training Records</h3>
         <div class="card-text">
-          TODO
+          <a href="#" class="btn btn-sm btn-primary" hx-get="/controller/{{ controller.cid}}/training_records" hx-swap="outerHTML">Retrieve</a>
         </div>
-        <a href="#" class="btn btn-sm btn-info mt-2">
-          <i class="bi bi-plus-circle"></i>
-          Add
-        </a>
       </div>
     </div>
   </div>
@@ -138,7 +134,7 @@
             </p>
           {% endfor %}
         </div>
-        <button class="btn btn-sm btn-info mt-2" onclick="modalNewStaffNote.showModal()">
+        <button class="btn btn-sm btn-primary mt-2" onclick="modalNewStaffNote.showModal()">
           <i class="bi bi-plus-circle"></i>
           Add
         </button>
@@ -236,16 +232,33 @@
 <dialog id="modalNewStaffNote">
   <h2 class="pb-3">New staff note</h2>
   <form action="/controller/{{ controller.cid }}/note" method="POST">
-    <div class="col">
-      <div class="mb-3">
-        <label for="note" class="form-label">Note</label>
-        <textarea name="note" id="note" class="form-control" placeholder="..."></textarea>
+    <div class="row">
+      <div class="col">
+        <div class="mb-3">
+          <label for="note" class="form-label">Note</label>
+          <textarea name="note" id="note" class="form-control" placeholder="..."></textarea>
+        </div>
       </div>
     </div>
     <div class="row">
       <div class="d-flex justify-content-between">
         <button class="btn btn-warning" role="button" id="btn-modal-note-close">Close</button>
         <button class="btn btn-primary" role="button" type="submit">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="modalNewTrainingRecord">
+  <h2 class="pb-3">New training record</h2>
+  <form action="/controller/{{ controller.cid }}/training_record">
+    <div class="row">
+      TODO
+    </div>
+    <div class="row">
+      <div class="d-flex justify-content-between">
+        <button class="btn btn-warning" role="button" id="btn-modal-training-record-close">Close</button>
+        <button class="btn btn-primary" role="button" type="submit">Submit</button>
       </div>
     </div>
   </form>
@@ -277,6 +290,10 @@
   document.getElementById('btn-modal-note-close').addEventListener('click', (e) => {
     e.preventDefault();
     document.getElementById('modalNewStaffNote').close();
+  });
+  document.getElementById('btn-modal-training-record-close').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('modalNewTrainingRecord').close();
   });
   document.getElementById('modalChangeOI').querySelector('input[type="text"]').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {

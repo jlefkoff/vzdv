@@ -15,18 +15,21 @@ use axum::{
 use chrono::{DateTime, Utc};
 use log::info;
 use minijinja::{context, Environment};
+use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 use vzdv::{
     get_controller_cids_and_names, retrieve_all_in_use_ois,
     sql::{self, Certification, Controller, Feedback, StaffNote},
+    vatusa::get_training_records,
     ControllerRating, PermissionsGroup,
 };
 
 /// Overview page for a user.
 ///
-/// Shows additional information and controls for training staff.
+/// Shows additional information and controls for different staff
+/// members (some, training, admin).
 async fn page_controller(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -134,6 +137,8 @@ async fn page_controller(
 }
 
 /// API endpoint to unlink a controller's Discord account.
+///
+/// For admin staff members.
 async fn api_unlink_discord(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -161,6 +166,8 @@ struct ChangeInitialsForm {
 }
 
 /// Form submission to set a controller's operating initials.
+///
+/// For admin staff members.
 async fn post_change_ois(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -214,6 +221,8 @@ async fn post_change_ois(
 /// Not used to set their network rating; that process is handled
 /// through VATUSA/VATSIM. Also does not handle communicating solo
 /// certs to any other site.
+///
+/// For training staff members.
 async fn post_change_certs(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -270,6 +279,8 @@ struct NewNoteForm {
 }
 
 /// Post a new staff note to the controller.
+///
+/// For staff members.
 async fn post_new_staff_note(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -295,15 +306,19 @@ async fn post_new_staff_note(
 }
 
 /// Delete a staff note. The user performing the deletion must be the user who left the note.
+///
+/// For staff members.
 async fn api_delete_staff_note(
     State(state): State<Arc<AppState>>,
     session: Session,
-    Path((cid, note_id)): Path<(u32, u32)>,
-) -> Result<Redirect, AppError> {
+    Path((_cid, note_id)): Path<(u32, u32)>,
+) -> Result<StatusCode, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::SomeStaff).await
+    if reject_if_not_in(&state, &user_info, PermissionsGroup::SomeStaff)
+        .await
+        .is_some()
     {
-        return Ok(redirect);
+        return Ok(StatusCode::FORBIDDEN);
     }
     let user_info = user_info.unwrap();
     let note: Option<StaffNote> = sqlx::query_as(sql::GET_STAFF_NOTE)
@@ -319,7 +334,36 @@ async fn api_delete_staff_note(
             info!("{} removed their note #{}", user_info.cid, note_id);
         }
     }
-    Ok(Redirect::to(&format!("/controller/{cid}")))
+    Ok(StatusCode::OK)
+}
+
+/// Render a page snippet that shows training notes and a button to create more.
+///
+/// For training staff members.
+async fn snippet_get_training_records(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(cid): Path<u32>,
+) -> Result<Response, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) =
+        reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
+    {
+        return Ok(redirect.into_response());
+    }
+    let training_records = get_training_records(&state.config.vatsim.vatusa_api_key, cid)
+        .await
+        .map_err(|e| AppError::GenericFallback("getting VATUSA training records", e))?;
+    let template = state.templates.get_template("controller/training_notes")?;
+    let rendered: String = template.render(context! { user_info, training_records })?;
+    Ok(Html(rendered).into_response())
+}
+
+/// Submit a new training note for the controller.
+///
+/// For training staff members.
+async fn post_add_training_note() -> Result<Redirect, AppError> {
+    todo!()
 }
 
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
@@ -327,6 +371,12 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .add_template(
             "controller/controller",
             include_str!("../../templates/controller/controller.jinja"),
+        )
+        .unwrap();
+    templates
+        .add_template(
+            "controller/training_notes",
+            include_str!("../../templates/controller/training_notes.jinja"),
         )
         .unwrap();
 
@@ -339,5 +389,9 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .route(
             "/controller/:cid/note/:note_id",
             delete(api_delete_staff_note),
+        )
+        .route(
+            "/controller/:cid/training_records",
+            get(snippet_get_training_records).post(post_add_training_note),
         )
 }

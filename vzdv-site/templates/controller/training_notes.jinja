@@ -1,0 +1,31 @@
+<button class="btn btn-sm btn-primary mb-3" onclick="modalNewTrainingRecord.showModal()">
+  <i class="bi bi-plus-circle"></i>
+  Create
+</button>
+<div class="accordion" id="training_records_accordion">
+  {% for record in training_records %}
+    <div class="accordion-item">
+      <h2 class="accordion-header">
+        <button
+          class="accordion-button"
+          type="button"
+          data-bs-toggle="collapse"
+          data-bs-target="#record-{{ record.id }}"
+          aria-expanded="false"
+          aria-controls="record-{{ record.id }}"
+        >
+          #{{ record.id }} on {{ record.position }}
+        </button>
+      </h2>
+      <div id="record-{{ record.id }}" class="accordion-collapse collapse" data-bs-parent="#training_records_accordion">
+        <div class="accordion-body">
+          <p>
+            <strong>{{ record.session_date }}</strong>
+          </p>
+          <br>
+          {{ record.notes }}
+        </div>
+      </div>
+    </div>
+  {% endfor %}
+</div>
