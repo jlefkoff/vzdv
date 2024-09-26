@@ -258,32 +258,23 @@ impl From<&str> for StaffPosition {
 
 #[derive(Debug, PartialEq)]
 pub enum PermissionsGroup {
+    /// Literally anyone.
     Anon,
+    /// Has a session.
     LoggedIn,
+    /// Has a role.
     SomeStaff,
+    /// Has a Jr or Sr position.
+    NamedPosition,
+    /// EC, AEC, and up.
     EventsTeam,
+    /// MTR, INS, TA, and up.
     TrainingTeam,
+    /// ATM, DATM (and WM).
     Admin,
 }
 
-/// Simple permissions control for accessing endpoints.
-///
-/// Generally only intended to be used in places where access limitation is needed rather than
-/// on all pages. Anyone can see `PermissionsGroup::Anon` pages, any logged-in user can see
-/// `PermissionsGroup::LoggedIn` pages, and various groupings of staff can see the other pages,
-/// with the ATM, DATM, and WM being granted site-wide permissions.
-///
-/// ## Limitations
-///
-/// - Mentors, Instructors, TA, ATM, DATM (+ WM) can CRUD training notes, ratings, and certs.
-/// - TA (view but no action), ATM, DATM (+ WM) can view and take action on feedback
-/// - ATM, DATM (+ WM) can view and take action on visitor applications
-/// - EC, AEC, ATM, DATM (+ WM) can CRUD events
-///
-/// ## Unused roles
-///
-/// FE, AFE, and AWM are not granted any special access.
-///
+/// Permissions control for accessing things.
 pub fn controller_can_see(controller: &Option<Controller>, team: PermissionsGroup) -> bool {
     let controller = match controller {
         Some(c) => c,
@@ -297,56 +288,53 @@ pub fn controller_can_see(controller: &Option<Controller>, team: PermissionsGrou
     match team {
         PermissionsGroup::Anon => true,
         PermissionsGroup::LoggedIn => true,
-        PermissionsGroup::SomeStaff => {
-            return [
-                StaffPosition::ATM,
-                StaffPosition::DATM,
-                StaffPosition::TA,
-                StaffPosition::FE,
-                StaffPosition::EC,
-                StaffPosition::WM,
-                StaffPosition::AFE,
-                StaffPosition::AEC,
-                StaffPosition::AWM,
-                StaffPosition::INS,
-                StaffPosition::MTR,
-            ]
+        PermissionsGroup::NamedPosition => [
+            StaffPosition::ATM,
+            StaffPosition::DATM,
+            StaffPosition::TA,
+            StaffPosition::FE,
+            StaffPosition::EC,
+            StaffPosition::WM,
+        ]
+        .iter()
+        .any(|r| roles.contains(r)),
+        PermissionsGroup::SomeStaff => [
+            StaffPosition::ATM,
+            StaffPosition::DATM,
+            StaffPosition::TA,
+            StaffPosition::FE,
+            StaffPosition::EC,
+            StaffPosition::WM,
+            StaffPosition::AFE,
+            StaffPosition::AEC,
+            StaffPosition::AWM,
+            StaffPosition::INS,
+            StaffPosition::MTR,
+        ]
+        .iter()
+        .any(|r| roles.contains(r)),
+        PermissionsGroup::EventsTeam => [
+            StaffPosition::EC,
+            StaffPosition::AEC,
+            StaffPosition::ATM,
+            StaffPosition::DATM,
+            StaffPosition::WM,
+        ]
+        .iter()
+        .any(|r| roles.contains(r)),
+        PermissionsGroup::TrainingTeam => [
+            StaffPosition::MTR,
+            StaffPosition::INS,
+            StaffPosition::TA,
+            StaffPosition::ATM,
+            StaffPosition::DATM,
+            StaffPosition::WM,
+        ]
+        .iter()
+        .any(|r| roles.contains(r)),
+        PermissionsGroup::Admin => [StaffPosition::ATM, StaffPosition::DATM, StaffPosition::WM]
             .iter()
-            .any(|r| roles.contains(r))
-        }
-        PermissionsGroup::EventsTeam => {
-            return [
-                StaffPosition::EC,
-                StaffPosition::AEC,
-                StaffPosition::ATM,
-                StaffPosition::DATM,
-                StaffPosition::WM,
-            ]
-            .iter()
-            .any(|r| roles.contains(r))
-        }
-        PermissionsGroup::TrainingTeam => {
-            return [
-                StaffPosition::MTR,
-                StaffPosition::INS,
-                StaffPosition::TA,
-                StaffPosition::ATM,
-                StaffPosition::DATM,
-                StaffPosition::WM,
-            ]
-            .iter()
-            .any(|r| roles.contains(r))
-        }
-        PermissionsGroup::Admin => {
-            return [
-                StaffPosition::TA,
-                StaffPosition::ATM,
-                StaffPosition::DATM,
-                StaffPosition::WM,
-            ]
-            .iter()
-            .any(|r| roles.contains(r))
-        }
+            .any(|r| roles.contains(r)),
     }
 }
 
