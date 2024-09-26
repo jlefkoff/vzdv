@@ -23,7 +23,7 @@ use tower_sessions::Session;
 use vzdv::{
     config::Config,
     determine_staff_positions,
-    sql::{self, Activity, Certification, Controller, Resource, VisitorApplication},
+    sql::{self, Activity, Certification, Controller, Resource, VisitorRequest},
     vatusa, ControllerRating,
 };
 
@@ -424,11 +424,10 @@ async fn page_visitor_application_form(
         None => return Ok(Html(String::from("Must be logged in"))),
     };
     // check pending request
-    let pending_request: Option<VisitorApplication> =
-        sqlx::query_as(sql::GET_PENDING_VISITOR_REQ_FOR)
-            .bind(user_info.cid)
-            .fetch_optional(&state.db)
-            .await?;
+    let pending_request: Option<VisitorRequest> = sqlx::query_as(sql::GET_PENDING_VISITOR_REQ_FOR)
+        .bind(user_info.cid)
+        .fetch_optional(&state.db)
+        .await?;
     // check rating
     let controller_info = match vatusa::get_controller_info(user_info.cid, None).await {
         Ok(info) => Some(info),

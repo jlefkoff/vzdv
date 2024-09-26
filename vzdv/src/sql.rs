@@ -83,7 +83,7 @@ pub struct Resource {
 }
 
 #[derive(Debug, FromRow, Serialize)]
-pub struct VisitorApplication {
+pub struct VisitorRequest {
     pub id: u32,
     pub cid: u32,
     pub first_name: String,
@@ -342,9 +342,12 @@ pub const GET_ALL_FEEDBACK_FOR: &str = "SELECT * FROM feedback WHERE controller=
 
 pub const GET_ALL_RESOURCES: &str = "SELECT * FROM resource";
 
+pub const GET_VISITOR_REQUEST_BY_ID: &str = "SELECT * FROM visitor_request WHERE id=$1";
+pub const GET_ALL_VISITOR_REQUESTS: &str = "SELECT * FROM visitor_request";
 pub const GET_PENDING_VISITOR_REQ_FOR: &str = "SELECT * FROM visitor_request WHERE cid=$1";
 pub const INSERT_INTO_VISITOR_REQ: &str =
     "INSERT INTO visitor_request VALUES (NULL, $1, $2, $3, $4, $5, $6);";
+pub const DELETE_VISITOR_REQUEST: &str = "DELETE FROM visitor_request WHERE id=$1";
 
 pub const GET_UPCOMING_EVENTS: &str = "SELECT * FROM event WHERE end > $1 AND published = TRUE";
 pub const GET_ALL_UPCOMING_EVENTS: &str = "SELECT * FROM event WHERE end > $1";

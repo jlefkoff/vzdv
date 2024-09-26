@@ -1,12 +1,12 @@
 //! Endpoints for editing and controlling aspects of the site.
 
 use crate::{
-    email::send_mail,
-    flashed_messages,
+    email::{self, send_mail},
+    flashed_messages::{self, MessageLevel},
     shared::{reject_if_not_in, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{get, post},
     Form, Router,
@@ -19,8 +19,9 @@ use serde_json::json;
 use std::{collections::HashMap, io::BufRead, sync::Arc};
 use tower_sessions::Session;
 use vzdv::{
-    sql::{self, Controller, Feedback, FeedbackForReview},
-    vatusa, PermissionsGroup, GENERAL_HTTP_CLIENT,
+    sql::{self, Controller, Feedback, FeedbackForReview, VisitorRequest},
+    vatusa::{self, add_visiting_controller, get_multiple_controller_info},
+    PermissionsGroup, GENERAL_HTTP_CLIENT,
 };
 
 /// Page for managing controller feedback.
@@ -83,7 +84,7 @@ async fn post_feedback_form_handle(
             info!("{} archived feedback {}", user_info.cid, feedback.id);
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::MessageLevel::Success,
+                MessageLevel::Success,
                 "Feedback archived",
             )
             .await?;
@@ -102,7 +103,7 @@ async fn post_feedback_form_handle(
             );
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::MessageLevel::Success,
+                MessageLevel::Success,
                 "Feedback deleted",
             )
             .await?;
@@ -152,18 +153,14 @@ async fn post_feedback_form_handle(
                 .await?;
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::MessageLevel::Success,
+                MessageLevel::Success,
                 "Feedback shared",
             )
             .await?;
         }
     } else {
-        flashed_messages::push_flashed_message(
-            session,
-            flashed_messages::MessageLevel::Error,
-            "Feedback not found",
-        )
-        .await?;
+        flashed_messages::push_flashed_message(session, MessageLevel::Error, "Feedback not found")
+            .await?;
     }
 
     Ok(Redirect::to("/admin/feedback").into_response())
@@ -211,7 +208,7 @@ async fn post_email_manual_send(
         None => {
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::MessageLevel::Error,
+                MessageLevel::Error,
                 "Unknown controller",
             )
             .await?;
@@ -229,7 +226,7 @@ async fn post_email_manual_send(
         None => {
             flashed_messages::push_flashed_message(
                 session,
-                flashed_messages::MessageLevel::Error,
+                MessageLevel::Error,
                 "Could not get controller's email from VATUSA",
             )
             .await?;
@@ -244,12 +241,7 @@ async fn post_email_manual_send(
         &manual_email_form.template,
     )
     .await?;
-    flashed_messages::push_flashed_message(
-        session,
-        flashed_messages::MessageLevel::Info,
-        "Email sent",
-    )
-    .await?;
+    flashed_messages::push_flashed_message(session, MessageLevel::Info, "Email sent").await?;
     Ok(Redirect::to("/admin/email/manual").into_response())
 }
 
@@ -312,10 +304,149 @@ async fn page_visitor_applications(
     {
         return Ok(redirect.into_response());
     }
+    let requests: Vec<VisitorRequest> = sqlx::query_as(sql::GET_ALL_VISITOR_REQUESTS)
+        .fetch_all(&state.db)
+        .await?;
+    let request_cids: Vec<_> = requests.iter().map(|request| request.cid).collect();
+    let controller_info = get_multiple_controller_info(&request_cids).await;
+    let already_visiting = request_cids.iter().fold(HashMap::new(), |mut map, cid| {
+        let info = controller_info.iter().find(|&info| info.cid == *cid);
+        if let Some(info) = info {
+            let already_visiting: Vec<String> = info
+                .visiting_facilities
+                .as_ref()
+                .map(|visiting| {
+                    visiting
+                        .iter()
+                        .map(|visit| visit.facility.to_owned())
+                        .collect()
+                })
+                .unwrap_or_default();
+            map.insert(cid, already_visiting.join(", "));
+        }
+        map
+    });
 
+    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
     let template = state.templates.get_template("admin/visitor_applications")?;
-    let rendered = template.render(context! { user_info })?;
+    let rendered = template.render(context! {
+        user_info,
+        flashed_messages,
+        requests,
+        already_visiting,
+    })?;
     Ok(Html(rendered).into_response())
+}
+
+#[derive(Deserialize)]
+struct VisitorApplicationActionForm {
+    action: String,
+}
+
+async fn post_visitor_application_action(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(id): Path<u32>,
+    Form(action_form): Form<VisitorApplicationActionForm>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) =
+        reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
+    {
+        return Ok(redirect);
+    }
+    let user_info = user_info.unwrap();
+    let request: Option<VisitorRequest> = sqlx::query_as(sql::GET_VISITOR_REQUEST_BY_ID)
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?;
+    let request = match request {
+        Some(r) => r,
+        None => {
+            flashed_messages::push_flashed_message(
+                session,
+                MessageLevel::Error,
+                "Visitor application not found",
+            )
+            .await?;
+            return Ok(Redirect::to("/admin/visitor_applications"));
+        }
+    };
+    let controller_info =
+        vatusa::get_controller_info(request.cid, Some(&state.config.vatsim.vatusa_api_key))
+            .await
+            .map_err(|err| AppError::GenericFallback("getting controller info", err))?;
+    info!(
+        "{} taking action {} on visitor request {id}",
+        user_info.cid, action_form.action
+    );
+
+    if action_form.action == "accept" {
+        // add to roster
+        add_visiting_controller(request.cid, &state.config.vatsim.vatusa_api_key)
+            .await
+            .map_err(|err| AppError::GenericFallback("could not add visitor", err))?;
+
+        // inform if possible
+        if let Some(email_address) = controller_info.email {
+            send_mail(
+                &state.config,
+                &state.db,
+                &format!("{} {}", request.first_name, request.last_name),
+                &email_address,
+                email::templates::VISITOR_ACCEPTED,
+            )
+            .await?;
+            flashed_messages::push_flashed_message(
+                session,
+                MessageLevel::Success,
+                "Visitor request accepted and the controller was emailed of the decision.",
+            )
+            .await?;
+        } else {
+            warn!("No email address found for {}", request.cid);
+            flashed_messages::push_flashed_message(
+                session,
+                MessageLevel::Success,
+                "Visitor request accepted, but their email could not be determined so no email was sent.",
+            )
+            .await?;
+        }
+    } else if action_form.action == "deny" {
+        // inform if possible
+        if let Some(email_address) = controller_info.email {
+            send_mail(
+                &state.config,
+                &state.db,
+                &format!("{} {}", request.first_name, request.last_name),
+                &email_address,
+                email::templates::VISITOR_DENIED,
+            )
+            .await?;
+            flashed_messages::push_flashed_message(
+                session,
+                MessageLevel::Success,
+                "Visitor request denied and the controller was emailed of the decision.",
+            )
+            .await?;
+        } else {
+            warn!("No email address found for {}", request.cid);
+            flashed_messages::push_flashed_message(
+                session,
+                MessageLevel::Success,
+                "Visitor request denied, but their email could not be determined so no email was sent.",
+            )
+            .await?;
+        }
+    }
+
+    // delete the request
+    sqlx::query(sql::DELETE_VISITOR_REQUEST)
+        .bind(id)
+        .execute(&state.db)
+        .await?;
+
+    Ok(Redirect::to("/admin/visitor_applications"))
 }
 
 /// This file's routes and templates.
@@ -362,5 +493,9 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .route(
             "/admin/visitor_applications",
             get(page_visitor_applications),
+        )
+        .route(
+            "/admin/visitor_applications/:id",
+            get(post_visitor_application_action),
         )
 }

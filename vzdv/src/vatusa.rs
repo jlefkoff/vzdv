@@ -24,6 +24,15 @@ pub struct RosterMemberRole {
 }
 
 #[derive(Debug, Deserialize, Serialize)]
+pub struct RosterMemberVisiting {
+    pub id: u32,
+    pub cid: u32,
+    pub facility: String,
+    pub created_at: String,
+    pub updated_at: String,
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct RosterMember {
     pub cid: u32,
     #[serde(rename = "fname")]
@@ -57,7 +66,7 @@ pub struct RosterMember {
     pub transfer_eligible: Option<serde_json::Value>,
     pub roles: Vec<RosterMemberRole>,
     pub rating_short: String,
-    pub visiting_facilities: Option<Vec<serde_json::Value>>,
+    pub visiting_facilities: Option<Vec<RosterMemberVisiting>>,
     #[serde(rename = "isMentor")]
     pub is_mentor: bool,
     #[serde(rename = "isSupIns")]
@@ -172,26 +181,48 @@ pub async fn get_controller_info(cid: u32, api_key: Option<&str>) -> Result<Rost
     Ok(data.data)
 }
 
+/// Get multiple controller info documents.
+pub async fn get_multiple_controller_info(cids: &[u32]) -> Vec<RosterMember> {
+    let mut set = JoinSet::new();
+    for &cid in cids {
+        set.spawn(async move { get_controller_info(cid, None).await });
+    }
+    let mut info = Vec::new();
+    while let Some(res) = set.join_next().await {
+        if let Ok(Ok(data)) = res {
+            info.push(data);
+        }
+    }
+    info
+}
+
 /// Retrieve multiple controller first and last names from the API by CIDs.
 ///
 /// Any network calls that fail are simply not included in the returned map.
 pub async fn get_multiple_controller_names(cids: &[u32]) -> HashMap<u32, String> {
-    let mut set = JoinSet::new();
-    for &cid in cids {
-        set.spawn(async move {
-            get_controller_info(cid, None)
-                .await
-                .map(|info| (cid, format!("{} {}", info.first_name, info.last_name)))
-        });
-    }
+    let info = get_multiple_controller_info(cids).await;
+    info.iter().fold(HashMap::new(), |mut map, info| {
+        map.insert(info.cid, format!("{} {}", info.first_name, info.last_name));
+        map
+    })
+}
 
-    let mut map = HashMap::new();
-    while let Some(res) = set.join_next().await {
-        if let Ok(Ok((cid, name))) = res {
-            map.insert(cid, name);
-        }
+/// Add a visiting controller to the roster.
+pub async fn add_visiting_controller(cid: u32, api_key: &str) -> Result<()> {
+    let resp = GENERAL_HTTP_CLIENT
+        .post(format!(
+            "{BASE_URL}v2/facility/ZDV/roster/manageVisitor/{cid}"
+        ))
+        .query(&[("apikey", api_key)])
+        .send()
+        .await?;
+    if !resp.status().is_success() {
+        bail!(
+            "Got status {} from VATUSA API to add a visiting controller",
+            resp.status().as_u16()
+        );
     }
-    map
+    Ok(())
 }
 
 #[derive(Debug, Deserialize, Serialize)]
