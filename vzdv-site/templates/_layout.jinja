@@ -87,15 +87,13 @@
                   <li><a class="dropdown-item" href="/facility/visitor_application">Visitor Application</a></li>
                 </ul>
               </li>
-              {% if user_info and user_info.is_some_staff %}
+              {% if user_info and user_info.is_admin %}
                 <li class="nav-item dropdown">
                   <a href="#" class="nav-link dropdown-toggle" role="button" data-bs-toggle="dropdown" aria-expanded="false">Admin</a>
                   <ul class="dropdown-menu">
-                    {% if user_info.is_admin %}
-                      <li><a href="/admin/feedback" class="dropdown-item">Manage feedback</a></li>
-                      <li><a href="/admin/email/manual" class="dropdown-item">Send emails</a></li>
-                      <li><a href="/admin/logs" class="dropdown-item">Read logs</a></li>
-                    {% endif %}
+                    <li><a href="/admin/feedback" class="dropdown-item">Manage feedback</a></li>
+                    <li><a href="/admin/email/manual" class="dropdown-item">Send emails</a></li>
+                    <li><a href="/admin/logs" class="dropdown-item">Read logs</a></li>
                   </ul>
                 </li>
               {% endif %}
