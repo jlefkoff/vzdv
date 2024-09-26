@@ -692,5 +692,3 @@ pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
         )
         .route("/events/:id/set_position", post(post_set_position))
 }
-
-// TODO assign controller to a position

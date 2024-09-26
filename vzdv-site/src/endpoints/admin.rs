@@ -169,23 +169,6 @@ async fn post_feedback_form_handle(
     Ok(Redirect::to("/admin/feedback").into_response())
 }
 
-/**
- * TODO manage a controller
- *
- * Things to do:
- *  - set controller rating
- *  - add to / remove from the roster
- *  - add / remove certifications
- *  - add / remove staff ranks (incl. mentor and assoc. positions)
- *  - add training note (do it on this site, then post to VATUSA)
- *
- * TODO allow managing the roster
- * TODO allow creating and modifying events
- * TODO allow managing visitor requests
- * TODO allow running reports on the roster to find controllers who aren't
- *      meeting specified activity requirements
- */
-
 /// Admin page to manually send emails.
 async fn page_email_manual_send(
     State(state): State<Arc<AppState>>,
@@ -209,6 +192,7 @@ struct ManualEmailForm {
     template: String,
 }
 
+/// Form submission to manually send an email.
 async fn post_email_manual_send(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -269,6 +253,8 @@ async fn post_email_manual_send(
     Ok(Redirect::to("/admin/email/manual").into_response())
 }
 
+/// Page for logs.
+///
 /// Read the last hundred lines from each of the log files
 /// and show them in the page.
 async fn page_logs(
@@ -315,6 +301,23 @@ async fn page_logs(
     Ok(Html(rendered).into_response())
 }
 
+/// Page for managing visitor applications.
+async fn page_visitor_applications(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Response, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) =
+        reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
+    {
+        return Ok(redirect.into_response());
+    }
+
+    let template = state.templates.get_template("admin/visitor_applications")?;
+    let rendered = template.render(context! { user_info })?;
+    Ok(Html(rendered).into_response())
+}
+
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
@@ -335,6 +338,12 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/admin/logs.jinja"),
         )
         .unwrap();
+    templates
+        .add_template(
+            "admin/visitor_applications",
+            include_str!("../../templates/admin/visitor_applications.jinja"),
+        )
+        .unwrap();
     templates.add_filter("nice_date", |date: String| {
         chrono::DateTime::parse_from_rfc3339(&date)
             .unwrap()
@@ -350,5 +359,8 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             get(page_email_manual_send).post(post_email_manual_send),
         )
         .route("/admin/logs", get(page_logs))
-    // .route("/admin/roster/:cid", get(page_controller))
+        .route(
+            "/admin/visitor_applications",
+            get(page_visitor_applications),
+        )
 }
