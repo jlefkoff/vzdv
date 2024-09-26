@@ -15,7 +15,6 @@ pub mod templates {
 }
 
 /// Send an SMTP email to the recipient.
-#[allow(unused)] // TODO
 pub async fn send_mail(
     config: &Config,
     db: &Pool<Sqlite>,
