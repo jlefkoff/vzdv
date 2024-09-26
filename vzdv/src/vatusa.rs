@@ -181,7 +181,10 @@ pub async fn get_controller_info(cid: u32, api_key: Option<&str>) -> Result<Rost
     Ok(data.data)
 }
 
-/// Get multiple controller info documents.
+/// Get multiple controller info documents at the same time.
+///
+/// Instead of returning errors, this function simply omits info
+/// from any request that failed.
 pub async fn get_multiple_controller_info(cids: &[u32]) -> Vec<RosterMember> {
     let mut set = JoinSet::new();
     for &cid in cids {
