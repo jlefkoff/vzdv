@@ -1,7 +1,6 @@
 use crate::GENERAL_HTTP_CLIENT;
 use anyhow::{bail, Result};
 use chrono::NaiveDateTime;
-use log::error;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
