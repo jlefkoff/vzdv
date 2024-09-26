@@ -16,6 +16,7 @@ All content herein is solely for use on the [VATSIM network](https://vatsim.net/
 - Be both fast and lightweight.
 - Be easy to use.
 - Follow good software development practices.
+- Be easy to develop, deploy, and run.
 
 ## Building
 
