@@ -36,7 +36,7 @@
         <div class="card-title">
           <h3>Overview</h3>
         </div>
-        <p class="card-text">
+        <div class="card-text">
           <strong>CID:</strong> {{ controller.cid }}
           <br>
           <strong>Rating:</strong> {{ rating_str }}
@@ -55,7 +55,21 @@
               </button>
             {% endif %}
           {% endif %}
-        </p>
+          {% if roles %}
+            <br><strong>Roles:</strong>
+            <ul class="ps-3">
+              {% for role in roles %}
+                <li>{{ role }}</li>
+              {% endfor %}
+            </ul>
+            {% if user_info and user_info.is_admin %}
+              <button class="btn btn-sm btn-warning" onclick="modalChangeRoles.showModal()">
+                <i class="bi bi-pencil"></i>
+                Edit roles
+              </button>
+            {% endif %}
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>
@@ -204,6 +218,30 @@
   </div>
 {% endif %}
 
+<dialog id="modalChangeRoles">
+  <h2 class="pb-3">Edit roles</h2>
+  <p>These are roles <i>on this site</i> and do not change anything that VATUSA, etc. know about the controller.</p>
+  <p>Sr Staff roles will sync from VATUSA, which may overwrite whatever is set here.</p>
+  <form action="/controller/{{ controller.cid }}/roles" method="POST">
+    {% for role in all_roles %}
+      <div class="row">
+        <div class="col">
+          <div class="form-check">
+            <input type="checkbox" name="{{ role }}" class="form-check-input" value="" id="{{ role }}"{% if includes(roles, role) %} checked{% endif %}>
+            <label for="{{ role }}" class="form-check-label">{{ role }}</label>
+          </div>
+        </div>
+      </div>
+    {% endfor %}
+    <div class="row">
+      <div class="d-flex justify-content-between">
+        <button class="btn btn-warning" role="button" id="btn-modal-set-roles-close">Close</button>
+        <button class="btn btn-primary" role="button" type="submit">Save</button>
+      </div>
+    </div>
+  </form>
+</dialog>
+
 <dialog id="modalChangeOI">
   <h2 class="pb-3">Change OIs</h2>
   <form action="/controller/{{ controller.cid }}/ois" method="POST">
@@ -351,6 +389,10 @@
   document.getElementById('btn-modal-set-ois-close').addEventListener('click', (e) => {
     e.preventDefault();
     document.getElementById('modalChangeOI').close();
+  });
+  document.getElementById('btn-modal-set-roles-close').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.getElementById('modalChangeRoles').close();
   });
   document.getElementById('btn-modal-certs-close').addEventListener('click', (e) => {
     e.preventDefault();

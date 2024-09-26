@@ -14,7 +14,8 @@ use axum::{
     Form, Router,
 };
 use chrono::{DateTime, Utc};
-use log::{error, info};
+use itertools::Itertools;
+use log::{error, info, warn};
 use minijinja::{context, Environment};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -93,6 +94,7 @@ async fn page_controller(
         };
         certifications.push(CertNameValue { name, value });
     }
+    let roles: Vec<_> = controller.roles.split_terminator(',').collect();
 
     let is_admin = is_user_member_of(&state, &user_info, PermissionsGroup::Admin).await;
     let feedback: Vec<Feedback> = if is_admin {
@@ -128,14 +130,19 @@ async fn page_controller(
     } else {
         Vec::new()
     };
+    let all_roles = vec![
+        "ATM", "DATM", "TA", "FE", "EC", "WM", "AFE", "AEC", "AWM", "INS", "MTR",
+    ];
 
     let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
     let template = state.templates.get_template("controller/controller")?;
     let rendered: String = template.render(context! {
         user_info,
         controller,
+        roles,
         rating_str,
         certifications,
+        all_roles,
         feedback,
         staff_notes,
         flashed_messages
@@ -434,6 +441,57 @@ async fn post_add_training_note(
     Ok(Redirect::to(&format!("/controller/{cid}")))
 }
 
+/// Submit a form to change the controller's roles.
+///
+/// For admin staff members.
+async fn post_set_roles(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(cid): Path<u32>,
+    Form(roles_form): Form<HashMap<String, String>>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) =
+        reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
+    {
+        return Ok(redirect);
+    }
+    let user_info = user_info.unwrap();
+    let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+        .bind(cid)
+        .fetch_optional(&state.db)
+        .await?;
+    let controller = match controller {
+        Some(c) => c,
+        None => {
+            warn!(
+                "{} tried to set roles for unknown controller {cid}",
+                user_info.cid
+            );
+            flashed_messages::push_flashed_message(
+                session,
+                MessageLevel::Error,
+                "Unknown controller",
+            )
+            .await?;
+            return Ok(Redirect::to(&format!("/controller/{cid}")));
+        }
+    };
+    let new_roles = roles_form.keys().join(",");
+    info!(
+        "{} is setting roles for {cid} to '{}'; was '{}'",
+        user_info.cid, new_roles, controller.roles
+    );
+    sqlx::query(sql::SET_CONTROLLER_ROLES)
+        .bind(cid)
+        .bind(new_roles)
+        .execute(&state.db)
+        .await?;
+    flashed_messages::push_flashed_message(session, MessageLevel::Info, "Roles updated").await?;
+
+    Ok(Redirect::to(&format!("/controller/{cid}")))
+}
+
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
         .add_template(
@@ -447,6 +505,12 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/controller/training_notes.jinja"),
         )
         .unwrap();
+    templates.add_function(
+        "includes",
+        |roles: Vec<String>, role: String| -> Result<bool, minijinja::Error> {
+            Ok(roles.contains(&role))
+        },
+    );
 
     Router::new()
         .route("/controller/:cid", get(page_controller))
@@ -462,4 +526,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             "/controller/:cid/training_records",
             get(snippet_get_training_records).post(post_add_training_note),
         )
+        .route("/controller/:cid/roles", post(post_set_roles))
 }
