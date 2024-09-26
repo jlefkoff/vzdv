@@ -1,10 +1,10 @@
-use std::{collections::HashMap, time::Duration};
-
 use crate::GENERAL_HTTP_CLIENT;
 use anyhow::{bail, Result};
-use chrono::{DateTime, Utc};
+use chrono::NaiveDateTime;
+use log::error;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::HashMap;
 use tokio::task::JoinSet;
 
 const BASE_URL: &str = "https://api.vatusa.net/";
@@ -247,29 +247,23 @@ pub mod training_record_location {
 #[derive(Debug, Deserialize, Serialize)]
 pub struct NewTrainingRecord {
     pub instructor_id: String,
-    pub date: DateTime<Utc>,
+    pub date: NaiveDateTime,
     pub position: String,
-    pub duration: Duration,
+    pub duration: String,
     pub location: u8,
     pub notes: String,
-}
-
-fn duration_to_vatusa_record(duration: &Duration) -> String {
-    let m = duration.as_secs() / 60 % 60;
-    let h = duration.as_secs() / 60 / 60;
-    format!("{:0>2}:{:0>2}", h, m)
 }
 
 /// Add a new training record to the controller's VATUSA record.
 pub async fn save_training_record(api_key: &str, cid: u32, data: &NewTrainingRecord) -> Result<()> {
     let resp = GENERAL_HTTP_CLIENT
-        .post(format!("{BASE_URL}/user/{cid}/training/record"))
+        .post(format!("{BASE_URL}v2/user/{cid}/training/record"))
         .query(&[("apikey", api_key)])
         .json(&json!({
             "instructor_id": data.instructor_id,
             "session_date": data.date.format("%Y-%m-%d %H:%M").to_string(),
             "position": data.position,
-            "duration": duration_to_vatusa_record(&data.duration),
+            "duration": &data.duration,
             "location": data.location,
             "notes": data.notes
         }))
@@ -283,18 +277,4 @@ pub async fn save_training_record(api_key: &str, cid: u32, data: &NewTrainingRec
         );
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use std::time::Duration;
-
-    use crate::vatusa::duration_to_vatusa_record;
-
-    #[test]
-    fn test_duration_to_vatusa_record() {
-        let d = Duration::from_secs((2 * 60 * 60) + (30 * 60));
-        let s = duration_to_vatusa_record(&d);
-        assert_eq!(s, "02:30");
-    }
 }

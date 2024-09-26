@@ -278,9 +278,51 @@
 
 <dialog id="modalNewTrainingRecord">
   <h2 class="pb-3">New training record</h2>
-  <form action="/controller/{{ controller.cid }}/training_record">
+  <form action="/controller/{{ controller.cid }}/training_records" method="POST">
+    <input type="hidden" name="timezone" id="input-timezone">
     <div class="row">
-      TODO
+      <div class="col">
+        <div class="mb-3">
+          <label for="date" class="form-label">Date</label>
+          <input type="datetime-local" id="date" name="date" class="form-control" required>
+        </div>
+      </div>
+      <div class="col">
+        <div class="mb-3">
+          <label for="duration" class="form-label">Duration</label>
+          <input type="text" id="duration" name="duration" class="form-control" placeholder="HH:MM" required>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <div class="mb-3">
+          <label for="position" class="form-label">Position</label>
+          <input type="text" id="position" name="position" class="form-control" required>
+        </div>
+      </div>
+      <div class="col">
+        <div class="mb-3">
+          <label for="location" class="form-label">Session type</label>
+          <select name="location" id="location" class="form-select">
+            <option value="0" selected>Classroom</option>
+            <option value="0">Live</option>
+            <option value="2">Simulation</option>
+            <option value="1">Live OTS</option>
+            <option value="2">Simulation OTS</option>
+            <option value="0">No show</option>
+            <option value="0">Other</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="row">
+      <div class="col">
+        <div class="mb-3">
+          <label for="notes" class="form-label">Notes</label>
+          <textarea name="notes" id="notes" class="form-control" placeholder="..." required></textarea>
+        </div>
+      </div>
     </div>
     <div class="row">
       <div class="d-flex justify-content-between">
@@ -344,6 +386,8 @@
       }
     });
   });
+
+  document.getElementById('input-timezone').value = Intl.DateTimeFormat().resolvedOptions().timeZone;
 </script>
 
 {% endblock %}

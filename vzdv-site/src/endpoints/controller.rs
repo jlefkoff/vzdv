@@ -3,7 +3,8 @@
 use crate::{
     flashed_messages::{self, MessageLevel},
     shared::{
-        is_user_member_of, reject_if_not_in, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
+        is_user_member_of, js_timestamp_to_utc, reject_if_not_in, AppError, AppState, UserInfo,
+        SESSION_USER_INFO_KEY,
     },
 };
 use axum::{
@@ -13,7 +14,7 @@ use axum::{
     Form, Router,
 };
 use chrono::{DateTime, Utc};
-use log::info;
+use log::{error, info};
 use minijinja::{context, Environment};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
@@ -25,7 +26,10 @@ use tower_sessions::Session;
 use vzdv::{
     get_controller_cids_and_names, retrieve_all_in_use_ois,
     sql::{self, Certification, Controller, Feedback, StaffNote},
-    vatusa::{get_multiple_controller_names, get_training_records},
+    vatusa::{
+        get_multiple_controller_names, get_training_records, save_training_record,
+        NewTrainingRecord,
+    },
     ControllerRating, PermissionsGroup,
 };
 
@@ -371,11 +375,63 @@ async fn snippet_get_training_records(
     Ok(Html(rendered).into_response())
 }
 
+#[derive(Debug, Deserialize)]
+struct NewTrainingRecordForm {
+    date: String,
+    duration: String,
+    position: String,
+    location: u8,
+    notes: String,
+    timezone: String,
+}
+
 /// Submit a new training note for the controller.
 ///
 /// For training staff members.
-async fn post_add_training_note() -> Result<Redirect, AppError> {
-    todo!()
+async fn post_add_training_note(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(cid): Path<u32>,
+    Form(record_form): Form<NewTrainingRecordForm>,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) =
+        reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
+    {
+        return Ok(redirect);
+    }
+    let user_info = user_info.unwrap();
+    let date = js_timestamp_to_utc(&record_form.date, &record_form.timezone)?;
+    let new_record = NewTrainingRecord {
+        instructor_id: format!("{}", user_info.cid),
+        date,
+        position: record_form.position,
+        duration: record_form.duration,
+        location: record_form.location,
+        notes: record_form.notes,
+    };
+    match save_training_record(&state.config.vatsim.vatusa_api_key, cid, &new_record).await {
+        Ok(_) => {
+            flashed_messages::push_flashed_message(
+                session,
+                MessageLevel::Info,
+                "New training record saved",
+            )
+            .await?;
+            info!("{} submitted new training record for {cid}", user_info.cid);
+        }
+        Err(e) => {
+            error!("Error saving new training record for {cid}: {e}");
+            flashed_messages::push_flashed_message(
+                session,
+                MessageLevel::Error,
+                "Could not save new training record",
+            )
+            .await?;
+        }
+    }
+
+    Ok(Redirect::to(&format!("/controller/{cid}")))
 }
 
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
