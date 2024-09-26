@@ -24,8 +24,8 @@ pub async fn send_mail(
 ) -> Result<(), AppError> {
     // template match from config
     let template = match template_name {
-        templates::VISITOR_ACCEPTED => &config.email.visitor_removed_template,
-        templates::VISITOR_DENIED => &config.email.visitor_removed_template,
+        templates::VISITOR_ACCEPTED => &config.email.visitor_accepted_template,
+        templates::VISITOR_DENIED => &config.email.visitor_denied_template,
         templates::VISITOR_REMOVED => &config.email.visitor_removed_template,
         _ => {
             return Err(AppError::UnknownEmailTemplate(template_name.to_owned()));
