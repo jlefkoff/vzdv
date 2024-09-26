@@ -451,9 +451,7 @@ async fn post_set_roles(
     Form(roles_form): Form<HashMap<String, String>>,
 ) -> Result<Redirect, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) =
-        reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
-    {
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
         return Ok(redirect);
     }
     let user_info = user_info.unwrap();
