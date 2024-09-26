@@ -479,7 +479,7 @@ async fn page_visitor_application_form_submit(
             .bind(&user_info.last_name)
             .bind(application_form.facility)
             .bind(application_form.rating)
-            .bind(sqlx::types::chrono::Utc::now())
+            .bind(Utc::now())
             .execute(&state.db)
             .await?;
         flashed_messages::push_flashed_message(
