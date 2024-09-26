@@ -299,9 +299,7 @@ async fn page_visitor_applications(
     session: Session,
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) =
-        reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
-    {
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
         return Ok(redirect.into_response());
     }
     let requests: Vec<VisitorRequest> = sqlx::query_as(sql::GET_ALL_VISITOR_REQUESTS)
@@ -350,9 +348,7 @@ async fn post_visitor_application_action(
     Form(action_form): Form<VisitorApplicationActionForm>,
 ) -> Result<Redirect, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) =
-        reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
-    {
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
         return Ok(redirect);
     }
     let user_info = user_info.unwrap();
