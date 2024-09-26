@@ -19,20 +19,66 @@ use log::{error, info, warn};
 use minijinja::{context, Environment};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
+use sqlx::{Pool, Sqlite};
 use std::{
     collections::{HashMap, HashSet},
     sync::Arc,
 };
 use tower_sessions::Session;
 use vzdv::{
-    get_controller_cids_and_names, retrieve_all_in_use_ois,
+    controller_can_see, get_controller_cids_and_names, retrieve_all_in_use_ois,
     sql::{self, Certification, Controller, Feedback, StaffNote},
     vatusa::{
         get_multiple_controller_names, get_training_records, save_training_record,
         NewTrainingRecord,
     },
-    ControllerRating, PermissionsGroup,
+    ControllerRating, PermissionsGroup, StaffPosition,
 };
+
+/// Roles the current user is able to set.
+async fn roles_to_set(
+    db: &Pool<Sqlite>,
+    user_info: &Option<UserInfo>,
+) -> Result<HashSet<String>, AppError> {
+    let controller: Option<Controller> = match user_info {
+        Some(ref ui) => {
+            sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+                .bind(ui.cid)
+                .fetch_optional(db)
+                .await?
+        }
+        None => None,
+    };
+    let mut roles_to_set = Vec::new();
+    let user_roles: Vec<_> = match &controller {
+        Some(c) => c.roles.split_terminator('\n').collect(),
+        None => {
+            return Ok(HashSet::new());
+        }
+    };
+    if user_roles.contains(&"FE") {
+        roles_to_set.push(StaffPosition::AFE);
+    } else if user_roles.contains(&"EC") {
+        roles_to_set.push(StaffPosition::AEC);
+    } else if controller_can_see(&controller, PermissionsGroup::Admin) {
+        roles_to_set.push(vzdv::StaffPosition::ATM);
+        roles_to_set.push(vzdv::StaffPosition::DATM);
+        roles_to_set.push(vzdv::StaffPosition::TA);
+        roles_to_set.push(vzdv::StaffPosition::FE);
+        roles_to_set.push(vzdv::StaffPosition::EC);
+        roles_to_set.push(vzdv::StaffPosition::WM);
+        roles_to_set.push(vzdv::StaffPosition::AFE);
+        roles_to_set.push(vzdv::StaffPosition::AEC);
+        roles_to_set.push(vzdv::StaffPosition::AWM);
+        roles_to_set.push(vzdv::StaffPosition::INS);
+        roles_to_set.push(vzdv::StaffPosition::MTR);
+    }
+
+    Ok(roles_to_set
+        .iter()
+        .map(|position| position.as_str().to_owned())
+        .collect::<HashSet<String>>())
+}
 
 /// Overview page for a user.
 ///
@@ -130,9 +176,9 @@ async fn page_controller(
     } else {
         Vec::new()
     };
-    let all_roles = vec![
-        "ATM", "DATM", "TA", "FE", "EC", "WM", "AFE", "AEC", "AWM", "INS", "MTR",
-    ];
+    let settable_roles_set = roles_to_set(&state.db, &user_info).await?;
+    let mut settable_roles: Vec<_> = settable_roles_set.iter().collect();
+    settable_roles.sort();
 
     let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
     let template = state.templates.get_template("controller/controller")?;
@@ -142,7 +188,7 @@ async fn page_controller(
         roles,
         rating_str,
         certifications,
-        all_roles,
+        settable_roles,
         feedback,
         staff_notes,
         flashed_messages
@@ -451,9 +497,11 @@ async fn post_set_roles(
     Form(roles_form): Form<HashMap<String, String>>,
 ) -> Result<Redirect, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::SomeStaff).await
+    {
         return Ok(redirect);
     }
+    let roles_can_set = roles_to_set(&state.db, &user_info).await?;
     let user_info = user_info.unwrap();
     let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
         .bind(cid)
@@ -475,7 +523,38 @@ async fn post_set_roles(
             return Ok(Redirect::to(&format!("/controller/{cid}")));
         }
     };
-    let new_roles = roles_form.keys().join(",");
+    let existing_roles: Vec<_> = controller.roles.split_terminator(',').collect();
+    let mut resolved_roles = Vec::new();
+    let roles_to_set: Vec<_> = roles_form.keys().map(|s| s.as_str()).collect();
+
+    // handle the form's data
+    for role in existing_roles {
+        if roles_can_set.contains(role) {
+            if roles_to_set.contains(&role) {
+                // if this user can set the role and it is still set, keep it
+                resolved_roles.push(role);
+            } else {
+                // if this user can set the role and it no longer set, remove it
+                // no-op
+            }
+        } else {
+            // if this user cannot set the role, keep it
+            resolved_roles.push(role);
+        }
+    }
+    for role in &roles_to_set {
+        // protection against form interception
+        if roles_can_set.contains(*role) {
+            resolved_roles.push(role);
+        }
+    }
+
+    let new_roles = resolved_roles
+        .iter()
+        .collect::<HashSet<&&str>>()
+        .iter()
+        .join(",");
+
     info!(
         "{} is setting roles for {cid} to '{}'; was '{}'",
         user_info.cid, new_roles, controller.roles

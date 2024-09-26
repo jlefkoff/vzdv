@@ -57,17 +57,18 @@
           {% endif %}
           {% if roles %}
             <br><strong>Roles:</strong>
-            <ul class="ps-3">
+            <ul class="ps-3 mb-0">
               {% for role in roles %}
                 <li>{{ role }}</li>
               {% endfor %}
             </ul>
-            {% if user_info and user_info.is_admin %}
-              <button class="btn btn-sm btn-warning" onclick="modalChangeRoles.showModal()">
-                <i class="bi bi-pencil"></i>
-                Edit roles
-              </button>
-            {% endif %}
+          {% endif %}
+          {% if user_info and user_info.is_some_staff %}
+            <br>
+            <button class="btn btn-sm btn-warning" onclick="modalChangeRoles.showModal()">
+              <i class="bi bi-pencil"></i>
+              Edit roles
+            </button>
           {% endif %}
         </div>
       </div>
@@ -223,7 +224,7 @@
   <p>These are roles <i>on this site</i> and do not change anything that VATUSA, etc. know about the controller.</p>
   <p>Sr Staff roles will sync from VATUSA, which may overwrite whatever is set here.</p>
   <form action="/controller/{{ controller.cid }}/roles" method="POST">
-    {% for role in all_roles %}
+    {% for role in settable_roles %}
       <div class="row">
         <div class="col">
           <div class="form-check">
@@ -233,7 +234,7 @@
         </div>
       </div>
     {% endfor %}
-    <div class="row">
+    <div class="row mt-3">
       <div class="d-flex justify-content-between">
         <button class="btn btn-warning" role="button" id="btn-modal-set-roles-close">Close</button>
         <button class="btn btn-primary" role="button" type="submit">Save</button>
