@@ -19,7 +19,7 @@ use serde_json::json;
 use std::{collections::HashMap, io::BufRead, sync::Arc};
 use tower_sessions::Session;
 use vzdv::{
-    sql::{self, Controller, Feedback, FeedbackForReview, VisitorRequest},
+    sql::{self, Controller, Feedback, FeedbackForReview, Resource, VisitorRequest},
     vatusa::{self, add_visiting_controller, get_multiple_controller_info},
     PermissionsGroup, GENERAL_HTTP_CLIENT,
 };
@@ -445,6 +445,26 @@ async fn post_visitor_application_action(
     Ok(Redirect::to("/admin/visitor_applications"))
 }
 
+/// Page for managing the site's resource documents and links.
+async fn page_resources(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Response, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) =
+        reject_if_not_in(&state, &user_info, PermissionsGroup::NamedPosition).await
+    {
+        return Ok(redirect.into_response());
+    }
+    let resources: Vec<Resource> = sqlx::query_as(sql::GET_ALL_RESOURCES)
+        .fetch_all(&state.db)
+        .await?;
+    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
+    let template = state.templates.get_template("admin/resources")?;
+    let rendered = template.render(context! { user_info, flashed_messages, resources })?;
+    Ok(Html(rendered).into_response())
+}
+
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
@@ -471,6 +491,12 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/admin/visitor_applications.jinja"),
         )
         .unwrap();
+    templates
+        .add_template(
+            "admin/resources",
+            include_str!("../../templates/admin/resources.jinja"),
+        )
+        .unwrap();
     templates.add_filter("nice_date", |date: String| {
         chrono::DateTime::parse_from_rfc3339(&date)
             .unwrap()
@@ -494,4 +520,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             "/admin/visitor_applications/:id",
             get(post_visitor_application_action),
         )
+        .route("/admin/resources", get(page_resources))
 }
