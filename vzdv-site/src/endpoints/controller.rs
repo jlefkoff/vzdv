@@ -17,12 +17,15 @@ use log::info;
 use minijinja::{context, Environment};
 use reqwest::StatusCode;
 use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 use tower_sessions::Session;
 use vzdv::{
     get_controller_cids_and_names, retrieve_all_in_use_ois,
     sql::{self, Certification, Controller, Feedback, StaffNote},
-    vatusa::get_training_records,
+    vatusa::{get_multiple_controller_names, get_training_records},
     ControllerRating, PermissionsGroup,
 };
 
@@ -354,8 +357,17 @@ async fn snippet_get_training_records(
     let training_records = get_training_records(&state.config.vatsim.vatusa_api_key, cid)
         .await
         .map_err(|e| AppError::GenericFallback("getting VATUSA training records", e))?;
+    let instructor_cids: Vec<u32> = training_records
+        .iter()
+        .map(|record| record.instructor_id)
+        .collect::<HashSet<u32>>()
+        .iter()
+        .copied()
+        .collect();
+    let instructors = get_multiple_controller_names(&instructor_cids).await;
     let template = state.templates.get_template("controller/training_notes")?;
-    let rendered: String = template.render(context! { user_info, training_records })?;
+    let rendered: String =
+        template.render(context! { user_info, training_records, instructors })?;
     Ok(Html(rendered).into_response())
 }
 

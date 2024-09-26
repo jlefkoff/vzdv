@@ -1,10 +1,11 @@
-use std::time::Duration;
+use std::{collections::HashMap, time::Duration};
 
 use crate::GENERAL_HTTP_CLIENT;
 use anyhow::{bail, Result};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use tokio::task::JoinSet;
 
 const BASE_URL: &str = "https://api.vatusa.net/";
 
@@ -170,6 +171,28 @@ pub async fn get_controller_info(cid: u32, api_key: Option<&str>) -> Result<Rost
     }
     let data: Wrapper = resp.json().await?;
     Ok(data.data)
+}
+
+/// Retrieve multiple controller first and last names from the API by CIDs.
+///
+/// Any network calls that fail are simply not included in the returned map.
+pub async fn get_multiple_controller_names(cids: &[u32]) -> HashMap<u32, String> {
+    let mut set = JoinSet::new();
+    for &cid in cids {
+        set.spawn(async move {
+            get_controller_info(cid, None)
+                .await
+                .map(|info| (cid, format!("{} {}", info.first_name, info.last_name)))
+        });
+    }
+
+    let mut map = HashMap::new();
+    while let Some(res) = set.join_next().await {
+        if let Ok(Ok((cid, name))) = res {
+            map.insert(cid, name);
+        }
+    }
+    map
 }
 
 #[derive(Debug, Deserialize, Serialize)]
