@@ -411,9 +411,13 @@ async fn snippet_get_training_records(
     {
         return Ok(redirect.into_response());
     }
-    let training_records = get_training_records(&state.config.vatsim.vatusa_api_key, cid)
+    let all_training_records = get_training_records(&state.config.vatsim.vatusa_api_key, cid)
         .await
         .map_err(|e| AppError::GenericFallback("getting VATUSA training records", e))?;
+    let training_records: Vec<_> = all_training_records
+        .iter()
+        .filter(|record| record.facility_id == "ZDV")
+        .collect();
     let instructor_cids: Vec<u32> = training_records
         .iter()
         .map(|record| record.instructor_id)
