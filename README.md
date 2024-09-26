@@ -5,14 +5,17 @@
 ![status](https://img.shields.io/badge/project_status-in_dev-red)
 ![CI](https://github.com/Celeo/vzdv/actions/workflows/ci.yml/badge.svg)
 
-New vZDV website. Completely in-dev and unfinished.
+New vZDV website.
 
 This site is not affiliated with the Federal Aviation Administration, actual Denver ARTCC, or any real-world governing aviation body.
-All content herein is solely for use on the VATSIM network.
+All content herein is solely for use on the [VATSIM network](https://vatsim.net/).
 
 ## Project goals
 
-TBD
+- Provide a website solution for the vZDV VATUSA ARTCC.
+- Be both fast and lightweight.
+- Be easy to use.
+- Follow good software development practices.
 
 ## Building
 
@@ -41,7 +44,7 @@ Additional CLI parameters can be found by running each binary with the `--help` 
 
 ## Deploying
 
-This app makes few assertions about how it should be ran. You can run it directly, run triggered by a systemd unit file, run in a Docker container, etc. You _will_ need to have this app behind some sort of reverse proxy that provides HTTPS, like [Caddy](https://caddyserver.com/).
+This app makes few assertions about how it should be ran. You can run it directly, run triggered by a systemd unit file, run in a Docker container, etc. You _will_ need to have this app behind some sort of reverse proxy that provides HTTPS, like [Caddy](https://caddyserver.com/) as handling TLS termination is not something that this app does or will handle.
 
 ## License
 
@@ -54,6 +57,6 @@ Loading indicator from [SamHerbert/SVG-Loaders](https://github.com/SamHerbert/SV
 
 ## Contributing
 
-This repo is happily FOSS, but isn't likely to accept contributions from others right now given the specific and targeted use-case.
+This repo is happily FOSS, but any contributions will need to fall in line with my vision of how the site looks and works.
 
 Unless you explicitly state otherwise, any contribution intentionally submitted for inclusion in the work by you, as defined in the Apache-2.0 license, shall be dual licensed as above, without any additional terms or conditions.
