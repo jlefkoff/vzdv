@@ -3,21 +3,26 @@
 use crate::{
     email::{self, send_mail},
     flashed_messages::{self, MessageLevel},
-    shared::{reject_if_not_in, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
+    shared::{
+        is_user_member_of, reject_if_not_in, AppError, AppState, UserInfo, SESSION_USER_INFO_KEY,
+    },
 };
 use axum::{
-    extract::{Path, Query, State},
+    extract::{Multipart, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
-    routing::{get, post},
+    routing::{delete, get, post},
     Form, Router,
 };
-use log::{info, warn};
+use chrono::Utc;
+use log::{debug, info, warn};
 use minijinja::{context, Environment};
+use reqwest::StatusCode;
 use rev_buf_reader::RevBufReader;
 use serde::Deserialize;
 use serde_json::json;
-use std::{collections::HashMap, io::BufRead, sync::Arc};
+use std::{collections::HashMap, io::BufRead, path::Path as FilePath, sync::Arc};
 use tower_sessions::Session;
+use uuid::Uuid;
 use vzdv::{
     sql::{self, Controller, Feedback, FeedbackForReview, Resource, VisitorRequest},
     vatusa::{self, add_visiting_controller, get_multiple_controller_info},
@@ -27,6 +32,8 @@ use vzdv::{
 /// Page for managing controller feedback.
 ///
 /// Feedback must be reviewed by staff before being posted to Discord.
+///
+/// Admin staff members only.
 async fn page_feedback(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -56,15 +63,15 @@ struct FeedbackReviewForm {
 }
 
 /// Handler for staff members taking action on feedback.
+///
+/// Admin staff members only.
 async fn post_feedback_form_handle(
     State(state): State<Arc<AppState>>,
     session: Session,
     Form(feedback_form): Form<FeedbackReviewForm>,
 ) -> Result<Response, AppError> {
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
-    if let Some(redirect) =
-        reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
-    {
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
         return Ok(redirect.into_response());
     }
     let user_info = user_info.unwrap();
@@ -167,6 +174,8 @@ async fn post_feedback_form_handle(
 }
 
 /// Admin page to manually send emails.
+///
+/// Admin staff members only.
 async fn page_email_manual_send(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -190,6 +199,8 @@ struct ManualEmailForm {
 }
 
 /// Form submission to manually send an email.
+///
+/// Admin staff members only.
 async fn post_email_manual_send(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -249,6 +260,8 @@ async fn post_email_manual_send(
 ///
 /// Read the last hundred lines from each of the log files
 /// and show them in the page.
+///
+/// Admin staff members only.
 async fn page_logs(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -294,6 +307,8 @@ async fn page_logs(
 }
 
 /// Page for managing visitor applications.
+///
+/// Admin staff members only.
 async fn page_visitor_applications(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -341,6 +356,9 @@ struct VisitorApplicationActionForm {
     action: String,
 }
 
+/// Form submission for managing visitor applications.
+///
+/// Admin staff members only.
 async fn post_visitor_application_action(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -446,6 +464,8 @@ async fn post_visitor_application_action(
 }
 
 /// Page for managing the site's resource documents and links.
+///
+/// Named staff members only.
 async fn page_resources(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -459,10 +479,116 @@ async fn page_resources(
     let resources: Vec<Resource> = sqlx::query_as(sql::GET_ALL_RESOURCES)
         .fetch_all(&state.db)
         .await?;
+    let categories = &state.config.database.resource_category_ordering;
     let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
     let template = state.templates.get_template("admin/resources")?;
-    let rendered = template.render(context! { user_info, flashed_messages, resources })?;
+    let rendered =
+        template.render(context! { user_info, flashed_messages, resources, categories })?;
     Ok(Html(rendered).into_response())
+}
+
+/// API endpoint for deleting a resource.
+///
+/// Named staff members only.
+async fn api_delete_resource(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(id): Path<u32>,
+) -> Result<StatusCode, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if !is_user_member_of(&state, &user_info, PermissionsGroup::NamedPosition).await {
+        return Ok(StatusCode::FORBIDDEN);
+    }
+    let user_info = user_info.unwrap();
+    let resource: Option<Resource> = sqlx::query_as(sql::GET_RESOURCE_BY_ID)
+        .bind(id)
+        .fetch_optional(&state.db)
+        .await?;
+    let resource = match resource {
+        Some(r) => r,
+        None => {
+            warn!("{} tried to delete unknown resource {id}", user_info.cid);
+            return Ok(StatusCode::NOT_FOUND);
+        }
+    };
+    sqlx::query(sql::DELETE_RESOURCE_BY_ID)
+        .bind(id)
+        .execute(&state.db)
+        .await?;
+    info!(
+        "{} deleted resource {id} (name: {}, category: {})",
+        user_info.cid, resource.name, resource.category
+    );
+    Ok(StatusCode::OK)
+}
+
+/// Form submission for creating a new resource.
+///
+/// Name staff members only.
+async fn post_new_resource(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+    mut form: Multipart,
+) -> Result<Redirect, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::Admin).await {
+        return Ok(redirect);
+    }
+    let user_info = user_info.unwrap();
+    let mut resource = Resource {
+        updated: Utc::now(),
+        ..Default::default()
+    };
+
+    // have to use a `Multipart` struct for this, so loop through it to get what the data
+    while let Some(field) = form.next_field().await? {
+        let name = field.name().ok_or(AppError::MultipartFormGet)?.to_string();
+        match name.as_str() {
+            "name" => {
+                resource.name = field.text().await?;
+            }
+            "category" => {
+                resource.category = field.text().await?;
+            }
+            "file" => {
+                let new_uuid = Uuid::new_v4();
+                let file_name = field
+                    .file_name()
+                    .ok_or(AppError::MultipartFormGet)?
+                    .to_string();
+                let file_data = field.bytes().await?;
+                let new_file_name = format!("{new_uuid}_{file_name}");
+                let write_path = FilePath::new("./assets").join(&new_file_name);
+                debug!(
+                    "Writing new file to assets dir as part of resource upload: {new_file_name}"
+                );
+                std::fs::write(write_path, file_data)?;
+                resource.file_name = Some(new_file_name);
+            }
+            "link" => {
+                resource.link = Some(field.text().await?);
+            }
+            _ => {}
+        }
+    }
+
+    // save the constructed struct fields
+    sqlx::query(sql::CREATE_NEW_RESOURCE)
+        .bind(&resource.category)
+        .bind(&resource.name)
+        .bind(resource.file_name)
+        .bind(resource.link)
+        .bind(resource.updated)
+        .execute(&state.db)
+        .await?;
+
+    info!(
+        "{} created a new resource name: {}, category: {}",
+        user_info.cid, resource.name, resource.category,
+    );
+    flashed_messages::push_flashed_message(session, MessageLevel::Info, "New resource created")
+        .await?;
+    Ok(Redirect::to("/admin/resources"))
 }
 
 /// This file's routes and templates.
@@ -520,5 +646,9 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             "/admin/visitor_applications/:id",
             get(post_visitor_application_action),
         )
-        .route("/admin/resources", get(page_resources))
+        .route(
+            "/admin/resources",
+            get(page_resources).post(post_new_resource),
+        )
+        .route("/admin/resources/:id", delete(api_delete_resource))
 }

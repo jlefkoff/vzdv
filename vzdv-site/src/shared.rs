@@ -53,10 +53,16 @@ pub enum AppError {
     NumberParsing(#[from] std::num::ParseIntError),
     #[error(transparent)]
     FormExtractionRejection(#[from] FormRejection),
+    #[error("could not get value of form key")]
+    MultipartFormGet,
+    #[error(transparent)]
+    MultipartFormParsing(#[from] axum::extract::multipart::MultipartError),
     #[error(transparent)]
     EmailError(#[from] lettre::transport::smtp::Error),
     #[error("unknown email template {0}")]
     UnknownEmailTemplate(String),
+    #[error(transparent)]
+    FileWriteError(#[from] std::io::Error),
     #[error("generic error {0}: {1}")]
     GenericFallback(&'static str, anyhow::Error),
 }
@@ -75,8 +81,11 @@ impl AppError {
             Self::ChronoOther(_) => "Issue processing time",
             Self::NumberParsing(_) => "Issue parsing numbers",
             Self::FormExtractionRejection(_) => "Issue getting info from you",
+            Self::MultipartFormGet => "Issue parsing form key",
+            Self::MultipartFormParsing(_) => "Issue parsing form submission",
             Self::EmailError(_) => "Issue sending an email",
             Self::UnknownEmailTemplate(_) => "Unknown email template",
+            Self::FileWriteError(_) => "Writing to a file",
             Self::GenericFallback(_, _) => "Unknown error",
         }
     }

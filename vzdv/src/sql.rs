@@ -72,7 +72,7 @@ pub struct FeedbackForReview {
     pub reviewer_action: String,
 }
 
-#[derive(Debug, FromRow, Serialize)]
+#[derive(Debug, FromRow, Serialize, Default)]
 pub struct Resource {
     pub id: u32,
     pub category: String,
@@ -341,6 +341,9 @@ pub const DELETE_FROM_FEEDBACK: &str = "DELETE FROM feedback WHERE id=$1";
 pub const GET_ALL_FEEDBACK_FOR: &str = "SELECT * FROM feedback WHERE controller=$1";
 
 pub const GET_ALL_RESOURCES: &str = "SELECT * FROM resource";
+pub const GET_RESOURCE_BY_ID: &str = "SELECT * FROM resource WHERE id=$1";
+pub const DELETE_RESOURCE_BY_ID: &str = "DELETE FROM resource WHERE id=$1";
+pub const CREATE_NEW_RESOURCE: &str = "INSERT INTO resource VALUES (NULL, $1, $2, $3, $4, $5)";
 
 pub const GET_VISITOR_REQUEST_BY_ID: &str = "SELECT * FROM visitor_request WHERE id=$1";
 pub const GET_ALL_VISITOR_REQUESTS: &str = "SELECT * FROM visitor_request";
