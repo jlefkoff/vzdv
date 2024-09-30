@@ -1,6 +1,5 @@
 //! vZDV Discord bot.
 
-#![allow(unused)] // TODO remove
 #![deny(clippy::all)]
 #![deny(unsafe_code)]
 
@@ -12,8 +11,11 @@ use sqlx::{Pool, Sqlite};
 use std::{path::PathBuf, sync::Arc};
 use twilight_gateway::{Event, Intents, Shard, ShardId};
 use twilight_http::Client as HttpClient;
+use twilight_interactions::command::CreateCommand;
+use twilight_model::id::Id;
 use vzdv::{config::Config, general_setup};
 
+mod commands;
 mod tasks;
 
 /// vZDV Discord bot.
@@ -58,6 +60,12 @@ async fn main() {
     let intents = Intents::GUILD_MEMBERS;
     let mut shard = Shard::new(ShardId::ONE, token.clone(), intents);
     let http = Arc::new(HttpClient::new(token.clone()));
+    let interaction_client = http.interaction(Id::new(bot_id));
+
+    interaction_client
+        .set_global_commands(&[commands::EventCommand::create_command().into()])
+        .await
+        .expect("Could not register commands");
 
     debug!("Spawning background tasks");
 
@@ -75,7 +83,7 @@ async fn main() {
         let db = db.clone();
         let http = http.clone();
         tokio::spawn(async move {
-            tasks::roles::process(config, db, http).await;
+            // tasks::roles::process(config, db, http).await; // FIXME
         });
     };
 
@@ -116,9 +124,10 @@ async fn handle_event(
     event: Event,
     http: Arc<HttpClient>,
     bot_id: u64,
-    config: &Config,
+    config: &Arc<Config>,
     db: &Pool<Sqlite>,
 ) -> Result<()> {
-    // TODO
+    commands::handler(&event, config, db, &http, bot_id).await?;
+
     Ok(())
 }
