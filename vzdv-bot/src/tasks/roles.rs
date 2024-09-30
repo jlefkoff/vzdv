@@ -1,9 +1,9 @@
 use anyhow::Result;
-use log::{debug, error, info, warn};
+use log::{debug, error, info};
 use sqlx::{Pool, Sqlite};
 use std::{sync::Arc, time::Duration};
 use tokio::time::sleep;
-use twilight_http::{request::guild, Client};
+use twilight_http::Client;
 use twilight_model::{
     guild::Member,
     id::{marker::GuildMarker, Id},
@@ -77,6 +77,8 @@ async fn resolve_roles(
     roles: &[(u64, bool)],
     http: &Arc<Client>,
 ) -> Result<()> {
+    // TODO
+
     let existing: Vec<_> = member.roles.iter().map(|r| r.get()).collect();
     for &(id, should_have) in roles {
         if should_have && !existing.contains(&id) {
@@ -212,7 +214,6 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
             continue;
         }
         debug!("Processing user {}", member.user.id);
-        let mut to_resolve: Vec<(&str, bool)> = Vec::new();
         let controller: Option<Controller> = sqlx::query_as(sql::GET_CONTROLLER_BY_DISCORD_ID)
             .bind(member.user.id.get().to_string())
             .fetch_optional(db)
@@ -237,7 +238,7 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
                         .await
                     {
                         error!(
-                            "Could not remove role {role} from {} ({})",
+                            "Could not remove role {role} from {} ({}): {e}",
                             member.nick.as_ref().unwrap_or(&member.user.name),
                             member.user.id.get()
                         );
@@ -267,7 +268,7 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
             }
             Err(e) => {
                 error!(
-                    "Error determining roles for {} ({})",
+                    "Error determining roles for {} ({}): {e}",
                     member.nick.as_ref().unwrap_or(&member.user.name),
                     member.user.id.get()
                 );
@@ -277,7 +278,7 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
         // nickname
         if let Err(e) = set_nickname(guild_id, member, &controller, http).await {
             error!(
-                "Error setting nickname of {} ({})",
+                "Error setting nickname of {} ({}): {e}",
                 member.nick.as_ref().unwrap_or(&member.user.name),
                 member.user.id.get()
             );

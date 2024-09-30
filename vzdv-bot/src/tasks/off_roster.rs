@@ -9,7 +9,7 @@ use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder};
 use vatsim_utils::live_api::Vatsim;
 use vzdv::{
     config::Config,
-    get_controller_cids_and_names, position_in_facility_airspace,
+    position_in_facility_airspace,
     sql::{self, Controller},
 };
 
@@ -30,7 +30,7 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
                 violations,
                 "{} ({}) on {} is not on the roster",
                 online.name, online.cid, online.callsign
-            );
+            )?;
         }
     }
 

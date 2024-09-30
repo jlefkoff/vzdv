@@ -1,18 +1,13 @@
 use anyhow::Result;
 use chrono::Utc;
-use log::{debug, error, info};
-use sqlx::{sqlite::SqliteRow, Pool, Row, Sqlite};
+use log::{debug, error};
+use sqlx::{Pool, Sqlite};
 use std::{fmt::Write, sync::Arc, time::Duration};
 use tokio::time::sleep;
 use twilight_http::Client;
 use twilight_model::{channel::message::Embed, id::Id};
 use twilight_util::builder::embed::{EmbedBuilder, EmbedFieldBuilder, EmbedFooterBuilder};
-use vatsim_utils::live_api::Vatsim;
-use vzdv::{
-    config::Config,
-    sql::{self, Controller},
-    vatsim::get_online_facility_controllers,
-};
+use vzdv::{config::Config, vatsim::get_online_facility_controllers};
 
 async fn create_message(config: &Arc<Config>, db: &Pool<Sqlite>) -> Result<Embed> {
     let data = get_online_facility_controllers(db, config).await?;
@@ -24,14 +19,14 @@ async fn create_message(config: &Arc<Config>, db: &Pool<Sqlite>) -> Result<Embed
                 || c.callsign.ends_with("_TMU")
         })
         .fold(String::new(), |mut acc, c| {
-            writeln!(acc, "{} - {} - {}", c.callsign, c.name, c.online_for);
+            writeln!(acc, "{} - {} - {}", c.callsign, c.name, c.online_for).unwrap();
             acc
         });
     let tracon = data
         .iter()
         .filter(|c| c.callsign.ends_with("_APP") || c.callsign.ends_with("_DEP"))
         .fold(String::new(), |mut acc, c| {
-            writeln!(acc, "{} - {} - {}", c.callsign, c.name, c.online_for);
+            writeln!(acc, "{} - {} - {}", c.callsign, c.name, c.online_for).unwrap();
             acc
         });
     let cab = data
@@ -42,7 +37,7 @@ async fn create_message(config: &Arc<Config>, db: &Pool<Sqlite>) -> Result<Embed
                 || c.callsign.ends_with("_DEL")
         })
         .fold(String::new(), |mut acc, c| {
-            writeln!(acc, "{} - {} - {}", c.callsign, c.name, c.online_for);
+            writeln!(acc, "{} - {} - {}", c.callsign, c.name, c.online_for).unwrap();
             acc
         });
 
