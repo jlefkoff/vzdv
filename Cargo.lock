@@ -3297,6 +3297,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "twilight-interactions"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f147662174686043822ade9d0abb388d8ac460edb77ba908145fd96edb285795"
+dependencies = [
+ "twilight-interactions-derive",
+ "twilight-model",
+]
+
+[[package]]
+name = "twilight-interactions-derive"
+version = "0.15.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3a297ef39ee60e672ff47624acb4f4fff5f700dcb2b509230664916f20a7d489"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn",
+]
+
+[[package]]
 name = "twilight-model"
 version = "0.15.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3505,6 +3526,7 @@ dependencies = [
  "tokio",
  "twilight-gateway",
  "twilight-http",
+ "twilight-interactions",
  "twilight-model",
  "twilight-util",
  "vatsim_utils",

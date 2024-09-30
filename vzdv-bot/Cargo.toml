@@ -15,6 +15,7 @@ sqlx = { version = "0.8.1", default-features = false, features = ["runtime-tokio
 tokio = { version = "1.38.0", features = ["full"] }
 twilight-gateway = "0.15.4"
 twilight-http = "0.15.4"
+twilight-interactions = "0.15.2"
 twilight-model = "0.15.4"
 twilight-util = { version = "0.15.4", features = ["builder"] }
 vatsim_utils = "0.5.1"
