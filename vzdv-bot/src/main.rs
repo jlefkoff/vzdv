@@ -127,7 +127,7 @@ async fn handle_event(
     config: &Arc<Config>,
     db: &Pool<Sqlite>,
 ) -> Result<()> {
-    commands::handler(&event, config, db, &http, bot_id).await?;
+    commands::handler(&event, &http, bot_id, config, db).await?;
 
     Ok(())
 }
