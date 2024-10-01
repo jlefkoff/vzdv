@@ -164,8 +164,7 @@ async fn page_roster(
                 Some(s) => s,
                 None => "",
             };
-            let roles = determine_staff_positions(controller, &state.config).join(", ");
-
+            let roles = determine_staff_positions(controller).join(", ");
             let certs = certifications
                 .iter()
                 .filter(|cert| cert.cid == controller.cid)
@@ -209,7 +208,7 @@ async fn page_staff(
         .fetch_all(&state.db)
         .await?;
     for controller in &controllers {
-        let roles = determine_staff_positions(controller, &state.config);
+        let roles = determine_staff_positions(controller);
         for role in roles {
             if let Some(staff_pos) = staff_map.get_mut(role.as_str()) {
                 staff_pos.controllers.push(controller.clone());

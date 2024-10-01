@@ -6,10 +6,6 @@ resource_category_ordering = ["General", "SOP", "LOA", "Misc"]
 
 [staff]
 email_domain = "zdvartcc.org"
-overrides = [
-  { role = "FE", cid = 967658 },
-  { role = "EC", cid = 1520736 }
-]
 
 [vatsim]
 # This data is for the _dev_ SSO site

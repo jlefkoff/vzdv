@@ -6,7 +6,6 @@ resource_category_ordering = []
 
 [staff]
 email_domain = ""
-overrides = []
 
 [vatsim]
 vatusa_api_key = ""

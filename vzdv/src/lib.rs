@@ -15,7 +15,7 @@ use reqwest::ClientBuilder;
 use sql::Controller;
 use sqlx::{sqlite::SqliteRow, Pool, Row, Sqlite};
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     path::{Path, PathBuf},
     sync::LazyLock,
     time::SystemTime,
@@ -85,28 +85,16 @@ pub async fn get_controller_cids_and_names(
 ///
 /// This function will return all positions in the event the controller holds more
 /// than one, like being an Instructor and also the FE, or a Mentor and an AEC.
-pub fn determine_staff_positions(controller: &Controller, config: &Config) -> Vec<String> {
-    let mut ret_roles = Vec::new();
-    let db_roles: Vec<_> = controller.roles.split_terminator(',').collect();
-    for role in db_roles {
-        if IGNORE_MISSING_STAFF_POSITIONS_FOR.contains(&role) {
-            continue;
-        }
-        let ovr = config.staff.overrides.iter().find(|o| o.role == role);
-        if let Some(ovr) = ovr {
-            if ovr.cid == controller.cid {
-                ret_roles.push(role.to_owned());
-            } else {
-                ret_roles.push(format!("A{role}"));
-            }
-        } else {
-            ret_roles.push(role.to_owned());
-        }
-    }
+pub fn determine_staff_positions(controller: &Controller) -> Vec<String> {
+    let mut roles: HashSet<_> = controller
+        .roles
+        .split_terminator(',')
+        .filter(|r| !IGNORE_MISSING_STAFF_POSITIONS_FOR.contains(r))
+        .collect();
     if controller.home_facility == "ZDV" && [8, 9, 10].contains(&controller.rating) {
-        ret_roles.push("INS".to_owned());
+        roles.insert("INS");
     }
-    ret_roles
+    roles.iter().map(|&r| r.to_owned()).collect()
 }
 
 pub enum ControllerRating {
@@ -534,9 +522,7 @@ pub mod tests {
         PermissionsGroup,
     };
     use crate::{
-        config::{Config, ConfigStaffOverride},
-        generate_operating_initials_for,
-        sql::Controller,
+        config::Config, generate_operating_initials_for, sql::Controller,
         vatsim::parse_vatsim_timestamp,
     };
 
@@ -559,9 +545,8 @@ pub mod tests {
     fn test_determine_staff_positions_empty() {
         let mut controller = Controller::default();
         controller.cid = 123;
-        let config = Config::default();
 
-        assert!(determine_staff_positions(&controller, &config).is_empty());
+        assert!(determine_staff_positions(&controller).is_empty());
     }
 
     #[test]
@@ -569,9 +554,8 @@ pub mod tests {
         let mut controller = Controller::default();
         controller.cid = 123;
         controller.roles = "MTR".to_owned();
-        let config = Config::default();
 
-        assert_eq!(determine_staff_positions(&controller, &config), vec!["MTR"]);
+        assert_eq!(determine_staff_positions(&controller), vec!["MTR"]);
     }
 
     #[test]
@@ -579,40 +563,17 @@ pub mod tests {
         let mut controller = Controller::default();
         controller.cid = 123;
         controller.roles = "FE".to_owned();
-        let config = Config::default();
 
-        assert_eq!(determine_staff_positions(&controller, &config), vec!["FE"]);
+        assert_eq!(determine_staff_positions(&controller), vec!["FE"]);
     }
 
     #[test]
     fn test_determine_staff_positions_single_assistant() {
         let mut controller = Controller::default();
         controller.cid = 123;
-        controller.roles = "FE".to_owned();
-        let mut config = Config::default();
-        config.staff.overrides.push(ConfigStaffOverride {
-            role: "FE".to_owned(),
-            cid: 456,
-        });
+        controller.roles = "AFE".to_owned();
 
-        assert_eq!(determine_staff_positions(&controller, &config), vec!["AFE"]);
-    }
-
-    #[test]
-    fn test_determine_staff_positions_multiple() {
-        let mut controller = Controller::default();
-        controller.cid = 123;
-        controller.roles = "FE,MTR".to_owned();
-        let mut config = Config::default();
-        config.staff.overrides.push(ConfigStaffOverride {
-            role: "FE".to_owned(),
-            cid: 456,
-        });
-
-        assert_eq!(
-            determine_staff_positions(&controller, &config),
-            vec!["AFE", "MTR"]
-        );
+        assert_eq!(determine_staff_positions(&controller), vec!["AFE"]);
     }
 
     #[test]
@@ -621,19 +582,17 @@ pub mod tests {
         controller.cid = 123;
         controller.rating = 10;
         controller.home_facility = "ZDV".to_owned();
-        let config = Config::default();
 
-        assert_eq!(determine_staff_positions(&controller, &config), vec!["INS"]);
+        assert_eq!(determine_staff_positions(&controller), vec!["INS"]);
     }
 
     #[test]
-    fn test_determine_staff_positions_ingore() {
+    fn test_determine_staff_positions_ignore() {
         let mut controller = Controller::default();
         controller.cid = 123;
         controller.roles = "FACCBT".to_owned();
-        let config = Config::default();
 
-        assert!(determine_staff_positions(&controller, &config).is_empty());
+        assert!(determine_staff_positions(&controller).is_empty());
     }
 
     #[test]

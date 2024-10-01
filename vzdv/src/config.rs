@@ -26,14 +26,7 @@ pub struct ConfigDatabase {
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]
-pub struct ConfigStaffOverride {
-    pub role: String,
-    pub cid: u32,
-}
-
-#[derive(Debug, Clone, Deserialize, Default)]
 pub struct ConfigStaff {
-    pub overrides: Vec<ConfigStaffOverride>,
     pub email_domain: String,
 }
 
