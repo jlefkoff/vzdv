@@ -74,7 +74,13 @@ async fn get_upcoming_events(
     let events = query_for_events(&state.db, show_all).await?;
     let is_event_staff = is_user_member_of(&state, &user_info, PermissionsGroup::EventsTeam).await;
     let template = state.templates.get_template("events/upcoming_events")?;
-    let rendered = template.render(context! { user_info, is_event_staff, events })?;
+    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
+    let rendered = template.render(context! {
+        user_info,
+        is_event_staff,
+        events,
+        flashed_messages
+    })?;
     Ok(Html(rendered))
 }
 
