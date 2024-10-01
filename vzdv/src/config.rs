@@ -8,6 +8,7 @@ pub const DEFAULT_CONFIG_FILE_NAME: &str = "vzdv.toml";
 /// App configuration.
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct Config {
+    pub hosted_domain: String,
     pub database: ConfigDatabase,
     pub staff: ConfigStaff,
     pub vatsim: ConfigVatsim,

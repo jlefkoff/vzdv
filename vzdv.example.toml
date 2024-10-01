@@ -1,3 +1,5 @@
+hosted_domain = "http://localhost:3000/"
+
 [database]
 file = "./vzdv_data.sqlite"
 resource_category_ordering = ["General", "SOP", "LOA", "Misc"]

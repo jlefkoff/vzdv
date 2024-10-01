@@ -1,3 +1,5 @@
+hosted_domain = ""
+
 [database]
 file = "./vzdv_data.sqlite"
 resource_category_ordering = []
