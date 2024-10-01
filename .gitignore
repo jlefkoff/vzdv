@@ -1,5 +1,6 @@
 /target
 *.sqlite*
 vzdv.toml
-/assets
+assets/*
+!assets/index.html
 *.log

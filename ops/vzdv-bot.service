@@ -1,10 +1,10 @@
 [Unit]
-Description=New vZDV site
+Description=New vZDV Discord bot
 Requires=network.target
 
 [Service]
 WorkingDirectory=/srv/vzdv
-ExecStart=/srv/vzdv/vzdv-site
+ExecStart=/srv/vzdv/vzdv-bot
 Restart=always
 
 [Install]
