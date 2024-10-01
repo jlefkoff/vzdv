@@ -157,8 +157,6 @@ async fn page_roster(
         .fetch_all(&state.db)
         .await?;
 
-    // TODO certification sorting?
-
     let controllers_with_certs: Vec<_> = controllers
         .iter()
         .map(|controller| {
