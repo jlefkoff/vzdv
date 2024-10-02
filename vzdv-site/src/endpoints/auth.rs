@@ -56,7 +56,7 @@ async fn page_auth_callback(
         .fetch_optional(&state.db)
         .await?;
     let roles: Vec<_> = match &db_user_info {
-        Some(controller) => controller.roles.split(',').collect::<Vec<_>>(),
+        Some(controller) => controller.roles.split_terminator(',').collect::<Vec<_>>(),
         None => Vec::new(),
     };
 
