@@ -1,19 +1,21 @@
 //! HTTP endpoints for user-specific pages.
 
 use crate::{
-    discord, flashed_messages,
+    discord, flashed_messages::{self, MessageLevel},
     shared::{AppError, AppState, UserInfo, SESSION_USER_INFO_KEY},
 };
 use axum::{
-    extract::{Query, State},
+    extract::{Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
-    routing::get,
-    Router,
+    routing::{delete, get, post},
+    Form, Router,
 };
+use chrono::Utc;
 use log::{debug, info, warn};
 use minijinja::{context, Environment};
 use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
+use sqlx::{Pool, Sqlite};
 use vzdv::{
     sql::{self, Controller},
     vatusa,
@@ -54,6 +56,27 @@ async fn page_request_training(
   let rendered =
       template.render(context! { flashed_messages, training_types })?;
   Ok(Html(rendered).into_response())
+}
+
+/// Post a new training request
+async fn post_training_request(
+  State(state): State<Arc<AppState>>,
+    session: Session,
+    Path(cid): Path<u32>,
+    Form(training_request_form): Form<String>,
+) -> Result<Redirect, AppError> {
+  let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    let user_info = user_info.unwrap();
+    info!("{} added training request for {cid}", user_info.cid);
+    sqlx::query(sql::CREATE_TRAINING_REQUEST)
+        .bind(cid)
+        .bind(user_info.cid)
+        .bind(Utc::now())
+        .bind(training_request_form)
+        .execute(&state.db)
+        .await?;
+    flashed_messages::push_flashed_message(session, MessageLevel::Info, "Training Request saved").await?;
+    Ok(Redirect::to(&format!("/controller/{cid}")))
 }
 
 /// Show the user a link to the Discord server, as well as provide
@@ -162,4 +185,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
         .route("/user/discord", get(page_discord))
         .route("/user/discord/callback", get(page_discord_callback))
         .route("/user/request_training", get(page_request_training))
+        .route("/user/request_training/request", post(post_training_request))
 }
