@@ -42,6 +42,7 @@ pub struct ConfigVatsim {
 #[derive(Debug, Clone, Deserialize, Default)]
 pub struct ConfigTraining {
     pub certifications: Vec<String>,
+    pub training_types: Vec<String>,
 }
 
 #[derive(Debug, Clone, Deserialize, Default)]

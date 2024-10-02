@@ -4,3 +4,4 @@ vzdv.toml
 assets/*
 !assets/index.html
 *.log
+.DS_Store

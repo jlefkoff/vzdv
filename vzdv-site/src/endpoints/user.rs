@@ -43,6 +43,19 @@ async fn page_training_notes(
     Ok(Html(rendered).into_response())
 }
 
+/// Allow the user to request training
+async fn page_request_training(
+  State(state): State<Arc<AppState>>,
+  session: Session,
+) -> Result<Response, AppError> {
+  let training_types = &state.config.training.training_types;
+  let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
+  let template = state.templates.get_template("user/request_training")?;
+  let rendered =
+      template.render(context! { flashed_messages, training_types })?;
+  Ok(Html(rendered).into_response())
+}
+
 /// Show the user a link to the Discord server, as well as provide
 /// the start of the Discord OAuth flow for account linking.
 async fn page_discord(
@@ -137,9 +150,16 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/user/discord.jinja"),
         )
         .unwrap();
+    templates
+      .add_template(
+          "user/request_training",
+          include_str!("../../templates/user/request_training.jinja"),
+      )
+      .unwrap();
 
     Router::new()
         .route("/user/training_notes", get(page_training_notes))
         .route("/user/discord", get(page_discord))
         .route("/user/discord/callback", get(page_discord_callback))
+        .route("/user/request_training", get(page_request_training))
 }

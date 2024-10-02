@@ -16,6 +16,7 @@ oauth_client_callback_url = ""
 
 [training]
 certifications = []
+training_types = []
 
 [airports]
 all = []

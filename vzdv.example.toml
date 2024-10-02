@@ -28,6 +28,23 @@ certifications = [
   "APP T1",
   "ENR T2",
 ]
+training_types = [
+  "S1 Unrestricted",
+  "S1 Tier 2 (ASE & EGE)",
+  "S1 Tier 1 (DEN) Student",
+  "S1 Tier 1 (DEN) Full",
+  "S2 Unrestricted Student",
+  "S2 Unrestricted Full",
+  "S2 Tier 2 (ASE & EGE)",
+  "S2 Tier 1 (DEN) Student",
+  "S2 Tier 1 (DEN) Full",
+  "S3 Unrestricted Student",
+  "S3 Unrestricted Full",
+  "S3 Tier 2 (ASE & GJT)",
+  "S3 Tier 1 (D01) Student",
+  "S3 Tier 1 (D01) Full",
+  "C1 (ZDV)",
+]
 
 [airports]
 all = [

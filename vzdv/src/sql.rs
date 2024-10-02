@@ -254,6 +254,17 @@ CREATE TABLE staff_note (
     FOREIGN KEY (cid) REFERENCES controller(cid),
     FOREIGN KEY (by) REFERENCES controller(cid)
 ) STRICT;
+
+CREATE TABLE training_requests (
+    id INTEGER PRIMARY KEY NOT NULL,
+    cid INTEGER NOT NULL,
+    position TEXT NOT NULL,
+    date TEXT NOT NULL,
+    availability TEXT NOT NULL,
+    open INTEGER NOT NULL DEFAULT TRUE, 
+
+    FOREIGN KEY (cid) REFERENCES controller(cid)
+) STRICT;
 "#;
 
 pub const UPSERT_USER_LOGIN: &str = "
@@ -384,3 +395,6 @@ pub const GET_STAFF_NOTES_FOR: &str = "SELECT * FROM staff_note WHERE cid=$1";
 pub const GET_STAFF_NOTE: &str = "SELECT * FROM staff_note WHERE id=$1";
 pub const DELETE_STAFF_NOTE: &str = "DELETE FROM staff_note WHERE id=$1";
 pub const CREATE_STAFF_NOTE: &str = "INSERT INTO staff_note VALUES (NULL, $1, $2, $3, $4);";
+
+pub const CREATE_TRAINING_REQUEST: &str = "INSERT INTO training_requests VALUES (NULL, $1, $2, $3, $4, TRUE);";
+pub const GET_TRAINING_REQUEST: &str = "SELECT * FROM training_requests WHERE cid=$1";
