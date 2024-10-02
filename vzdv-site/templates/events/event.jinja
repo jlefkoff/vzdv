@@ -306,7 +306,7 @@
   });
   document.getElementById('input-timezone').value = Intl.DateTimeFormat().resolvedOptions().timeZone;
 
-  document.getElementById('button-delete').addEventListener('click', (e) => {
+  document.getElementById('button-delete')?.addEventListener('click', (e) => {
     e.preventDefault();
     const result = window.confirm('Are you sure you want to delete this event?');
     if (result) {
