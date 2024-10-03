@@ -101,20 +101,17 @@ pub struct ConfigDiscordRoles {
     pub controller_otm: u64,
     pub home_controller: u64,
     pub visiting_controller: u64,
-    pub neighboring_controller: u64,
     pub event_controller: u64,
 
     // staff
     pub sr_staff: u64,
     pub jr_staff: u64,
-    pub vatusa_vatgov_staff: u64,
 
     // staff teams
     pub training_staff: u64,
     pub event_team: u64,
     pub fe_team: u64,
     pub web_team: u64,
-    pub ace_team: u64,
 
     // ratings
     pub administrator: u64,

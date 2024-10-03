@@ -50,19 +50,16 @@ errors = ""
 guest = 0
 controller_otm = 0
 visiting_controller = 0
-neighboring_controller = 0
 
 # staff
 sr_staff = 0
 jr_staff = 0
-vatusa_vatgov_staff = 0
 
 # staff teams
 training_staff = 0
 event_team = 0
 fe_team = 0
 web_team = 0
-ace_team = 0
 
 # ratings
 administrator = 0
