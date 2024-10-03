@@ -35,9 +35,9 @@
         </td>
         <td class="col">
           {% for cert in controller.certs %}
-            {% if cert.value == "Training" %}
+            {% if cert.value == "training" %}
               <span class="badge text-bg-warning" title="Training">{{ cert.name }}</span>
-            {% elif cert.value == "Solo" %}
+            {% elif cert.value == "solo" %}
               <span class="badge text-bg-info" title="Solo">{{ cert.name }}</span>
             {% else %}
               <span class="badge text-bg-success" title="Certified">{{ cert.name }}</span>
