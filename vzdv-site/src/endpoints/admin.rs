@@ -14,7 +14,7 @@ use axum::{
     Form, Router,
 };
 use chrono::Utc;
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 use minijinja::{context, Environment};
 use reqwest::StatusCode;
 use rev_buf_reader::RevBufReader;
@@ -286,7 +286,14 @@ async fn page_logs(
     let mut logs: HashMap<&str, String> = HashMap::new();
     for name in file_names {
         let mut buffer = Vec::new();
-        let file = std::fs::File::open(name).unwrap();
+        let file = match std::fs::File::open(name) {
+            Ok(f) => f,
+            Err(e) => {
+                error!("Error reading log file: {e}");
+                logs.insert(name, String::new());
+                continue;
+            }
+        };
         let reader = RevBufReader::new(file);
         let mut by_line = reader.lines();
         for _ in 0..line_count {
