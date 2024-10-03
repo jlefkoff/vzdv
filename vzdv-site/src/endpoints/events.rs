@@ -136,7 +136,7 @@ async fn post_new_event_form(
 // controller records twice for each controller assigned to an event.
 
 /// Render the full page for a single event, including controls for signup.
-async fn page_get_event(
+async fn page_event(
     State(state): State<Arc<AppState>>,
     session: Session,
     Path(id): Path<u32>,
@@ -146,81 +146,96 @@ async fn page_get_event(
         .bind(id)
         .fetch_optional(&state.db)
         .await?;
-    if let Some(event) = event {
-        let not_staff_redirect =
-            reject_if_not_in(&state, &user_info, PermissionsGroup::EventsTeam).await;
-        if !event.published {
-            // only event staff can see unpublished events
-            if let Some(redirect) = not_staff_redirect {
-                return Ok(redirect.into_response());
-            }
+    let event = match event {
+        Some(e) => e,
+        None => {
+            flashed_messages::push_flashed_message(
+                session,
+                flashed_messages::MessageLevel::Error,
+                "Event not found",
+            )
+            .await?;
+            return Ok(Redirect::to("/").into_response());
         }
-        let positions_raw: Vec<EventPosition> = sqlx::query_as(sql::GET_EVENT_POSITIONS)
-            .bind(event.id)
-            .fetch_all(&state.db)
-            .await?;
-        let positions = event_positions_extra(&positions_raw, &state.db).await?;
-        let registrations = event_registrations_extra(event.id, &positions_raw, &state.db).await?;
-        let all_controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS_ON_ROSTER)
-            .fetch_all(&state.db)
-            .await?;
-        let all_controllers: Vec<(u32, String)> = all_controllers
-            .iter()
-            .map(|controller| {
-                (
-                    controller.cid,
-                    format!(
-                        "{} {} ({})",
-                        controller.first_name,
-                        controller.last_name,
-                        match controller.operating_initials.as_ref() {
-                            Some(oi) => {
-                                if oi.is_empty() {
-                                    "??"
-                                } else {
-                                    oi
-                                }
-                            }
-                            None => "??",
-                        }
-                    ),
-                )
-            })
-            .collect();
-        let template = state.templates.get_template("events/event")?;
-        let self_register: Option<EventRegistration> = if let Some(user_info) = &user_info {
-            sqlx::query_as(sql::GET_EVENT_REGISTRATION_FOR)
-                .bind(id)
-                .bind(user_info.cid)
+    };
+
+    let not_staff_redirect =
+        reject_if_not_in(&state, &user_info, PermissionsGroup::EventsTeam).await;
+    if !event.published {
+        // only event staff can see unpublished events
+        if let Some(redirect) = not_staff_redirect {
+            return Ok(redirect.into_response());
+        }
+    }
+
+    let user_controller: Option<Controller> = match &user_info {
+        Some(info) => {
+            sqlx::query_as(sql::GET_CONTROLLER_BY_CID)
+                .bind(info.cid)
                 .fetch_optional(&state.db)
                 .await?
-        } else {
-            None
-        };
+        }
+        None => None,
+    };
 
-        let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
-        let rendered = template.render(context! {
-            user_info,
-            event,
-            positions,
-            positions_raw,
-            registrations,
-            all_controllers,
-            self_register,
-            flashed_messages,
-            is_event_staff => not_staff_redirect.is_none(),
-            event_not_over =>  Utc::now() < event.end
-        })?;
-        Ok(Html(rendered).into_response())
-    } else {
-        flashed_messages::push_flashed_message(
-            session,
-            flashed_messages::MessageLevel::Error,
-            "Event not found",
-        )
+    let positions_raw: Vec<EventPosition> = sqlx::query_as(sql::GET_EVENT_POSITIONS)
+        .bind(event.id)
+        .fetch_all(&state.db)
         .await?;
-        Ok(Redirect::to("/").into_response())
-    }
+    let positions = event_positions_extra(&positions_raw, &state.db).await?;
+    let registrations = event_registrations_extra(event.id, &positions_raw, &state.db).await?;
+    let all_controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS_ON_ROSTER)
+        .fetch_all(&state.db)
+        .await?;
+    let all_controllers: Vec<(u32, String)> = all_controllers
+        .iter()
+        .map(|controller| {
+            (
+                controller.cid,
+                format!(
+                    "{} {} ({})",
+                    controller.first_name,
+                    controller.last_name,
+                    match controller.operating_initials.as_ref() {
+                        Some(oi) => {
+                            if oi.is_empty() {
+                                "??"
+                            } else {
+                                oi
+                            }
+                        }
+                        None => "??",
+                    }
+                ),
+            )
+        })
+        .collect();
+    let template = state.templates.get_template("events/event")?;
+    let self_register: Option<EventRegistration> = if let Some(user_info) = &user_info {
+        sqlx::query_as(sql::GET_EVENT_REGISTRATION_FOR)
+            .bind(id)
+            .bind(user_info.cid)
+            .fetch_optional(&state.db)
+            .await?
+    } else {
+        None
+    };
+
+    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
+    let rendered = template.render(context! {
+        user_info,
+        event,
+        positions,
+        positions_raw,
+        registrations,
+        all_controllers,
+        self_register,
+        is_on_roster => user_controller.map(|c| c.is_on_roster).unwrap_or_default(),
+        is_event_staff => not_staff_redirect.is_none(),
+        event_not_over =>  Utc::now() < event.end,
+        flashed_messages,
+    })?;
+    Ok(Html(rendered).into_response())
 }
 
 #[derive(Serialize)]
@@ -685,7 +700,7 @@ pub fn router(template: &mut Environment) -> Router<Arc<AppState>> {
         )
         .route(
             "/events/:id",
-            get(page_get_event)
+            get(page_event)
                 .delete(api_delete_event)
                 .post(post_edit_event_form),
         )
