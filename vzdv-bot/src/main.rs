@@ -83,7 +83,7 @@ async fn main() {
         let db = db.clone();
         let http = http.clone();
         tokio::spawn(async move {
-            // tasks::roles::process(config, db, http).await; // FIXME
+            tasks::roles::process(config, db, http).await;
         });
     };
 
