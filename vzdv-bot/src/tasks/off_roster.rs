@@ -26,11 +26,12 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
         if position_in_facility_airspace(config, &online.callsign)
             && !on_roster_cids.contains(&online.cid)
         {
-            writeln!(
-                violations,
+            let s = format!(
                 "{} ({}) on {} is not on the roster",
                 online.name, online.cid, online.callsign
-            )?;
+            );
+            info!("{s}");
+            writeln!(violations, "{s}")?;
         }
     }
 
