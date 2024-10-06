@@ -148,7 +148,7 @@ async fn update_roster(db: &SqlitePool) -> Result<()> {
     for row in db_controllers {
         let cid: u32 = row.try_get("cid")?;
         if !current_controllers.contains(&cid) {
-            debug!("Controller {cid} is no longer on the roster");
+            debug!("Controller {cid} is not on the roster");
             if let Err(e) = sqlx::query(sql::UPDATE_REMOVED_FROM_ROSTER)
                 .bind(cid)
                 .execute(db)
