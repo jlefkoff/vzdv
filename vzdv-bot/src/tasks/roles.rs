@@ -250,6 +250,9 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
                 .await?;
             debug!("Nick cleared for {user_id}");
         }
+
+        // short wait
+        sleep(Duration::from_secs(1)).await;
     }
 
     Ok(())
