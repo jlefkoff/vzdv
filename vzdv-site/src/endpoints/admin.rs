@@ -26,7 +26,7 @@ use uuid::Uuid;
 use vzdv::{
     sql::{self, Controller, Feedback, FeedbackForReview, Resource, VisitorRequest},
     vatusa::{self, add_visiting_controller, get_multiple_controller_info},
-    PermissionsGroup, GENERAL_HTTP_CLIENT,
+    ControllerRating, PermissionsGroup, GENERAL_HTTP_CLIENT,
 };
 
 /// Page for managing controller feedback.
@@ -531,7 +531,7 @@ async fn api_delete_resource(
 
 /// Form submission for creating a new resource.
 ///
-/// Name staff members only.
+/// Named staff members only.
 async fn post_new_resource(
     State(state): State<Arc<AppState>>,
     session: Session,
@@ -598,6 +598,31 @@ async fn post_new_resource(
     Ok(Redirect::to("/admin/resources"))
 }
 
+/// Page for controllers that are not on the roster but have controller DB entries.
+///
+/// Named staff members only.
+async fn page_off_roster_list(
+    State(state): State<Arc<AppState>>,
+    session: Session,
+) -> Result<Response, AppError> {
+    let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
+    if let Some(redirect) = reject_if_not_in(&state, &user_info, PermissionsGroup::SomeStaff).await
+    {
+        return Ok(redirect.into_response());
+    }
+    let controllers: Vec<Controller> = sqlx::query_as(sql::GET_ALL_CONTROLLERS_OFF_ROSTER)
+        .fetch_all(&state.db)
+        .await?;
+    let flashed_messages = flashed_messages::drain_flashed_messages(session).await?;
+    let template = state.templates.get_template("admin/off_roster_list")?;
+    let rendered = template.render(context! {
+       user_info,
+       controllers,
+       flashed_messages
+    })?;
+    Ok(Html(rendered).into_response())
+}
+
 /// This file's routes and templates.
 pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
     templates
@@ -630,12 +655,25 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             include_str!("../../templates/admin/resources.jinja"),
         )
         .unwrap();
+    templates
+        .add_template(
+            "admin/off_roster_list",
+            include_str!("../../templates/admin/off_roster_list.jinja"),
+        )
+        .unwrap();
     templates.add_filter("nice_date", |date: String| {
         chrono::DateTime::parse_from_rfc3339(&date)
             .unwrap()
             .format("%m/%d/%Y %H:%M:%S")
             .to_string()
     });
+    templates.add_filter(
+        "rating_str",
+        |rating: i8| match ControllerRating::try_from(rating) {
+            Ok(r) => r.as_str(),
+            Err(_) => "OBS",
+        },
+    );
 
     Router::new()
         .route("/admin/feedback", get(page_feedback))
@@ -658,4 +696,5 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             get(page_resources).post(post_new_resource),
         )
         .route("/admin/resources/:id", delete(api_delete_resource))
+        .route("/admin/off_roster_list", get(page_off_roster_list))
 }

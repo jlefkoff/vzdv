@@ -1,0 +1,34 @@
+{% extends "_layout" %}
+
+{% block title %}Off-roster List | {{ super() }}{% endblock %}
+
+{% block body %}
+
+<h2>Off-roster List</h2>
+
+<table class="table table-striped table-hover">
+  <thead>
+    <tr>
+      <th>Name</th>
+      <th>Rating</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for controller in controllers %}
+      <tr>
+        <td>{{ controller.first_name }} {{ controller.last_name }}</td>
+        <td>{{ controller.rating|rating_str }}</td>
+        <td>
+          <h2>
+            <a href="/controller/{{ controller.cid }}" class="icon-link icon-link-hover text-decoration-none">
+              <i class="bi bi-arrow-right-short"></i>
+            </a>
+          </h2>
+        </td>
+      </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+{% endblock %}

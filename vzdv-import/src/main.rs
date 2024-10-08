@@ -5,11 +5,11 @@
 
 use anyhow::{bail, Result};
 use clap::Parser;
-use log::{debug, error, info};
+use log::{debug, error, info, warn};
 use serde::Deserialize;
 use sqlx::{Pool, Sqlite};
 use std::{collections::HashMap, path::PathBuf};
-use vzdv::{general_setup, GENERAL_HTTP_CLIENT};
+use vzdv::{general_setup, ControllerRating, GENERAL_HTTP_CLIENT};
 
 const ROSTER_URL: &str = "https://api.zdvartcc.org/v1/user/all";
 
@@ -37,8 +37,12 @@ struct AdhCertification {
 #[derive(Deserialize)]
 struct AdhController {
     cid: u32,
+    first_name: String,
+    last_name: String,
     operating_initials: String,
     certifications: HashMap<String, AdhCertification>,
+    rating: String,
+    discord_id: String,
 }
 
 async fn get_adh_data() -> Result<Vec<AdhController>> {
@@ -55,11 +59,56 @@ async fn get_adh_data() -> Result<Vec<AdhController>> {
 }
 
 async fn update_single(db: &Pool<Sqlite>, controller: &AdhController) -> Result<()> {
-    sqlx::query("UPDATE controller SET operating_initials=$1 where cid=$2")
-        .bind(controller.operating_initials.clone())
-        .bind(controller.cid)
-        .execute(db)
-        .await?;
+    debug!("Updating {}", controller.cid);
+
+    let discord_id: Option<String> = if controller.discord_id.is_empty() {
+        None
+    } else {
+        Some(controller.discord_id.clone())
+    };
+    let rows =
+        sqlx::query("UPDATE controller SET operating_initials=$1, discord_id=$2 WHERE cid=$3")
+            .bind(controller.operating_initials.clone())
+            .bind(&discord_id)
+            .bind(controller.cid)
+            .execute(db)
+            .await?;
+
+    if rows.rows_affected() == 0 {
+        debug!("New controller");
+        // unknown controller, very likely off-roster
+        let sql = "INSERT INTO controller (id, cid, first_name, last_name, rating, is_on_roster, discord_id) VALUES (NULL, $1, $2, $3, $4, FALSE, $5)";
+        let rating = match controller.rating.as_str() {
+            "INA" => ControllerRating::INA,
+            "SUS" => ControllerRating::SUS,
+            "OBS" => ControllerRating::OBS,
+            "S1" => ControllerRating::S1,
+            "S2" => ControllerRating::S2,
+            "S3" => ControllerRating::S3,
+            "C1" => ControllerRating::C1,
+            "C2" => ControllerRating::C2,
+            "C3" => ControllerRating::C3,
+            "I1" => ControllerRating::I1,
+            "I2" => ControllerRating::I2,
+            "I3" => ControllerRating::I3,
+            "SUP" => ControllerRating::SUP,
+            "ADM" => ControllerRating::ADM,
+            _ => {
+                warn!("Unknown controller rating string: {}", &controller.rating);
+                ControllerRating::OBS
+            }
+        };
+        sqlx::query(sql)
+            .bind(controller.cid)
+            .bind(&controller.first_name)
+            .bind(&controller.last_name)
+            .bind(rating.as_id())
+            .bind(discord_id)
+            .execute(db)
+            .await?;
+    } else {
+        debug!("Existing controller");
+    }
 
     sqlx::query("DELETE FROM certification WHERE cid=$1")
         .bind(controller.cid)
@@ -99,7 +148,6 @@ async fn main() {
     };
 
     for controller in data {
-        debug!("Updating {}", controller.cid);
         if let Err(e) = update_single(&db, &controller).await {
             error!("Error updating controller {}: {e}", controller.cid);
         }

@@ -145,7 +145,7 @@ CREATE TABLE controller (
     operating_initials TEXT,
     rating INTEGER,
     status TEXT,
-    discord_id TEXT UNIQUE,
+    discord_id TEXT,
     home_facility TEXT,
     is_on_roster INTEGER,
     roles TEXT,
@@ -290,6 +290,8 @@ WHERE
 
 pub const GET_ALL_CONTROLLERS: &str = "SELECT * FROM controller";
 pub const GET_ALL_CONTROLLERS_ON_ROSTER: &str = "SELECT * FROM controller WHERE is_on_roster=TRUE";
+pub const GET_ALL_CONTROLLERS_OFF_ROSTER: &str =
+    "SELECT * FROM controller WHERE is_on_roster=FALSE";
 pub const GET_ALL_CONTROLLER_CIDS: &str = "SELECT cid FROM controller";
 pub const GET_ALL_ROSTER_CONTROLLER_CIDS: &str =
     "SELECT cid FROM controller WHERE is_on_roster=TRUE";
