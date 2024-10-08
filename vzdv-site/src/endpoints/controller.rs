@@ -30,7 +30,7 @@ use vzdv::{
     sql::{self, Certification, Controller, Feedback, StaffNote},
     vatusa::{
         get_multiple_controller_names, get_training_records, save_training_record,
-        NewTrainingRecord,
+        NewTrainingRecord, TrainingRecord,
     },
     ControllerRating, PermissionsGroup, StaffPosition,
 };
@@ -405,6 +405,8 @@ async fn snippet_get_training_records(
     session: Session,
     Path(cid): Path<u32>,
 ) -> Result<Response, AppError> {
+    use voca_rs::Voca;
+
     let user_info: Option<UserInfo> = session.get(SESSION_USER_INFO_KEY).await?;
     if let Some(redirect) =
         reject_if_not_in(&state, &user_info, PermissionsGroup::TrainingTeam).await
@@ -417,6 +419,13 @@ async fn snippet_get_training_records(
     let training_records: Vec<_> = all_training_records
         .iter()
         .filter(|record| record.facility_id == "ZDV")
+        .map(|record| {
+            let record = record.clone();
+            TrainingRecord {
+                notes: record.notes._strip_tags(),
+                ..record
+            }
+        })
         .collect();
     let instructor_cids: Vec<u32> = training_records
         .iter()

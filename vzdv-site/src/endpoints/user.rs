@@ -16,7 +16,7 @@ use std::{collections::HashMap, sync::Arc};
 use tower_sessions::Session;
 use vzdv::{
     sql::{self, Controller},
-    vatusa,
+    vatusa::{self, TrainingRecord},
 };
 
 /// Retrieve and show the user their training records from VATUSA.
@@ -31,13 +31,22 @@ async fn page_training_notes(
         Some(info) => info,
         None => return Ok(Redirect::to("/").into_response()),
     };
-    let mut training_records =
+    let all_training_records =
         vatusa::get_training_records(&state.config.vatsim.vatusa_api_key, user_info.cid)
             .await
             .map_err(|e| AppError::GenericFallback("getting VATUSA training records", e))?;
-    for record in &mut training_records {
-        record.notes = record.notes._strip_tags();
-    }
+    let training_records: Vec<_> = all_training_records
+        .iter()
+        .filter(|record| record.facility_id == "ZDV")
+        .map(|record| {
+            let record = record.clone();
+            TrainingRecord {
+                notes: record.notes._strip_tags(),
+                ..record
+            }
+        })
+        .collect();
+
     let template = state.templates.get_template("user/training_notes")?;
     let rendered = template.render(context! { user_info, training_records })?;
     Ok(Html(rendered).into_response())

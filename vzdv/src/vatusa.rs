@@ -228,7 +228,7 @@ pub async fn add_visiting_controller(cid: u32, api_key: &str) -> Result<()> {
     Ok(())
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct TrainingRecord {
     pub id: u32,
     pub student_id: u32,
