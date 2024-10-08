@@ -248,11 +248,6 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
             if let Err(e) = set_nickname(guild_id, member, &controller, http).await {
                 error!("Error setting nickname of {nick} ({user_id}): {e}");
             }
-        } else if member.nick.is_some() {
-            http.update_guild_member(guild_id, Id::new(user_id))
-                .nick(None)?
-                .await?;
-            info!("Nick cleared for {user_id}");
         }
 
         // short wait
