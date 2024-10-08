@@ -27,14 +27,17 @@ async fn set_nickname(
         controller.last_name.chars().next().unwrap()
     );
     if let Some(ois) = &controller.operating_initials {
-        name.push_str(" - ");
-        name.push_str(ois);
+        if !ois.is_empty() {
+            name.push_str(" - ");
+            name.push_str(ois);
+        }
     }
 
-    if controller.roles.contains("ATM") {
-        name.push_str(" | ATM");
-    } else if controller.roles.contains("DATM") {
+    if controller.roles.contains("DATM") {
         name.push_str(" | DATM");
+    } else if controller.roles.contains("ATM") {
+        // ATM is a higher role, but since the string is a subset of "DATM", do this second
+        name.push_str(" | ATM");
     } else if controller.roles.contains("TA") {
         name.push_str(" | TA");
     } else if controller.roles.contains("EC") {
@@ -82,16 +85,16 @@ async fn resolve_roles(
     let existing: Vec<_> = member.roles.iter().map(|r| r.get()).collect();
     for &(id, should_have) in roles {
         if should_have && !existing.contains(&id) {
-            debug!(
-                "Adding {id} to {} ({})",
+            info!(
+                "Adding role {id} to {} ({})",
                 member.nick.as_ref().unwrap_or(&member.user.name),
                 member.user.id.get()
             );
             // http.add_guild_member_role(guild_id, member.user.id, Id::new(id))
             //     .await?;
         } else if !should_have && existing.contains(&id) {
-            debug!(
-                "Removing {id} from {} ({})",
+            info!(
+                "Removing role {id} from {} ({})",
                 member.nick.as_ref().unwrap_or(&member.user.name),
                 member.user.id.get()
             );
@@ -108,7 +111,7 @@ async fn get_correct_roles(
     member: &Member,
     controller: &Option<Controller>,
 ) -> Result<Vec<(u64, bool)>> {
-    debug!("Processing user {}", member.user.id);
+    debug!("Processing roles for {}", member.user.id);
     let mut to_resolve = Vec::with_capacity(15);
 
     let home_facility = controller
@@ -206,6 +209,7 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
         .await?
         .model()
         .await?;
+    debug!("Found {} Discord members", members.len());
     for member in &members {
         let nick = member.nick.as_ref().unwrap_or(&member.user.name);
         let user_id = member.user.id.get();
@@ -244,16 +248,17 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
             if let Err(e) = set_nickname(guild_id, member, &controller, http).await {
                 error!("Error setting nickname of {nick} ({user_id}): {e}");
             }
-        } else {
+        } else if member.nick.is_some() {
             http.update_guild_member(guild_id, Id::new(user_id))
                 .nick(None)?
                 .await?;
-            debug!("Nick cleared for {user_id}");
+            info!("Nick cleared for {user_id}");
         }
 
         // short wait
         sleep(Duration::from_secs(1)).await;
     }
+    debug!("Roles tick complete");
 
     Ok(())
 }
@@ -267,6 +272,6 @@ pub async fn process(config: Arc<Config>, db: Pool<Sqlite>, http: Arc<Client>) {
         if let Err(e) = tick(&config, &db, &http).await {
             error!("Error in roles processing tick: {e}");
         }
-        sleep(Duration::from_secs(60 * 5)).await; // 5 minutes
+        sleep(Duration::from_secs(60 * 10)).await; // 10 minutes
     }
 }

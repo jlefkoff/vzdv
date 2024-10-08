@@ -65,9 +65,13 @@ async fn tick(config: &Arc<Config>, db: &Pool<Sqlite>, http: &Arc<Client>) -> Re
                 .await?;
         }
         None => {
-            http.create_message(channel_id)
+            let resp = http
+                .create_message(channel_id)
                 .embeds(&[create_message(config, db).await?])?
+                .await?
+                .model()
                 .await?;
+            debug!("New online message ID: {}", resp.id.get());
         }
     }
     Ok(())
