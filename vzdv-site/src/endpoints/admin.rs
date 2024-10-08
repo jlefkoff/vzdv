@@ -8,7 +8,7 @@ use crate::{
     },
 };
 use axum::{
-    extract::{Multipart, Path, Query, State},
+    extract::{DefaultBodyLimit, Multipart, Path, Query, State},
     response::{Html, IntoResponse, Redirect, Response},
     routing::{delete, get, post},
     Form, Router,
@@ -695,6 +695,7 @@ pub fn router(templates: &mut Environment) -> Router<Arc<AppState>> {
             "/admin/resources",
             get(page_resources).post(post_new_resource),
         )
+        .layer(DefaultBodyLimit::disable()) // no upload limit on this endpoint
         .route("/admin/resources/:id", delete(api_delete_resource))
         .route("/admin/off_roster_list", get(page_off_roster_list))
 }
