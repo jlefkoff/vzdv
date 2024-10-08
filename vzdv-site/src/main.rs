@@ -113,6 +113,7 @@ async fn shutdown_signal() {
 }
 
 /// Entrypoint.
+#[allow(clippy::needless_return)] // https://github.com/rust-lang/rust-clippy/issues/13458
 #[tokio::main]
 async fn main() {
     let cli = Cli::parse();
