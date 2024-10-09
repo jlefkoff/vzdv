@@ -3,4 +3,5 @@
 vzdv.toml
 assets/*
 !assets/index.html
+!assets/favicon.ico
 *.log
